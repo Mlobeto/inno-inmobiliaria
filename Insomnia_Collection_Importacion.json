@@ -1,0 +1,142 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-02-08T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_import_clients",
+      "parentId": "fld_import",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "url": "{{ _.base_url }}/api/import/clients",
+      "name": "Importar Clientes desde CSV",
+      "description": "Importa múltiples clientes desde un archivo CSV con los campos: cuil, name, email, direccion, ciudad, provincia, mobile, linkMaps",
+      "method": "POST",
+      "body": {
+        "mimeType": "multipart/form-data",
+        "params": [
+          {
+            "id": "pair_file",
+            "name": "file",
+            "value": "",
+            "description": "Selecciona el archivo CSV con los clientes",
+            "type": "file",
+            "fileName": "clientes_a_importar.csv"
+          }
+        ]
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "multipart/form-data"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1707350400000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_clients",
+      "parentId": "fld_import",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "url": "{{ _.base_url }}/api/client",
+      "name": "Listar Todos los Clientes",
+      "description": "Obtiene la lista completa de clientes para verificar la importación",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1707350300000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "req_get_templates",
+      "parentId": "fld_import",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "url": "{{ _.base_url }}/api/import/templates",
+      "name": "Obtener Info de Plantillas",
+      "description": "Obtiene información sobre las plantillas disponibles y los campos requeridos",
+      "method": "GET",
+      "body": {},
+      "parameters": [],
+      "headers": [],
+      "authentication": {},
+      "metaSortKey": -1707350200000,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingDisableRenderRequestBody": false,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global",
+      "_type": "request"
+    },
+    {
+      "_id": "fld_import",
+      "parentId": "wrk_main",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "name": "📤 Importación de Clientes",
+      "description": "Endpoints para importación masiva de clientes",
+      "environment": {},
+      "environmentPropertyOrder": null,
+      "metaSortKey": -1707350400000,
+      "_type": "request_group"
+    },
+    {
+      "_id": "wrk_main",
+      "parentId": null,
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "name": "QL Inmobiliaria - Importación",
+      "description": "Colección para importar clientes masivamente",
+      "scope": "collection",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_main",
+      "parentId": "wrk_main",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3001"
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url"]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1707350400000,
+      "_type": "environment"
+    },
+    {
+      "_id": "jar_cookies",
+      "parentId": "wrk_main",
+      "modified": 1707350400000,
+      "created": 1707350400000,
+      "name": "Default Jar",
+      "cookies": [],
+      "_type": "cookie_jar"
+    }
+  ]
+}

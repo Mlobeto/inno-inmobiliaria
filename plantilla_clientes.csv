@@ -1,0 +1,6 @@
+cuil,name,email,direccion,ciudad,provincia,mobile,linkMaps
+20-12345678-9,Juan Carlos Pérez,juan.perez@email.com,Av. Libertador 1234,Buenos Aires,Buenos Aires,1123456789,https://maps.app.goo.gl/example1
+27-87654321-4,María Elena García,maria.garcia@email.com,San Martín 456,Rosario,Santa Fe,3414567890,https://maps.app.goo.gl/example2
+23-11223344-5,Carlos Alberto López,carlos.lopez@email.com,Belgrano 789,Córdoba,Córdoba,3515678901,https://maps.app.goo.gl/example3
+20-33445566-7,Ana Sofía Rodríguez,ana.rodriguez@email.com,Rivadavia 321,Mendoza,Mendoza,2614567890,https://maps.app.goo.gl/example4
+27-99887766-5,Luis Miguel Fernández,luis.fernandez@email.com,Mitre 654,La Plata,Buenos Aires,2214567890,https://maps.app.goo.gl/example5

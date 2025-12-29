@@ -1,0 +1,227 @@
+[
+  {
+    "cuil": "20-12345678-6",
+    "name": "Juan Carlos Pérez",
+    "email": "juan.perez@gmail.com",
+    "direccion": "Av. Corrientes 1234",
+    "ciudad": "Buenos Aires",
+    "provincia": "Buenos Aires",
+    "mobilePhone": "1123456789"
+  },
+  {
+    "cuil": "27-23456789-1",
+    "name": "Laura Fernández",
+    "email": "laura.fernandez@hotmail.com",
+    "direccion": "San Martín 567",
+    "ciudad": "Córdoba",
+    "provincia": "Córdoba",
+    "mobilePhone": "3514567890"
+  },
+  {
+    "cuil": "20-34567890-6",
+    "name": "Roberto Silva",
+    "email": "roberto.silva@yahoo.com",
+    "direccion": "Belgrano 890",
+    "ciudad": "Rosario",
+    "provincia": "Santa Fe",
+    "mobilePhone": "3415678901"
+  },
+  {
+    "cuil": "27-45678901-9",
+    "name": "Carmen Rodriguez",
+    "email": "carmen.rodriguez@gmail.com",
+    "direccion": "Rivadavia 234",
+    "ciudad": "La Plata",
+    "provincia": "Buenos Aires",
+    "mobilePhone": "2216789012"
+  },
+  {
+    "cuil": "20-56789012-1",
+    "name": "Miguel Ángel Torres",
+    "email": "miguel.torres@outlook.com",
+    "direccion": "9 de Julio 456",
+    "ciudad": "Tucumán",
+    "provincia": "Tucumán",
+    "mobilePhone": "3817890123"
+  },
+  {
+    "cuil": "27-67890123-2",
+    "name": "Silvia Morales",
+    "email": "silvia.morales@gmail.com",
+    "direccion": "Mitre 789",
+    "ciudad": "Mar del Plata",
+    "provincia": "Buenos Aires",
+    "mobilePhone": "2238901234"
+  },
+  {
+    "cuil": "20-78901234-3",
+    "name": "Diego Ramírez",
+    "email": "diego.ramirez@hotmail.com",
+    "direccion": "Sarmiento 123",
+    "ciudad": "Neuquén",
+    "provincia": "Neuquén",
+    "mobilePhone": "2999012345"
+  },
+  {
+    "cuil": "27-89012345-2",
+    "name": "Gabriela Vega",
+    "email": "gabriela.vega@gmail.com",
+    "direccion": "Pueyrredón 567",
+    "ciudad": "Salta",
+    "provincia": "Salta",
+    "mobilePhone": "3871123456"
+  },
+  {
+    "cuil": "20-90123456-7",
+    "name": "Fernando Castro",
+    "email": "fernando.castro@yahoo.com",
+    "direccion": "Alsina 890",
+    "ciudad": "Mendoza",
+    "provincia": "Mendoza",
+    "mobilePhone": "2612234567"
+  },
+  {
+    "cuil": "27-01234567-4",
+    "name": "Patricia Herrera",
+    "email": "patricia.herrera@outlook.com",
+    "direccion": "Lavalle 345",
+    "ciudad": "Bahía Blanca",
+    "provincia": "Buenos Aires",
+    "mobilePhone": "2913345678"
+  },
+  {
+    "cuil": "20-11111111-2",
+    "name": "Carlos Alberto Méndez",
+    "email": "carlos.mendez@gmail.com",
+    "direccion": "Av. Libertador 2340",
+    "ciudad": "Buenos Aires",
+    "provincia": "Buenos Aires",
+    "mobilePhone": "1134567891"
+  },
+  {
+    "cuil": "27-22222222-8",
+    "name": "María Elena García",
+    "email": "maria.garcia@hotmail.com",
+    "direccion": "Entre Ríos 456",
+    "ciudad": "Paraná",
+    "provincia": "Entre Ríos",
+    "mobilePhone": "3434567892"
+  },
+  {
+    "cuil": "20-33333333-4",
+    "name": "Alejandro Ruiz",
+    "email": "alejandro.ruiz@yahoo.com",
+    "direccion": "Pellegrini 678",
+    "ciudad": "Santa Fe",
+    "provincia": "Santa Fe",
+    "mobilePhone": "3424567893"
+  },
+  {
+    "cuil": "27-44444444-4",
+    "name": "Ana Lucía Martínez",
+    "email": "ana.martinez@gmail.com",
+    "direccion": "Independencia 890",
+    "ciudad": "San Miguel de Tucumán",
+    "provincia": "Tucumán",
+    "mobilePhone": "3814567894"
+  },
+  {
+    "cuil": "20-55555555-6",
+    "name": "Javier Hernández",
+    "email": "javier.hernandez@outlook.com",
+    "direccion": "25 de Mayo 123",
+    "ciudad": "Posadas",
+    "provincia": "Misiones",
+    "mobilePhone": "3764567895"
+  },
+  {
+    "cuil": "27-66666666-1",
+    "name": "Claudia Beatriz López",
+    "email": "claudia.lopez@gmail.com",
+    "direccion": "Colón 234",
+    "ciudad": "Resistencia",
+    "provincia": "Chaco",
+    "mobilePhone": "3624567896"
+  },
+  {
+    "cuil": "20-77777777-8",
+    "name": "Martín González",
+    "email": "martin.gonzalez@hotmail.com",
+    "direccion": "Urquiza 345",
+    "ciudad": "Formosa",
+    "provincia": "Formosa",
+    "mobilePhone": "3704567897"
+  },
+  {
+    "cuil": "27-88888888-3",
+    "name": "Verónica Díaz",
+    "email": "veronica.diaz@yahoo.com",
+    "direccion": "Alem 456",
+    "ciudad": "San Juan",
+    "provincia": "San Juan",
+    "mobilePhone": "2644567898"
+  },
+  {
+    "cuil": "20-99999999-9",
+    "name": "Pablo Andrés Romero",
+    "email": "pablo.romero@gmail.com",
+    "direccion": "San Lorenzo 567",
+    "ciudad": "San Luis",
+    "provincia": "San Luis",
+    "mobilePhone": "2664567899"
+  },
+  {
+    "cuil": "27-10203040-6",
+    "name": "Sandra Jiménez",
+    "email": "sandra.jimenez@outlook.com",
+    "direccion": "Moreno 678",
+    "ciudad": "Santiago del Estero",
+    "provincia": "Santiago del Estero",
+    "mobilePhone": "3854567800"
+  },
+  {
+    "cuil": "20-50607080-6",
+    "name": "Gustavo Vargas",
+    "email": "gustavo.vargas@hotmail.com",
+    "direccion": "Rivadavia 789",
+    "ciudad": "Catamarca",
+    "provincia": "Catamarca",
+    "mobilePhone": "3834567801"
+  },
+  {
+    "cuil": "27-11223344-5",
+    "name": "Marta Susana Flores",
+    "email": "marta.flores@gmail.com",
+    "direccion": "Belgrano 890",
+    "ciudad": "La Rioja",
+    "provincia": "La Rioja",
+    "mobilePhone": "3804567802"
+  },
+  {
+    "cuil": "20-55443322-8",
+    "name": "Ricardo Aguilar",
+    "email": "ricardo.aguilar@yahoo.com",
+    "direccion": "Tucumán 123",
+    "ciudad": "Jujuy",
+    "provincia": "Jujuy",
+    "mobilePhone": "3884567803"
+  },
+  {
+    "cuil": "27-99887766-6",
+    "name": "Liliana Paz",
+    "email": "liliana.paz@outlook.com",
+    "direccion": "Córdoba 234",
+    "ciudad": "Corrientes",
+    "provincia": "Corrientes",
+    "mobilePhone": "3794567804"
+  },
+  {
+    "cuil": "20-12121212-9",
+    "name": "Sergio Medina",
+    "email": "sergio.medina@gmail.com",
+    "direccion": "Buenos Aires 345",
+    "ciudad": "Ushuaia",
+    "provincia": "Tierra del Fuego",
+    "mobilePhone": "2904567805"
+  }
+]

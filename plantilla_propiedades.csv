@@ -1,0 +1,6 @@
+address,neighborhood,socio,city,type,typeProperty,price,rooms,comision,isAvailable,description,escritura,plantType,plantQuantity,bathrooms,highlights,inventory,superficieCubierta,superficieTotal
+Av. Corrientes 1234,Palermo,,Buenos Aires,venta,casa,250000,3,3.5,TRUE,Casa con jardín y garage,escritura,,,2,Pileta - Quincho - Garage,Muebles de cocina incluidos,120 m²,200 m²
+Rivadavia 456,Flores,,Buenos Aires,alquiler,departamento,45000,2,6.0,TRUE,Departamento moderno en el centro,prescripcion en tramite,,,1,Balcón - Portero - Ascensor,,80 m²,80 m²
+San Martín 789,Belgrano,María González,Buenos Aires,venta,duplex,180000,4,4.0,TRUE,Duplex con terraza y parrilla,prescripcion adjudicada,,,3,Terraza - Parrilla - Cochera,Lavarropas incluido,150 m²,180 m²
+Ruta Nacional 40 Km 15,Campo Los Álamos,Carlos Méndez,Mendoza,venta,finca,500000,2,2.5,TRUE,Finca productiva con casa,escritura,Viña,50,1,Casa - Galpón - Pozo,Maquinaria agrícola,100 m²,5000 m²
+Florida 987,Microcentro,,Buenos Aires,alquiler,oficina,35000,0,8.0,TRUE,Oficina en edificio corporativo,escritura,,,2,Aire acondicionado - Seguridad,Mobiliario de oficina,60 m²,60 m²
