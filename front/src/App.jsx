@@ -24,6 +24,7 @@ import ContratoAlquiler from "./Components/PdfTemplates/ContratoAlquiler";
 import ReciboPreview from "./Components/PdfTemplates/ReciboPreview";
 import ContratoPreview from "./Components/PdfTemplates/ContratoPreview";
 import SignatureManager from "./Components/Admin/SignatureManager";
+import CompanySettings from "./Components/Admin/CompanySettings"; // 🆕 NUEVO
 import InstallPWA from "./Components/InstallPWA";
 
 function App() {
@@ -213,6 +214,12 @@ function App() {
       <Route 
         path="/signature-manager" 
         element={<SignatureManager />} 
+      />
+
+      {/* 🆕 NUEVA RUTA - Configuración de la inmobiliaria */}
+      <Route 
+        path="/company-settings" 
+        element={<CompanySettings />} 
       />
 
       <Route path="/login" element={<LoginAdmin />} />

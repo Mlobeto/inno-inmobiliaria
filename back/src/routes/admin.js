@@ -8,6 +8,10 @@ router.get('/', authMiddleware, (req, res) => {
   res.status(200).json({ message: 'Bienvenido al panel de administración' });
 });
 
+// 🆕 Rutas de configuración general de la inmobiliaria
+router.get('/settings', authMiddleware, AdminSettingsController.getSettings);
+router.put('/settings', authMiddleware, AdminSettingsController.updateSettings);
+
 // Rutas de firma
 router.get('/signature', AdminSettingsController.getSignature);
 router.post('/signature', AdminSettingsController.saveSignature);
