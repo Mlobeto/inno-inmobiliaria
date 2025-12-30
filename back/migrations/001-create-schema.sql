@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS client_properties (
 CREATE TABLE IF NOT EXISTS leases (
   "leaseId" SERIAL PRIMARY KEY,
   "propertyId" INTEGER REFERENCES properties("propertyId") ON DELETE CASCADE,
-  "clientId" INTEGER REFERENCES clients("idClient") ON DELETE CASCADE,
+  "landlordId" INTEGER REFERENCES clients("idClient") ON DELETE CASCADE,
+  "renterId" INTEGER REFERENCES clients("idClient") ON DELETE CASCADE,
   "startDate" DATE NOT NULL,
   "endDate" DATE NOT NULL,
   "monthlyRent" DECIMAL(12, 2) NOT NULL,

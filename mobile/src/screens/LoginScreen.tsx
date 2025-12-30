@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { login } from '@inno/shared/src/store/slices/authSlice';
+import { login } from '@inno/shared';
 import { AppDispatch, RootState } from '../store/store';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { offlineQueue } from '../utils/offlineQueue';

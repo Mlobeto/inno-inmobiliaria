@@ -6,18 +6,14 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../store/store';
 import { LoginScreen } from '../screens/LoginScreen';
 import { PropertiesScreen } from '../screens/PropertiesScreen';
+import ClientsScreen from '../screens/ClientsScreen';
+import AddClientScreen from '../screens/AddClientScreen';
 import { Text } from 'react-native';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Placeholder para otras pantallas
-const ClientsScreen = () => (
-  <Text style={{ flex: 1, textAlign: 'center', marginTop: 100 }}>
-    🧑‍💼 Clientes (próximamente)
-  </Text>
-);
-
 const ContractsScreen = () => (
   <Text style={{ flex: 1, textAlign: 'center', marginTop: 100 }}>
     📄 Contratos (próximamente)
@@ -29,6 +25,24 @@ const ProfileScreen = () => (
     👤 Perfil (próximamente)
   </Text>
 );
+
+// Stack de Clientes (lista + crear)
+const ClientsStack = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="ClientsList"
+        component={ClientsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddClient"
+        component={AddClientScreen}
+        options={{ headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 // Tabs principales (cuando está autenticado)
 const MainTabs = () => {
@@ -61,9 +75,10 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="Clientes"
-        component={ClientsScreen}
+        component={ClientsStack}
         options={{
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 24 }}>🧑‍💼</Text>,
+          headerShown: false,
         }}
       />
       <Tab.Screen

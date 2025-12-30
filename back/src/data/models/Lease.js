@@ -21,8 +21,8 @@ module.exports = (sequelize) => {
           key: "idClient",
         },
       },
-      tenantId: {
-        // Inquilino (tenant)
+      renterId: {
+        // Inquilino (renter) - renombrado de tenantId para evitar confusión con tenant de multi-tenancy
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {

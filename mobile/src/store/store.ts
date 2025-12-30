@@ -3,10 +3,8 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from '@reduxjs/toolkit';
 
-// Importar slices de shared
-import authReducer from '@inno/shared/src/store/slices/authSlice';
-import clientsReducer from '@inno/shared/src/store/slices/clientsSlice';
-import propertiesReducer from '@inno/shared/src/store/slices/propertiesSlice';
+// Importar reducers desde @inno/shared
+import { authReducer, clientsReducer, propertiesReducer } from '@inno/shared';
 
 // Configuración de persistencia
 const persistConfig = {

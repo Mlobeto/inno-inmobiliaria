@@ -5,7 +5,12 @@
 export { store } from './store';
 export type { RootState, AppDispatch } from './store';
 
-// Slices
+// Slices - Exportar reducers y actions
+export { default as authReducer } from './store/slices/authSlice';
+export { default as clientsReducer } from './store/slices/clientsSlice';
+export { default as propertiesReducer } from './store/slices/propertiesSlice';
+
+// Exportar todas las actions y thunks
 export * from './store/slices/authSlice';
 export * from './store/slices/clientsSlice';
 export * from './store/slices/propertiesSlice';

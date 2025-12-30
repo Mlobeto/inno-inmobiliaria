@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllProperties } from '@inno/shared/src/store/slices/propertiesSlice';
+import { fetchAllProperties } from '@inno/shared';
 import { AppDispatch, RootState } from '../store/store';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
