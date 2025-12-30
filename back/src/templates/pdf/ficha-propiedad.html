@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Ficha de Propiedad</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11pt;
+      margin: 0;
+      padding: 15px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
+    }
+    .logo img {
+      width: 120px;
+      height: auto;
+    }
+    .contact-info {
+      text-align: center;
+      font-size: 10pt;
+    }
+    .property-type {
+      display: inline-block;
+      padding: 5px 15px;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+      margin-left: 10px;
+    }
+    .property-type.venta {
+      background-color: red;
+    }
+    .property-type.alquiler {
+      background-color: green;
+    }
+    .images {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 15px 0;
+    }
+    .images img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border: 1px solid #ddd;
+    }
+    .property-details {
+      margin: 15px 0;
+    }
+    .property-details p {
+      margin: 6px 0;
+      line-height: 1.4;
+    }
+    .description-section {
+      margin-top: 20px;
+      padding-top: 15px;
+    }
+    .highlights-section {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 2px solid green;
+    }
+    .highlights-section h3 {
+      color: green;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      {{#if inmobiliaria.logoUrl}}
+        <img src="{{inmobiliaria.logoUrl}}" alt="Logo">
+      {{else}}
+        <h2>{{inmobiliaria.businessName}}</h2>
+      {{/if}}
+    </div>
+    <div class="contact-info">
+      <div>{{inmobiliaria.address}}</div>
+      <div>Tel: {{inmobiliaria.phone}}</div>
+    </div>
+    <div>
+      {{#if_eq property.type "venta"}}
+        <span class="property-type venta">VENTA</span>
+      {{else}}
+        <span class="property-type alquiler">ALQUILER</span>
+      {{/if_eq}}
+    </div>
+  </div>
+
+  {{#if property.images}}
+  <div class="images">
+    {{#each property.images}}
+      <img src="{{this}}" alt="Imagen de propiedad">
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <div class="property-details">
+    <p><span class="label">Dirección:</span> {{property.address}}</p>
+    <p><span class="label">Barrio:</span> {{property.neighborhood}}</p>
+    <p><span class="label">Ciudad:</span> {{property.city}}</p>
+    <p><span class="label">Precio:</span> {{formatCurrency property.price}}</p>
+    <p><span class="label">Tipo:</span> {{uppercase property.type}}</p>
+    <p><span class="label">Tipo de Propiedad:</span> {{property.typeProperty}}</p>
+    {{#if property.rooms}}
+      <p><span class="label">Habitaciones:</span> {{property.rooms}}</p>
+    {{/if}}
+    {{#if property.bathrooms}}
+      <p><span class="label">Baños:</span> {{property.bathrooms}}</p>
+    {{/if}}
+    {{#if property.superficieCubierta}}
+      <p><span class="label">Superficie Cubierta:</span> {{property.superficieCubierta}} m²</p>
+    {{/if}}
+    {{#if property.superficieTotal}}
+      <p><span class="label">Superficie Total:</span> {{property.superficieTotal}} m²</p>
+    {{/if}}
+  </div>
+
+  <div class="description-section">
+    <p><span class="label">Descripción:</span></p>
+    <p>{{property.description}}</p>
+  </div>
+
+  {{#if property.highlights}}
+  <div class="highlights-section">
+    <h3>Destacados:</h3>
+    <p>{{property.highlights}}</p>
+  </div>
+  {{/if}}
+</body>
+</html>

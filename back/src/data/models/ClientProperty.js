@@ -2,6 +2,14 @@ const { DataTypes } = require('sequelize');
 
 module.exports = (sequelize) => {
     sequelize.define('ClientProperty', {
+        tenantId: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            references: {
+                model: 'tenants',
+                key: 'tenantId',
+            },
+        },
         role: {
             type: DataTypes.ENUM('propietario', 'inquilino', 'vendedor', 'comprador'),
             allowNull: false,
@@ -22,5 +30,9 @@ module.exports = (sequelize) => {
             },
             allowNull: false,
         },
+    }, {
+        indexes: [
+            { fields: ['tenantId'] },
+        ]
     });
 };

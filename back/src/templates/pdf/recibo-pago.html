@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Recibo de Pago</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      margin: 0;
+      padding: 15px;
+      line-height: 1.3;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .header-left {
+      flex: 1;
+    }
+    .header-left h1 {
+      font-size: 16pt;
+      margin: 0;
+      letter-spacing: 1px;
+    }
+    .header-left .subtitle {
+      font-size: 7pt;
+      letter-spacing: 3px;
+      margin: 3px 0;
+    }
+    .header-left .owner {
+      font-size: 8pt;
+      margin: 3px 0;
+    }
+    .header-left .credentials {
+      font-size: 7pt;
+      margin: 3px 0;
+    }
+    .header-left .contact {
+      font-size: 9pt;
+      margin: 10px 0 5px 0;
+    }
+    .header-left .tax-info {
+      font-size: 10pt;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .header-right {
+      width: 250px;
+      border: 2px solid #000;
+      padding: 10px;
+      text-align: center;
+    }
+    .receipt-type {
+      font-size: 32pt;
+      font-weight: bold;
+      margin: 5px 0;
+    }
+    .receipt-number {
+      font-size: 11pt;
+      margin: 5px 0;
+    }
+    .receipt-title {
+      font-size: 18pt;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin: 10px 0;
+    }
+    .not-valid {
+      font-size: 7pt;
+      margin-top: 5px;
+    }
+    .date-box {
+      border: 1px solid #000;
+      padding: 8px;
+      margin-top: 10px;
+      text-align: left;
+      font-size: 7pt;
+    }
+    .date-fields {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 5px;
+      font-size: 9pt;
+    }
+    .client-info {
+      margin: 20px 0;
+    }
+    .info-row {
+      display: flex;
+      align-items: center;
+      margin: 8px 0;
+      font-size: 9pt;
+    }
+    .info-row label {
+      min-width: 80px;
+    }
+    .info-row .line {
+      flex: 1;
+      border-bottom: 1px solid #000;
+      margin: 0 10px;
+      padding-bottom: 2px;
+    }
+    .checkboxes {
+      border: 1px solid #000;
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 7pt;
+    }
+    .checkbox-row {
+      display: flex;
+      margin: 3px 0;
+    }
+    .checkbox {
+      width: 12px;
+      height: 12px;
+      border: 1px solid #000;
+      margin-right: 5px;
+    }
+    .amount-section {
+      margin: 20px 0;
+    }
+    .concept-section {
+      margin: 20px 0;
+    }
+    .payment-details {
+      margin: 20px 0;
+    }
+    .totals {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    .total-box {
+      border: 2px solid #000;
+      padding: 15px;
+      width: 45%;
+    }
+    .total-amount {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .signature-box {
+      border: 2px solid #000;
+      padding: 15px;
+      width: 45%;
+      text-align: center;
+    }
+    .signature-line {
+      border-bottom: 1px solid #000;
+      margin: 30px 20px 5px 20px;
+      min-height: 40px;
+    }
+    .signature-img {
+      max-width: 180px;
+      height: auto;
+      margin: 10px auto;
+    }
+    .original-text {
+      text-align: right;
+      margin-top: 30px;
+      font-size: 9pt;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <h1>QUINTERO + LOBETO</h1>
+        <div class="subtitle">P R O P I E D A D E S</div>
+        <div class="owner">de LOBETO MARIANA</div>
+        <div class="owner">ARQUITECTA</div>
+        <div class="credentials">M.P. Nº 275</div>
+        <div class="contact">AVDA. CUBA Nº 50 / Tel. 3835 503166</div>
+        <div class="contact">C.P. 4750 - Belen - Catamarca</div>
+        <div class="contact">qlinmobiliaria@gmail.com</div>
+        <div class="tax-info">IVA RESPONSABLE MONOTRIBUTO</div>
+      </div>
+      <div class="header-right">
+        <div class="receipt-type">X</div>
+        <div class="receipt-number">Nº {{payment.id}}</div>
+        <div class="receipt-title">RECIBO</div>
+        <div class="not-valid">DOCUMENTO NO VALIDO COMO FACTURA</div>
+        <div class="date-box">
+          <div>C.U.I.T.: 23-20514549-4</div>
+          <div>Ing. Brutos: 23-20514549-4</div>
+          <div>Inicio Activ.: 01-10-1996</div>
+          <div class="date-fields">
+            <div><strong>DIA</strong><br>{{formatDate payment.paymentDate "DD"}}</div>
+            <div><strong>MES</strong><br>{{formatDate payment.paymentDate "MM"}}</div>
+            <div><strong>AÑO</strong><br>{{formatDate payment.paymentDate "YY"}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="client-info">
+      <div class="info-row">
+        <label>Señor(es):</label>
+        <div class="line">{{tenant.name}}</div>
+        <label>Tel.:</label>
+        <div class="line" style="flex: 0.3;">{{tenant.phone}}</div>
+      </div>
+      <div class="info-row">
+        <label>Domicilio:</label>
+        <div class="line">{{tenant.direccion}}</div>
+        <label>Localidad:</label>
+        <div class="line" style="flex: 0.5;">{{tenant.ciudad}}, {{tenant.provincia}}</div>
+      </div>
+    </div>
+
+    <div class="checkboxes">
+      <div style="display: flex; gap: 20px;">
+        <div style="flex: 1;">
+          <div class="checkbox-row"><div class="checkbox"></div> R. Insc.</div>
+          <div class="checkbox-row"><div class="checkbox"></div> Exento</div>
+          <div class="checkbox-row"><div class="checkbox"></div> No Resp.</div>
+          <div class="checkbox-row"><div class="checkbox"></div> C. Final</div>
+        </div>
+        <div style="flex: 1;">
+          <div class="checkbox-row"><div class="checkbox"></div> Monotributo</div>
+          <div class="checkbox-row"><div class="checkbox"></div> Monotributo Social</div>
+          <div class="checkbox-row"><div class="checkbox"></div> Monotributo Eventual</div>
+          <div class="checkbox-row"><div class="checkbox"></div> Peq. Cont. Event. Social</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="amount-section">
+      <div class="info-row">
+        <label>Recibí la suma de Pesos:</label>
+        <div class="line">{{uppercase (numeroALetras payment.amount)}}</div>
+      </div>
+    </div>
+
+    <div class="concept-section">
+      <div class="info-row">
+        <label>En concepto de:</label>
+        <div class="line">
+          {{#if_eq payment.type "initial"}}
+            Honorarios - {{property.address}}
+          {{else if_eq payment.type "commission"}}
+            Comisión - {{property.address}}
+          {{else}}
+            Cuota {{payment.installmentNumber}}/{{lease.totalMonths}} {{payment.period}} - {{property.address}}
+          {{/if_eq}}
+        </div>
+      </div>
+    </div>
+
+    <div class="payment-details">
+      <div class="info-row">
+        <label>Cheque Nº:</label>
+        <div class="line" style="flex: 0.5;"></div>
+        <label>Banco:</label>
+        <div class="line" style="flex: 0.7;"></div>
+      </div>
+    </div>
+
+    <div class="totals">
+      <div class="total-box">
+        <div>Son $:</div>
+        <div class="total-amount">{{formatCurrency payment.amount}}</div>
+      </div>
+      <div class="signature-box">
+        {{#if inmobiliaria.signatureUrl}}
+          <img src="{{inmobiliaria.signatureUrl}}" alt="Firma" class="signature-img">
+        {{/if}}
+        <div class="signature-line"></div>
+        <div style="margin-top: 5px;">Firma</div>
+        <div class="signature-line" style="margin-top: 20px;"></div>
+        <div style="margin-top: 5px;">Aclaración de la Firma</div>
+      </div>
+    </div>
+
+    <div class="original-text">ORIGINAL</div>
+  </div>
+</body>
+</html>

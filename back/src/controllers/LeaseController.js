@@ -35,13 +35,13 @@ const fixForeignKeyConstraints = async () => {
     
     // Eliminar constraints incorrectos si existen
     await Lease.sequelize.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_landlordId_fkey"');
-    await Lease.sequelize.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_tenantId_fkey"');
+    await Lease.sequelize.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_renterId_fkey"');
     await Lease.sequelize.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey"');
     console.log('Constraints antiguos eliminados');
     
     // Crear constraints correctos apuntando a las tablas correctas
     await Lease.sequelize.query('ALTER TABLE "Leases" ADD CONSTRAINT "Leases_landlordId_fkey" FOREIGN KEY ("landlordId") REFERENCES "Clients"("idClient")');
-    await Lease.sequelize.query('ALTER TABLE "Leases" ADD CONSTRAINT "Leases_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Clients"("idClient")');
+    await Lease.sequelize.query('ALTER TABLE "Leases" ADD CONSTRAINT "Leases_renterId_fkey" FOREIGN KEY ("renterId") REFERENCES "Clients"("idClient")');
     await Lease.sequelize.query('ALTER TABLE "Leases" ADD CONSTRAINT "Leases_propertyId_fkey" FOREIGN KEY ("propertyId") REFERENCES "Property"("propertyId")');
     console.log('Constraints correctos creados');
     
@@ -130,7 +130,7 @@ exports.createLease = async (req, res) => {
     const {
       propertyId,
       landlordId, 
-      tenantId,
+      renterId,
       startDate,
       rentAmount,
       updateFrequency,
@@ -140,10 +140,10 @@ exports.createLease = async (req, res) => {
     } = req.body;
 
     // Validación básica de campos obligatorios
-    if (!propertyId || !landlordId || !tenantId || !startDate || !rentAmount || !totalMonths || !inventory) {
+    if (!propertyId || !landlordId || !renterId || !startDate || !rentAmount || !totalMonths || !inventory) {
       return res.status(400).json({
         error: 'Datos incompletos',
-        details: 'Los campos propertyId, landlordId, tenantId, startDate, rentAmount, totalMonths e inventory son obligatorios'
+        details: 'Los campos propertyId, landlordId, renterId, startDate, rentAmount, totalMonths e inventory son obligatorios'
       });
     }
 
@@ -151,7 +151,7 @@ exports.createLease = async (req, res) => {
     const parsedData = {
       propertyId: parseInt(propertyId),
       landlordId: parseInt(landlordId),
-      tenantId: parseInt(tenantId),
+      renterId: parseInt(renterId),
       startDate: new Date(startDate),
       rentAmount: parseFloat(rentAmount),
       updateFrequency,
@@ -165,10 +165,10 @@ exports.createLease = async (req, res) => {
     // ===== DEBUGGING DETALLADO =====
     console.log('=== VERIFICACIÓN DE IDS ===');
     console.log('landlordId recibido:', landlordId, 'tipo:', typeof landlordId);
-    console.log('tenantId recibido:', tenantId, 'tipo:', typeof tenantId);
+    console.log('renterId recibido:', renterId, 'tipo:', typeof renterId);
     console.log('propertyId recibido:', propertyId, 'tipo:', typeof propertyId);
     console.log('landlordId parseado:', parsedData.landlordId, 'tipo:', typeof parsedData.landlordId);
-    console.log('tenantId parseado:', parsedData.tenantId, 'tipo:', typeof parsedData.tenantId);
+    console.log('renterId parseado:', parsedData.renterId, 'tipo:', typeof parsedData.renterId);
 
     // Verificar existencia y disponibilidad de la propiedad
     const property = await Property.findByPk(parsedData.propertyId);
@@ -224,20 +224,20 @@ exports.createLease = async (req, res) => {
       });
     }
 
-    // Verificar que el tenant exista
-    console.log('Buscando tenant con ID:', parsedData.tenantId);
-    const tenant = await Client.findByPk(parsedData.tenantId);
-    console.log('Tenant found:', tenant ? `ID: ${tenant.idClient}, Name: ${tenant.name}` : 'NO ENCONTRADO');
+    // Verificar que el renter (inquilino) exista
+    console.log('Buscando renter con ID:', parsedData.renterId);
+    const renter = await Client.findByPk(parsedData.renterId);
+    console.log('Renter found:', renter ? `ID: ${renter.idClient}, Name: ${renter.name}` : 'NO ENCONTRADO');
     
-    if (!tenant) {
+    if (!renter) {
       return res.status(404).json({ 
         error: 'Inquilino no encontrado',
-        details: `No existe un cliente con ID ${parsedData.tenantId}`
+        details: `No existe un cliente con ID ${parsedData.renterId}`
       });
     }
 
     // Verificar que no sea el mismo cliente
-    if (parsedData.landlordId === parsedData.tenantId) {
+    if (parsedData.landlordId === parsedData.renterId) {
       return res.status(400).json({ 
         error: 'Conflicto de roles',
         details: 'El propietario y el inquilino no pueden ser la misma persona'
@@ -293,19 +293,19 @@ exports.createLease = async (req, res) => {
     );
     console.log('Landlord en BD (raw query):', rawClientCheck);
 
-    const rawTenantCheck = await Client.sequelize.query(
-      'SELECT "idClient", "name" FROM "Clients" WHERE "idClient" = :tenantId',
+    const rawRenterCheck = await Client.sequelize.query(
+      'SELECT "idClient", "name" FROM "Clients" WHERE "idClient" = :renterId',
       { 
-        replacements: { tenantId: parsedData.tenantId },
+        replacements: { renterId: parsedData.renterId },
         type: Client.sequelize.QueryTypes.SELECT 
       }
     );
-    console.log('Tenant en BD (raw query):', rawTenantCheck);
+    console.log('Renter en BD (raw query):', rawRenterCheck);
 
     // Verificar si hay conflicto de constraints
     const constraintProblems = constraintsQuery.filter(c => {
       // Verificar si apunta a tablas incorrectas o hay duplicados
-      if (c.column_name === 'landlordId' || c.column_name === 'tenantId') {
+      if (c.column_name === 'landlordId' || c.column_name === 'renterId') {
         return c.foreign_table_name !== 'Clients' || c.foreign_column_name !== 'idClient';
       }
       if (c.column_name === 'propertyId') {
@@ -342,7 +342,7 @@ exports.createLease = async (req, res) => {
 
     console.log('=== VERIFICACIÓN FINAL ANTES DE CREATE ===');
     console.log('Landlord verificado:', { id: landlord.idClient, name: landlord.name });
-    console.log('Tenant verificado:', { id: tenant.idClient, name: tenant.name });
+    console.log('Renter verificado:', { id: renter.idClient, name: renter.name });
     console.log('Property verificado:', { 
       id: property.propertyId || property.id, 
       available: property.isAvailable 
@@ -356,7 +356,7 @@ exports.createLease = async (req, res) => {
       id: newLease.id,
       propertyId: newLease.propertyId,
       landlordId: newLease.landlordId,
-      tenantId: newLease.tenantId
+      renterId: newLease.renterId
     });
 
     // Actualizar la propiedad (marcarla como no disponible)
@@ -369,7 +369,7 @@ exports.createLease = async (req, res) => {
         { model: Property },
         { model: PaymentReceipt, required: false },
         { model: Garantor, required: false },
-        { model: Client, as: 'Tenant', attributes: ['name', 'cuil', 'direccion','ciudad','provincia','email','mobilePhone'] },
+        { model: Client, as: 'Renter', attributes: ['name', 'cuil', 'direccion','ciudad','provincia','email','mobilePhone'] },
         { model: Client, as: 'Landlord', attributes: ['name', 'cuil', 'direccion','ciudad','provincia','email','mobilePhone'] }
       ]
     });
@@ -382,7 +382,7 @@ exports.createLease = async (req, res) => {
       
       const existingTenantRole = await ClientProperty.findOne({
         where: { 
-          clientId: parsedData.tenantId, 
+          clientId: parsedData.renterId, 
           propertyId: parsedData.propertyId, 
           role: 'inquilino' 
         }
@@ -391,7 +391,7 @@ exports.createLease = async (req, res) => {
       if (!existingTenantRole) {
         console.log('Creando rol de inquilino automáticamente...');
         await ClientProperty.create({
-          clientId: parsedData.tenantId,
+          clientId: parsedData.renterId,
           propertyId: parsedData.propertyId,
           role: 'inquilino'
         });
@@ -460,7 +460,7 @@ exports.createLease = async (req, res) => {
       } else if (error.parent?.detail && error.parent.detail.includes('landlordId')) {
         fieldName = 'propietario';
         suggestion = 'El propietario especificado no existe en la tabla correcta.';
-      } else if (error.parent?.detail && error.parent.detail.includes('tenantId')) {
+      } else if (error.parent?.detail && error.parent.detail.includes('renterId')) {
         fieldName = 'inquilino';
         suggestion = 'El inquilino especificado no existe en la tabla correcta.';
       }

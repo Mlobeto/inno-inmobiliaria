@@ -97,7 +97,7 @@ exports.fixClientPropertyConstraints = async (req, res) => {
     // 3. Eliminar constraints antiguos de Leases
     console.log('Eliminando constraints antiguos de Leases...');
     await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_landlordId_fkey"');
-    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_tenantId_fkey"');
+    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_renterId_fkey"');
     await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey"');
     await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey1"');
     console.log('✓ Constraints antiguos de Leases eliminados');
@@ -112,8 +112,8 @@ exports.fixClientPropertyConstraints = async (req, res) => {
     
     await conn.query(`
       ALTER TABLE "Leases" 
-      ADD CONSTRAINT "Leases_tenantId_fkey" 
-      FOREIGN KEY ("tenantId") REFERENCES "Clients"("idClient") ON DELETE RESTRICT
+      ADD CONSTRAINT "Leases_renterId_fkey" 
+      FOREIGN KEY ("renterId") REFERENCES "Clients"("idClient") ON DELETE RESTRICT
     `);
     
     await conn.query(`

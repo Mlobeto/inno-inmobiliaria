@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Actualización de Monto de Alquiler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      font-weight: bold;
+      font-size: 12pt;
+    }
+    .content {
+      text-align: justify;
+      margin: 20px 0;
+    }
+    .update-details {
+      margin: 30px 0;
+      padding: 20px;
+      border: 2px solid #000;
+      background-color: #f9f9f9;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      padding: 8px 0;
+      border-bottom: 1px solid #ddd;
+    }
+    .detail-label {
+      font-weight: bold;
+      width: 40%;
+    }
+    .detail-value {
+      width: 60%;
+      text-align: right;
+      font-size: 11pt;
+    }
+    .highlight {
+      background-color: #ffffcc;
+      padding: 2px 5px;
+      font-weight: bold;
+    }
+    .clause {
+      margin: 20px 0;
+      text-align: justify;
+    }
+    .signatures {
+      margin-top: 80px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-block {
+      width: 45%;
+      text-align: center;
+    }
+    .signature-line {
+      border-top: 2px solid #000;
+      margin-bottom: 10px;
+      padding-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    ACTUALIZACIÓN DE MONTO DE ALQUILER
+  </div>
+
+  <div class="content">
+    <p>
+      En la ciudad de {{property.city}}, a los {{formatDate updateDate}} días, 
+      entre <strong>{{landlord.name}}</strong>, CUIL/CUIT {{landlord.cuil}}, 
+      en adelante denominado <strong>"EL LOCADOR"</strong>, y 
+      <strong>{{tenant.name}}</strong>, CUIL/CUIT {{tenant.cuil}}, 
+      en adelante denominado <strong>"EL LOCATARIO"</strong>, 
+      convienen en actualizar el monto del alquiler correspondiente al inmueble ubicado en 
+      <strong>{{property.address}}</strong>, según los siguientes términos:
+    </p>
+  </div>
+
+  <div class="update-details">
+    <h3 style="margin-top: 0; text-align: center;">DETALLE DE ACTUALIZACIÓN</h3>
+    
+    <div class="detail-row">
+      <div class="detail-label">Monto Anterior:</div>
+      <div class="detail-value">{{formatCurrency lease.rentAmount}}</div>
+    </div>
+
+    <div class="detail-row">
+      <div class="detail-label">Nuevo Monto:</div>
+      <div class="detail-value"><span class="highlight">{{formatCurrency newRentAmount}}</span></div>
+    </div>
+
+    <div class="detail-row">
+      <div class="detail-label">Incremento:</div>
+      <div class="detail-value">{{porcentajeAumento}}%</div>
+    </div>
+
+    {{#if ipcIndex}}
+    <div class="detail-row">
+      <div class="detail-label">Índice IPC:</div>
+      <div class="detail-value">{{ipcIndex}}</div>
+    </div>
+    {{/if}}
+
+    <div class="detail-row">
+      <div class="detail-label">Período de Actualización:</div>
+      <div class="detail-value">{{periodo}}</div>
+    </div>
+
+    <div class="detail-row" style="border-bottom: none;">
+      <div class="detail-label">Fecha de Vigencia:</div>
+      <div class="detail-value">{{formatDate updateDate}}</div>
+    </div>
+  </div>
+
+  <div class="clause">
+    <p>
+      <strong>PRIMERA:</strong> Conforme a lo establecido en el contrato de locación firmado 
+      el {{formatDate lease.startDate}}, y de acuerdo a la cláusula de actualización 
+      {{#if_eq lease.updateFrequency "trimestral"}}
+        trimestral
+      {{else if_eq lease.updateFrequency "semestral"}}
+        semestral
+      {{else if_eq lease.updateFrequency "anual"}}
+        anual
+      {{else}}
+        pactada
+      {{/if_eq}}, 
+      se procede a actualizar el monto del alquiler mensual.
+    </p>
+  </div>
+
+  <div class="clause">
+    <p>
+      <strong>SEGUNDA:</strong> El nuevo monto de <strong>{{formatCurrency newRentAmount}}</strong> 
+      ({{uppercase (numeroALetras newRentAmount)}} PESOS) entrará en vigencia a partir del 
+      {{formatDate updateDate}} y se mantendrá hasta la próxima actualización programada 
+      o hasta el vencimiento del contrato.
+    </p>
+  </div>
+
+  <div class="clause">
+    <p>
+      <strong>TERCERA:</strong> El LOCATARIO se compromete a abonar el nuevo monto mensual 
+      en los términos y condiciones establecidos en el contrato original de locación, 
+      es decir, por mes adelantado hasta el día 10 de cada mes.
+    </p>
+  </div>
+
+  <div class="clause">
+    <p>
+      <strong>CUARTA:</strong> Las demás cláusulas del contrato de locación original 
+      permanecen vigentes e inalteradas. La presente actualización solo modifica el monto 
+      del alquiler mensual según lo establecido.
+    </p>
+  </div>
+
+  <div class="clause">
+    <p>
+      En prueba de conformidad, las partes firman la presente actualización en dos ejemplares 
+      de un mismo tenor y a un solo efecto, en la ciudad de {{property.city}}, 
+      a los {{formatDate updateDate}} días.
+    </p>
+  </div>
+
+  <div class="signatures">
+    <div class="signature-block">
+      <div class="signature-line">_____________________</div>
+      <p><strong>EL LOCADOR</strong></p>
+      <p>{{landlord.name}}</p>
+      <p>CUIL: {{landlord.cuil}}</p>
+    </div>
+    <div class="signature-block">
+      <div class="signature-line">_____________________</div>
+      <p><strong>EL LOCATARIO</strong></p>
+      <p>{{tenant.name}}</p>
+      <p>CUIL: {{tenant.cuil}}</p>
+    </div>
+  </div>
+
+  {{#if inmobiliaria.signatureUrl}}
+  <div style="text-align: center; margin-top: 40px;">
+    <img src="{{inmobiliaria.signatureUrl}}" alt="Firma Inmobiliaria" style="max-width: 150px; height: auto;">
+    <div class="signature-line" style="width: 200px; margin: 10px auto;">_____________________</div>
+    <p><strong>{{inmobiliaria.businessName}}</strong></p>
+    <p>CUIT: {{inmobiliaria.cuit}}</p>
+  </div>
+  {{/if}}
+</body>
+</html>

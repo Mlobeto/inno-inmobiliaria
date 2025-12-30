@@ -27,10 +27,10 @@ const seedLeases = async () => {
     // Obtener inquilinos (clientes que no sean propietarios de estas propiedades)
     const allClients = await Client.findAll();
     const usedLandlordIds = propertiesForRent.map(p => p.ClientProperties[0].clientId);
-    const availableTenants = allClients.filter(c => !usedLandlordIds.includes(c.idClient));
+    const availableRenters = allClients.filter(c => !usedLandlordIds.includes(c.idClient));
 
-    if (availableTenants.length < 3) {
-      throw new Error(`Se necesitan al menos 3 inquilinos disponibles. Solo hay ${availableTenants.length}`);
+    if (availableRenters.length < 3) {
+      throw new Error(`Se necesitan al menos 3 inquilinos disponibles. Solo hay ${availableRenters.length}`);
     }
 
     console.log(`📋 ${propertiesForRent.length} propiedades disponibles para alquiler`);
@@ -82,20 +82,20 @@ const seedLeases = async () => {
       const template = leaseTemplates[i];
       const property = propertiesForRent[i];
       const landlord = property.ClientProperties[0].Client;
-      const tenant = availableTenants[i];
+      const renter = availableRenters[i];
 
       try {
         console.log(`\n📝 Creando contrato ${i + 1}: ${template.description}`);
         console.log(`   Propiedad: ${property.address} (ID: ${property.propertyId})`);
         console.log(`   Propietario: ${landlord.name} (ID: ${landlord.idClient})`);
-        console.log(`   Inquilino: ${tenant.name} (ID: ${tenant.idClient})`);
+        console.log(`   Inquilino: ${renter.name} (ID: ${renter.idClient})`);
         console.log(`   Fecha inicio: ${template.startDate.toLocaleDateString()}`);
 
         // Crear el contrato
         const lease = await Lease.create({
           propertyId: property.propertyId,
           landlordId: landlord.idClient,
-          tenantId: tenant.idClient,
+          renterId: renter.idClient,
           startDate: template.startDate,
           rentAmount: template.rentAmount,
           updateFrequency: template.updateFrequency,
@@ -110,7 +110,7 @@ const seedLeases = async () => {
 
         // Asignar rol de inquilino
         await ClientProperty.create({
-          clientId: tenant.idClient,
+          clientId: renter.idClient,
           propertyId: property.propertyId,
           role: 'inquilino'
         });
@@ -144,7 +144,7 @@ const seedLeases = async () => {
           lease,
           property: property.address,
           landlord: landlord.name,
-          tenant: tenant.name,
+          renter: renter.name,
           needsUpdate,
           monthsRemaining: template.totalMonths - monthsSinceStart
         });

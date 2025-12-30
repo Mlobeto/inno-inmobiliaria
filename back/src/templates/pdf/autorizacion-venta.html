@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Autorización de Venta</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      font-size: 11pt;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: left;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 14pt;
+      margin: 0 0 10px 0;
+    }
+    .content {
+      text-align: justify;
+      margin: 20px 0;
+    }
+    .property-description {
+      margin: 20px 0;
+      padding-left: 20px;
+    }
+    .clause {
+      margin: 20px 0;
+      text-align: justify;
+    }
+    .clause-title {
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .signatures {
+      margin-top: 80px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .signature-line {
+      text-align: center;
+      width: 200px;
+    }
+    .signature-line hr {
+      border: none;
+      border-top: 1px solid #000;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Autorización de Venta</h1>
+  </div>
+
+  <div class="content">
+    <p>
+      <span class="clause-title">PRIMERO:</span> En la ciudad de Belén, provincia de Catamarca, entre el Sr./Sra. 
+      <strong>{{client.name}}</strong> CUIL/CUIT <strong>{{client.cuil}}</strong>{{#if property.socio}}, {{property.socio}}{{/if}}, 
+      denominado el/los <strong>PROPIETARIOS</strong>, por una parte, y <strong>{{inmobiliaria.businessName}}</strong>, 
+      Tel celular {{inmobiliaria.phone}} con domicilio en {{inmobiliaria.address}} de la ciudad de Belén, 
+      en adelante denominado <strong>LA INMOBILIARIA</strong> han llegado a un acuerdo para la autorización de venta 
+      del inmueble bajo las siguientes condiciones.
+    </p>
+
+    <div class="property-description">
+      <p>
+        <strong>Descripción del inmueble:</strong> {{property.description}}, 
+        {{#if property.superficieCubierta}}superficie cubierta {{property.superficieCubierta}} m²,{{/if}}
+        {{#if property.superficieTotal}}superficie total {{property.superficieTotal}} m²,{{/if}}
+        sito en la localidad de {{property.city}}, prov. Catamarca.
+      </p>
+    </div>
+
+    <div class="clause">
+      <p>
+        <span class="clause-title">SEGUNDA:</span> El precio pactado es <strong>{{formatCurrency property.price}}</strong>.
+      </p>
+    </div>
+
+    <div class="clause">
+      <p>
+        <span class="clause-title">TERCERO:</span> El PROPIETARIO autoriza a la INMOBILIARIA a la publicación en las redes sociales, 
+        a realizar visitas pre pactadas asistidas con personal de la firma, como así también la colocación de cartel publicitario.
+      </p>
+    </div>
+
+    <div class="clause">
+      <p>
+        <span class="clause-title">CUARTO:</span> Esta autorización es válida por el término de 360 días a contar desde la fecha. 
+        A su vencimiento, este plazo quedará automáticamente prorrogado por otro igual, salvo previa cancelación por medio fehaciente. 
+        La Inmobiliaria solo podrá recibir la comisión si es que vende la propiedad. Si la venta la realiza el propietario gracias 
+        a datos proporcionados por agencia inmobiliaria, tendrá derecho a reclamar la comisión del 
+        <strong>{{#if property.comision}}{{property.comision}}{{else}}3{{/if}}%</strong>.
+      </p>
+    </div>
+
+    <div class="clause">
+      <p>
+        Lugar y fecha. Celebrado en la ciudad de Belén al día <strong>{{fechaActual}}</strong>.
+      </p>
+    </div>
+  </div>
+
+  <div class="signatures">
+    <div class="signature-line">
+      <hr>
+      <p>"Propietario"</p>
+      <p><strong>{{client.name}}</strong></p>
+    </div>
+    <div class="signature-line">
+      <hr>
+      <p>"Inmobiliaria"</p>
+      {{#if inmobiliaria.signatureUrl}}
+        <img src="{{inmobiliaria.signatureUrl}}" alt="Firma" style="max-width: 150px; height: auto;">
+      {{/if}}
+      <p><strong>{{inmobiliaria.businessName}}</strong></p>
+    </div>
+  </div>
+</body>
+</html>

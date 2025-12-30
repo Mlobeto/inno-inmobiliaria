@@ -8,6 +8,23 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true,
     },
+    tenantId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'tenants',
+        key: 'tenantId',
+      },
+    },
+    agentId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'admins',
+        key: 'adminId',
+      },
+      comment: 'Agente que cerró la venta'
+    },
     saleDate: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -45,5 +62,10 @@ module.exports = (sequelize) => {
       },
       allowNull: false,
     },
+  }, {
+    indexes: [
+      { fields: ['tenantId'] },
+      { fields: ['agentId'] },
+    ]
   });
 };

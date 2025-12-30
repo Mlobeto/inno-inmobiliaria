@@ -37,7 +37,7 @@ exports.getClientById = async (req, res) => {
             include: [
                 {
                     model: Lease,
-                    as: 'LeasesAsTenant',
+                    as: 'LeasesAsRenter',
                     include: [{ model: Property }] 
                 },
                 {

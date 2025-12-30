@@ -53,6 +53,7 @@ sequelize.models = Object.fromEntries(capsEntries);
 // En sequelize.models están todos los modelos importados como propiedades
 // Para relacionarlos hacemos un destructuring
 const { 
+  Tenant,
   Admin, 
   Client, 
   Garantor, 
@@ -61,7 +62,11 @@ const {
   PaymentReceipt, 
   ClientProperty, 
   SaleContract,
-  RentUpdate 
+  RentUpdate,
+  Commission,
+  PdfTemplate,
+  Plan,
+  Subscription
 } = sequelize.models;
 
 // 1. Relaciones entre Client y Property a través de ClientProperty (many-to-many)
@@ -117,16 +122,16 @@ Client.hasMany(Lease, {
   sourceKey: 'idClient'
 });
 
-// Relación del contrato con el inquilino (tenant)
-// Se usa el alias "Tenant" para identificar al cliente que es inquilino
+// Relación del contrato con el inquilino (renter)
+// Se usa el alias "Renter" para identificar al cliente que es inquilino
 Lease.belongsTo(Client, { 
-  as: 'Tenant', 
-  foreignKey: 'tenantId',
+  as: 'Renter', 
+  foreignKey: 'renterId',
   targetKey: 'idClient'
 });
 Client.hasMany(Lease, { 
-  as: 'LeasesAsTenant', 
-  foreignKey: 'tenantId',
+  as: 'LeasesAsRenter', 
+  foreignKey: 'renterId',
   sourceKey: 'idClient'
 });
 // 3. Relaciones para SaleContract
@@ -201,7 +206,201 @@ RentUpdate.belongsTo(Lease, {
   targetKey: 'id'
 });
 
+// 6. Relaciones de TENANT (Multitenant)
+// Un Tenant tiene muchos admins, clientes, propiedades, etc.
+Tenant.hasMany(Admin, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+Admin.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
 
+Tenant.hasMany(Client, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+Client.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+Tenant.hasMany(Property, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+Property.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+Tenant.hasMany(Lease, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+Lease.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+Tenant.hasMany(SaleContract, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+SaleContract.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+Tenant.hasMany(ClientProperty, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+ClientProperty.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+Tenant.hasMany(Commission, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+Commission.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+// 7. Relaciones de AGENT (Admin) con propiedades y transacciones
+// Un agente puede tener muchas propiedades asignadas
+Admin.hasMany(Property, {
+  as: 'ManagedProperties',
+  foreignKey: 'agentId',
+  sourceKey: 'adminId'
+});
+Property.belongsTo(Admin, {
+  as: 'Agent',
+  foreignKey: 'agentId',
+  targetKey: 'adminId'
+});
+
+// Un agente puede cerrar muchos contratos
+Admin.hasMany(Lease, {
+  as: 'ClosedLeases',
+  foreignKey: 'agentId',
+  sourceKey: 'adminId'
+});
+Lease.belongsTo(Admin, {
+  as: 'Agent',
+  foreignKey: 'agentId',
+  targetKey: 'adminId'
+});
+
+// Un agente puede cerrar muchas ventas
+Admin.hasMany(SaleContract, {
+  as: 'ClosedSales',
+  foreignKey: 'agentId',
+  sourceKey: 'adminId'
+});
+SaleContract.belongsTo(Admin, {
+  as: 'Agent',
+  foreignKey: 'agentId',
+  targetKey: 'adminId'
+});
+
+// 8. Relaciones de COMMISSION
+// Una comisión pertenece a un agente
+Commission.belongsTo(Admin, {
+  as: 'Agent',
+  foreignKey: 'agentId',
+  targetKey: 'adminId'
+});
+Admin.hasMany(Commission, {
+  as: 'Commissions',
+  foreignKey: 'agentId',
+  sourceKey: 'adminId'
+});
+
+// Una comisión puede ser aprobada por un admin
+Commission.belongsTo(Admin, {
+  as: 'ApprovedBy',
+  foreignKey: 'approvedBy',
+  targetKey: 'adminId'
+});
+
+// Una comisión está asociada a una propiedad
+Commission.belongsTo(Property, {
+  foreignKey: 'propertyId',
+  targetKey: 'propertyId'
+});
+Property.hasMany(Commission, {
+  foreignKey: 'propertyId',
+  sourceKey: 'propertyId'
+});
+
+// Una comisión puede estar asociada a un cliente
+Commission.belongsTo(Client, {
+  foreignKey: 'clientId',
+  targetKey: 'idClient'
+});
+Client.hasMany(Commission, {
+  foreignKey: 'clientId',
+  sourceKey: 'idClient'
+});
+
+// 9. Relaciones de PDF_TEMPLATE
+// Un template pertenece a un tenant
+PdfTemplate.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+Tenant.hasMany(PdfTemplate, {
+  as: 'PdfTemplates',
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+
+// Un template fue creado por un admin
+PdfTemplate.belongsTo(Admin, {
+  as: 'Creator',
+  foreignKey: 'createdBy',
+  targetKey: 'adminId'
+});
+Admin.hasMany(PdfTemplate, {
+  as: 'CreatedTemplates',
+  foreignKey: 'createdBy',
+  sourceKey: 'adminId'
+});
+
+// 10. Relaciones de SUBSCRIPTION
+// Una suscripción pertenece a un tenant
+Subscription.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+Tenant.hasOne(Subscription, {
+  as: 'ActiveSubscription',
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId',
+  scope: {
+    status: ['trialing', 'active']
+  }
+});
+Tenant.hasMany(Subscription, {
+  as: 'Subscriptions',
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+
+// Una suscripción tiene un plan
+Subscription.belongsTo(Plan, {
+  foreignKey: 'planId',
+  targetKey: 'planId'
+});
+Plan.hasMany(Subscription, {
+  foreignKey: 'planId',
+  sourceKey: 'planId'
+});
 
 //---------------------------------------------------------------------------------//
 module.exports = {

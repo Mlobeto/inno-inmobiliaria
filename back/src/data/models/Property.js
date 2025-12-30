@@ -10,6 +10,23 @@ module.exports = (sequelize) => {
         autoIncrement: true,  
         allowNull: false,
       },
+      tenantId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'tenants',
+          key: 'tenantId',
+        },
+      },
+      agentId: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'admins',
+          key: 'adminId',
+        },
+        comment: 'Agente que captó/maneja la propiedad'
+      },
       address: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -41,6 +58,22 @@ module.exports = (sequelize) => {
           "terreno"
         ),
         allowNull: false,
+      },
+      rentalType: {
+        type: DataTypes.STRING(50),
+        defaultValue: 'TRADICIONAL',
+        validate: {
+          isIn: [['TRADICIONAL', 'TEMPORARIO']],
+        },
+        comment: 'Tipo de alquiler: tradicional o temporario'
+      },
+      minStayDays: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        validate: {
+          min: 1,
+        },
+        comment: 'Mínimo de días de estadía para alquileres temporarios'
       },
       price: {
         type: DataTypes.DECIMAL,
@@ -188,6 +221,12 @@ Estamos a tu entera disposición por dudas, precio o consultas.`,
     {
       freezeTableName: true,
       paranoid: true,
+      indexes: [
+        { fields: ['tenantId'] },
+        { fields: ['agentId'] },
+        { fields: ['type'] },
+        { fields: ['isAvailable'] },
+      ]
     }
   );
 };

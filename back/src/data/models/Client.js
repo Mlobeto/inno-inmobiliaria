@@ -56,7 +56,14 @@ module.exports = (sequelize) => {
         primaryKey: true,
         autoIncrement: true,
       },
-      
+      tenantId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'tenants',
+          key: 'tenantId',
+        },
+      },
       cuil: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -110,8 +117,11 @@ module.exports = (sequelize) => {
       },
     },
     {
-      tableName: "Clients", // ← AGREGAR ESTA LÍNEA
+      tableName: "Clients",
       paranoid: true,
+      indexes: [
+        { fields: ['tenantId'] },
+      ]
     }
   );
 };

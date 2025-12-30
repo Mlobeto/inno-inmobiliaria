@@ -7,10 +7,17 @@ module.exports = (sequelize) => {
       adminId: {
         type: DataTypes.INTEGER,
         primaryKey: true,
-        autoIncrement: true, // Esto asegura que sea incremental
+        autoIncrement: true,
         allowNull: false,
       },
-
+      tenantId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'tenants',
+          key: 'tenantId',
+        },
+      },
       username: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -20,11 +27,24 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: false,
       },
-      role: {
-        type: DataTypes.STRING,
-        defaultValue: "admin",
+      fullName: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
       },
-
+      email: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        validate: {
+          isEmail: true,
+        }
+      },
+      role: {
+        type: DataTypes.STRING(50),
+        defaultValue: "AGENT",
+        validate: {
+          isIn: [['SUPER_ADMIN', 'AGENT']],
+        }
+      },
       deletedAt: {
         type: DataTypes.DATE,
         allowNull: true,
@@ -38,6 +58,10 @@ module.exports = (sequelize) => {
     },
     {
       paranoid: true,
+      indexes: [
+        { fields: ['tenantId'] },
+        { fields: ['role'] },
+      ]
     }
   );
 };

@@ -47,7 +47,7 @@ router.post('/create-test-lease', async (req, res) => {
     const testLease = await Lease.create({
       propertyId: 1,
       landlordId: 1,
-      tenantId: 2,
+      renterId: 2,
       startDate: '2024-01-15', // Hace unos meses
       rentAmount: 50000,
       updateFrequency: 'semestral',
@@ -103,7 +103,7 @@ router.get('/debug/alerts', async (req, res) => {
 
       return {
         leaseId: lease.id,
-        tenantId: lease.tenantId,
+        renterId: lease.renterId,
         landlordId: lease.landlordId,
         propertyId: lease.propertyId,
         startDate: lease.startDate,

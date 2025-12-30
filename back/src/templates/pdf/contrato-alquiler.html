@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Contrato de Alquiler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      line-height: 1.5;
+      margin: 0;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      font-weight: bold;
+      font-size: 11pt;
+    }
+    .clause {
+      margin: 15px 0;
+      text-align: justify;
+    }
+    .clause-title {
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .signatures {
+      margin-top: 60px;
+      page-break-inside: avoid;
+    }
+    .signature-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+    }
+    .signature-block {
+      width: 45%;
+      text-align: center;
+    }
+    .signature-line {
+      border-top: 1px solid #000;
+      margin-bottom: 5px;
+      padding-top: 2px;
+    }
+    .inventory-section {
+      margin: 20px 0;
+      page-break-inside: avoid;
+    }
+    .inventory-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    table td {
+      padding: 5px;
+      border: 1px solid #000;
+      font-size: 8pt;
+    }
+    .page-break {
+      page-break-after: always;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    CONTRATO DE LOCACIÓN DE INMUEBLE
+    {{#if_eq property.typeProperty "CASA"}}
+      - CASA
+    {{else if_eq property.typeProperty "DEPARTAMENTO"}}
+      - DEPARTAMENTO
+    {{else if_eq property.typeProperty "LOCAL"}}
+      - LOCAL COMERCIAL
+    {{else}}
+      - {{uppercase property.typeProperty}}
+    {{/if_eq}}
+  </div>
+
+  <div class="clause">
+    Entre {{#if landlord.name}}{{landlord.name}}{{else}}el/la propietario/a{{/if}}, 
+    CUIL/CUIT {{landlord.cuil}}, con domicilio en {{landlord.direccion}}, {{landlord.ciudad}}, 
+    en adelante denominado <strong>"EL LOCADOR"</strong>, por una parte, y por la otra 
+    {{tenant.name}}, CUIL/CUIT {{tenant.cuil}}, con domicilio en {{tenant.direccion}}, {{tenant.ciudad}}, 
+    en adelante denominado <strong>"EL LOCATARIO"</strong>, convienen en celebrar el presente contrato de locación 
+    que se regirá por las siguientes cláusulas:
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">PRIMERA - OBJETO:</span>
+    EL LOCADOR da en locación al LOCATARIO el inmueble ubicado en {{property.address}}, 
+    {{property.neighborhood}}, {{property.city}}, destinado para 
+    {{#if_eq property.typeProperty "CASA"}}
+      vivienda unifamiliar
+    {{else if_eq property.typeProperty "DEPARTAMENTO"}}
+      vivienda
+    {{else if_eq property.typeProperty "LOCAL"}}
+      local comercial
+    {{else}}
+      uso habitacional
+    {{/if_eq}}.
+    {{#if property.superficieCubierta}}
+    El inmueble cuenta con una superficie cubierta de {{property.superficieCubierta}} m²
+    {{/if}}
+    {{#if property.superficieTotal}}
+    y una superficie total de {{property.superficieTotal}} m²
+    {{/if}}.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">SEGUNDA - PLAZO:</span>
+    El plazo de la locación será de {{lease.totalMonths}} meses, comenzando el día {{formatDate lease.startDate}} 
+    y finalizando el {{formatDate (addMonths lease.startDate lease.totalMonths)}}.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">TERCERA - PRECIO:</span>
+    El precio de la locación se fija en la suma de {{formatCurrency lease.rentAmount}} mensuales, 
+    que el LOCATARIO abonará por mes adelantado hasta el día 10 de cada mes, en el domicilio del LOCADOR 
+    o donde éste indique. El primer pago se realizará al momento de la firma del presente contrato.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">CUARTA - ACTUALIZACIÓN:</span>
+    El precio de la locación se actualizará 
+    {{#if_eq lease.updateFrequency "trimestral"}}
+      trimestralmente
+    {{else if_eq lease.updateFrequency "semestral"}}
+      semestralmente
+    {{else if_eq lease.updateFrequency "anual"}}
+      anualmente
+    {{else}}
+      según lo pactado
+    {{/if_eq}}
+    de acuerdo al índice establecido por ley.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">QUINTA - SERVICIOS:</span>
+    Los servicios de luz, gas, agua, teléfono, internet, y cualquier otro servicio que se contrate 
+    para el inmueble, serán por cuenta exclusiva del LOCATARIO, quien deberá abonarlos puntualmente.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">SEXTA - CONSERVACIÓN:</span>
+    El LOCATARIO se obliga a conservar el inmueble en el mismo estado en que lo recibe, 
+    debiendo efectuar a su cargo las reparaciones que provengan del uso normal, y avisar inmediatamente 
+    al LOCADOR de cualquier daño o deterioro que sufra el inmueble.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">SÉPTIMA - DESTINO:</span>
+    El inmueble se destinará exclusivamente al uso pactado en la cláusula primera. 
+    El LOCATARIO no podrá subarrendar total ni parcialmente el inmueble, ni ceder el presente contrato 
+    sin el consentimiento previo y por escrito del LOCADOR.
+  </div>
+
+  <div class="clause">
+    <span class="clause-title">OCTAVA - RESCISIÓN:</span>
+    Cualquiera de las partes podrá rescindir el contrato antes del vencimiento del plazo establecido, 
+    debiendo notificar a la otra parte con una anticipación mínima de 60 días. 
+    En caso de rescisión anticipada por parte del LOCATARIO, deberá abonar una multa equivalente a un mes y medio de alquiler.
+  </div>
+
+  {{#if lease.commission}}
+  <div class="clause">
+    <span class="clause-title">NOVENA - COMISIÓN:</span>
+    El LOCATARIO declara conocer y aceptar que se ha abonado una comisión del {{lease.commission}}% 
+    del valor del alquiler mensual a {{inmobiliaria.businessName}} por los servicios de intermediación.
+  </div>
+  {{/if}}
+
+  {{#if guarantors}}
+  <div class="clause">
+    <span class="clause-title">DÉCIMA - GARANTÍA:</span>
+    Se constituye como garante/s solidario/s e ilimitado/s:
+    {{#each guarantors}}
+      <br>- {{this.name}}, CUIL/CUIT {{this.cuil}}, domiciliado en {{this.direccion}}.
+    {{/each}}
+  </div>
+  {{/if}}
+
+  {{#if lease.inventory}}
+  <div class="page-break"></div>
+  <div class="inventory-section">
+    <div class="inventory-title">INVENTARIO DE BIENES DEL INMUEBLE</div>
+    <p>{{lease.inventory}}</p>
+  </div>
+  {{/if}}
+
+  {{#if lease.customContent}}
+  <div class="clause">
+    <span class="clause-title">CLÁUSULAS ADICIONALES:</span>
+    <br>{{lease.customContent}}
+  </div>
+  {{/if}}
+
+  <div class="clause">
+    En prueba de conformidad, se firman dos ejemplares de un mismo tenor y a un solo efecto, 
+    en la ciudad de {{property.city}}, a los {{formatDate fechaActual}} días.
+  </div>
+
+  <div class="signatures">
+    <div class="signature-row">
+      <div class="signature-block">
+        <div class="signature-line">_____________________</div>
+        <p><strong>EL LOCADOR</strong></p>
+        <p>{{landlord.name}}</p>
+        <p>CUIL: {{landlord.cuil}}</p>
+      </div>
+      <div class="signature-block">
+        <div class="signature-line">_____________________</div>
+        <p><strong>EL LOCATARIO</strong></p>
+        <p>{{tenant.name}}</p>
+        <p>CUIL: {{tenant.cuil}}</p>
+      </div>
+    </div>
+
+    {{#if guarantors}}
+    <div class="signature-row">
+      {{#each guarantors}}
+      <div class="signature-block">
+        <div class="signature-line">_____________________</div>
+        <p><strong>GARANTE</strong></p>
+        <p>{{this.name}}</p>
+        <p>CUIL: {{this.cuil}}</p>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if inmobiliaria.signatureUrl}}
+    <div class="signature-row" style="justify-content: center;">
+      <div class="signature-block">
+        <img src="{{inmobiliaria.signatureUrl}}" alt="Firma" style="max-width: 150px; height: auto;">
+        <div class="signature-line">_____________________</div>
+        <p><strong>INMOBILIARIA</strong></p>
+        <p>{{inmobiliaria.businessName}}</p>
+        <p>CUIT: {{inmobiliaria.cuit}}</p>
+      </div>
+    </div>
+    {{/if}}
+  </div>
+</body>
+</html>
