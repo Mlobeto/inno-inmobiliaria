@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon -L index.js",
-    "build": "node index.js",
+    "build": "echo 'No build step needed'",
     "seed": "node seedData.js"
   },
   "keywords": [],
