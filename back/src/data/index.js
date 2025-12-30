@@ -7,24 +7,31 @@ const {
   DB_PASSWORD,
   DB_HOST,
   DB_PORT,
-  DB_NAME,
-  DB_DEPLOY
+  DB_NAME
   } = require('../config/envs');
-//-------------------------------- CONFIGURACION PARA TRABAJAR LOCALMENTE-----------------------------------
-// const sequelize = new Sequelize(
-//   `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
-//   {
-//     logging: false, // set to console.log to see the raw SQL queries
-//     native: false,  // lets Sequelize know we can use pg-native for ~30% more speed
-//     timezone: '-03:00', // Configura la zona horaria GMT-3 (Argentina)
-//   }
-// );
-//-------------------------------------CONFIGURACION PARA EL DEPLOY---------------------------------------------------------------------
-const sequelize = new Sequelize(DB_DEPLOY, {
-  logging: false, 
-  native: false,  
-  timezone: '-03:00', 
-});
+
+// Usar DATABASE_URL en producción (Railway/Neon) o local en desarrollo
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, {
+      logging: false,
+      native: false,
+      dialect: 'postgres',
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false
+        }
+      },
+      timezone: '-03:00'
+    })
+  : new Sequelize(
+      `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`,
+      {
+        logging: false,
+        native: false,
+        timezone: '-03:00'
+      }
+    );
 
 const basename = path.basename(__filename);
 
