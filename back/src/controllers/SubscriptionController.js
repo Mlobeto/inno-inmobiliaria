@@ -473,4 +473,14 @@ class SubscriptionController {
   }
 }
 
-module.exports = new SubscriptionController();
+const controller = new SubscriptionController();
+
+module.exports = {
+  getPlans: (req, res) => controller.getPlans(req, res),
+  getCurrentSubscription: (req, res) => controller.getCurrentSubscription(req, res),
+  createSubscription: (req, res) => controller.createSubscription(req, res),
+  cancelSubscription: (req, res) => controller.cancelSubscription(req, res),
+  changePlan: (req, res) => controller.changePlan(req, res),
+  startTrial: (req, res) => controller.startTrial(req, res),
+  handleMercadoPagoWebhook: (req, res) => controller.handleMercadoPagoWebhook(req, res)
+};
