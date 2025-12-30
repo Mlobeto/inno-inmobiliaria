@@ -23,8 +23,8 @@ router.use("/garantor", require("./garantor"));
 router.use("/import", require("./import"));
 router.use("/pdf", require("./pdf")); // PDF generation and templates
 router.use("/tenant", require("./tenant")); // Tenant management and signature
-// router.use("/subscriptions", require("./subscriptionRoutes")); // Plans and subscriptions - TEMPORALMENTE DESHABILITADO
-// router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks - TEMPORALMENTE DESHABILITADO
+router.use("/subscriptions", require("./subscriptionRoutes")); // Plans and subscriptions
+router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
 
 module.exports = router;
