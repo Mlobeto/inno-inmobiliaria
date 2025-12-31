@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { tenancyMiddleware } = require('../middlewares/authMiddleware');
 
+console.log('🔄 Cargando subscriptionRoutes.js - v2');
+
 // Cargar controlador de forma segura
 let SubscriptionController;
 try {
