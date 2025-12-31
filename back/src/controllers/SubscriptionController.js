@@ -195,10 +195,18 @@ class SubscriptionController {
    * POST /api/webhooks/mercadopago
    */
   async handleMercadoPagoWebhook(req, res) {
+    // Responder inmediatamente con 200 para evitar timeouts
+    res.status(200).send('OK');
+    
     try {
       const { type, data, action } = req.body;
       
-      console.log('📥 Webhook MercadoPago recibido:', { type, action, dataId: data?.id });
+      console.log('📥 Webhook MercadoPago recibido:', { 
+        type, 
+        action, 
+        dataId: data?.id,
+        body: JSON.stringify(req.body)
+      });
       
       // Tipos de notificaciones de suscripciones
       if (type === 'subscription_preapproval') {
@@ -279,11 +287,10 @@ class SubscriptionController {
         }
       }
       
-      // Responder siempre con 200 para que MercadoPago no reintente
-      res.sendStatus(200);
+      console.log('✅ Webhook procesado exitosamente');
     } catch (error) {
       console.error('❌ Error en webhook de MercadoPago:', error);
-      res.sendStatus(200); // Responder 200 para evitar reintentos
+      console.error(error.stack);
     }
   }
   
