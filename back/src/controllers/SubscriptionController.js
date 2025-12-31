@@ -480,12 +480,13 @@ class SubscriptionController {
 
 const controller = new SubscriptionController();
 
+// Exportar métodos con bind correcto
 module.exports = {
-  getPlans: (req, res) => controller.getPlans(req, res),
-  getCurrentSubscription: (req, res) => controller.getCurrentSubscription(req, res),
-  createSubscription: (req, res) => controller.createSubscription(req, res),
-  cancelSubscription: (req, res) => controller.cancelSubscription(req, res),
-  changePlan: (req, res) => controller.changePlan(req, res),
-  startTrial: (req, res) => controller.startTrial(req, res),
-  handleMercadoPagoWebhook: (req, res) => controller.handleMercadoPagoWebhook(req, res)
+  getPlans: controller.getPlans.bind(controller),
+  getCurrentSubscription: controller.getCurrentSubscription.bind(controller),
+  createSubscription: controller.createSubscription.bind(controller),
+  cancelSubscription: controller.cancelSubscription.bind(controller),
+  changePlan: controller.changePlan.bind(controller),
+  startTrial: controller.startTrial.bind(controller),
+  handleMercadoPagoWebhook: controller.handleMercadoPagoWebhook.bind(controller)
 };
