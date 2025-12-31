@@ -1,5 +1,10 @@
-const { Subscription, Plan, Tenant } = require('../data');
+const db = require('../data');
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval, Payment } = require('mercadopago');
+
+// Obtener modelos de forma segura
+const Subscription = db.Subscription;
+const Plan = db.Plan;
+const Tenant = db.Tenant;
 
 // Configurar MercadoPago con la nueva SDK
 const client = new MercadoPagoConfig({ 
