@@ -189,7 +189,6 @@ class SubscriptionController {
       });
     }
   }
-  
   /**
    * Webhook de MercadoPago para suscripciones
    * POST /api/webhooks/mercadopago
@@ -208,12 +207,24 @@ class SubscriptionController {
         body: JSON.stringify(req.body)
       });
       
+      // Ignorar webhooks de prueba
+      if (data?.id === '123456' || data?.id === 123456) {
+        console.log('ℹ️ Webhook de prueba ignorado');
+        return;
+      }
+      
       // Tipos de notificaciones de suscripciones
       if (type === 'subscription_preapproval') {
         const preapprovalId = data.id;
         
         // Obtener información de la suscripción
-        const preapproval = await preApprovalClient.get({ id: preapprovalId });
+        let preapproval;
+        try {
+          preapproval = await preApprovalClient.get({ id: preapprovalId });
+        } catch (error) {
+          console.error('❌ Error obteniendo preapproval de MercadoPago:', error.message);
+          return;
+        }
         
         console.log('🔔 Suscripción actualizada:', {
           id: preapproval.id,
@@ -257,7 +268,13 @@ class SubscriptionController {
         const paymentId = data.id;
         
         // Obtener información del pago
-        const payment = await paymentClient.get({ id: paymentId });
+        let payment;
+        try {
+          payment = await paymentClient.get({ id: paymentId });
+        } catch (error) {
+          console.error('❌ Error obteniendo payment de MercadoPago:', error.message);
+          return;
+        }
         
         console.log('💳 Pago recurrente recibido:', {
           id: payment.id,
