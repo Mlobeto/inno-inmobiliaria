@@ -119,6 +119,11 @@ module.exports = (sequelize) => {
     {
       tableName: "Clients",
       paranoid: true,
+      scopes: {
+        byTenant: (tenantId) => ({
+          where: { tenantId }
+        }),
+      },
       indexes: [
         { fields: ['tenantId'] },
       ]

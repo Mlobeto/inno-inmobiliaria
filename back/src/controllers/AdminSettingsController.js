@@ -3,12 +3,13 @@ const { AdminSettings } = require('../data');
 // 🆕 Obtener TODA la configuración de la inmobiliaria
 exports.getSettings = async (req, res) => {
   try {
-    // Por ahora sin tenant_id, en fase 1 se agrega: where: { tenant_id }
-    let settings = await AdminSettings.findOne();
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    let settings = await AdminSettings.findOne({ where: { tenantId } });
     
     // Si no existe, crear con valores por defecto
     if (!settings) {
       settings = await AdminSettings.create({
+        tenantId,
         company_name: 'Mi Inmobiliaria',
         company_address: '',
         company_phone: '',
@@ -39,7 +40,8 @@ exports.updateSettings = async (req, res) => {
       additional_config,
     } = req.body;
 
-    let settings = await AdminSettings.findOne();
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    let settings = await AdminSettings.findOne({ where: { tenantId } });
 
     if (settings) {
       // Actualizar existente
@@ -57,6 +59,7 @@ exports.updateSettings = async (req, res) => {
     } else {
       // Crear nuevo
       settings = await AdminSettings.create({
+        tenantId,
         company_name,
         company_address,
         company_phone,
@@ -81,7 +84,8 @@ exports.updateSettings = async (req, res) => {
 // Obtener firma actual
 exports.getSignature = async (req, res) => {
   try {
-    const settings = await AdminSettings.findOne();
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const settings = await AdminSettings.findOne({ where: { tenantId } });
     
     if (!settings || !settings.signatureUrl) {
       return res.status(200).json({ signatureUrl: null });
@@ -103,7 +107,8 @@ exports.saveSignature = async (req, res) => {
     }
 
     // Buscar si ya existe configuración
-    let settings = await AdminSettings.findOne();
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    let settings = await AdminSettings.findOne({ where: { tenantId } });
 
     if (settings) {
       // Actualizar
@@ -111,7 +116,7 @@ exports.saveSignature = async (req, res) => {
       await settings.save();
     } else {
       // Crear nueva
-      settings = await AdminSettings.create({ signatureUrl });
+      settings = await AdminSettings.create({ tenantId, signatureUrl });
     }
 
     res.status(200).json({ 
@@ -126,7 +131,8 @@ exports.saveSignature = async (req, res) => {
 // Eliminar firma
 exports.deleteSignature = async (req, res) => {
   try {
-    const settings = await AdminSettings.findOne();
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const settings = await AdminSettings.findOne({ where: { tenantId } });
 
     if (!settings) {
       return res.status(404).json({ error: 'No hay firma para eliminar' });

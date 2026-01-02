@@ -350,6 +350,11 @@ exports.createLease = async (req, res) => {
     console.log('Datos finales:', parsedData);
     console.log('================================================');
 
+    // Inyectar tenantId del usuario autenticado
+    const { tenantId } = req.user;
+    parsedData.tenantId = tenantId;
+    console.log('TenantId inyectado:', tenantId);
+
     // CREAR EL CONTRATO
     const newLease = await Lease.create(parsedData);
     console.log('New Lease created successfully:', {
@@ -500,9 +505,11 @@ exports.createLease = async (req, res) => {
 
 exports.getLeaseById = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { id } = req.params;
     
-    const lease = await Lease.findByPk(id, {
+    const lease = await Lease.findOne({
+      where: { id, tenantId }, // Filtrar por tenant
       include: [
         { model: Property },
         { model: PaymentReceipt, required: false },
@@ -528,10 +535,13 @@ exports.getLeaseById = async (req, res) => {
 
 exports.terminateLease = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { id } = req.params;
 
         // Buscar el contrato de alquiler
-        const lease = await Lease.findByPk(id);
+        const lease = await Lease.findOne({
+            where: { id, tenantId } // Filtrar por tenant
+        });
         if (!lease) {
             return res.status(404).json({ error: 'Contrato de alquiler no encontrado' });
         }
@@ -558,7 +568,10 @@ exports.terminateLease = async (req, res) => {
 
 exports.getAllLeases = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    
     const leases = await Lease.findAll({
+      where: { tenantId }, // Filtrar por tenant
       include: [
         { model: Property },
         { model: PaymentReceipt, required: false },
@@ -618,13 +631,17 @@ exports.getAllLeases = async (req, res) => {
 
 exports.checkPendingPayments = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const today = new Date();
     const currentMonth = today.getMonth() + 1; // Mes actual (1-12)
     const currentYear = today.getFullYear();
 
     // Buscar contratos activos
     const activeLeases = await Lease.findAll({
-      where: { status: { [Op.ne]: 'terminated' } }, // Contratos que no están terminados
+      where: { 
+        tenantId, // Filtrar por tenant
+        status: { [Op.ne]: 'terminated' }
+      }, // Contratos que no están terminados
       include: [
         {
           model: PaymentReceipt,

@@ -3,8 +3,14 @@ const { Client, Lease, Property } = require('../data');
 // POST: Crear un cliente
 exports.createClient = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         console.log("POST /client - Datos recibidos:", req.body);
-        const newClient = await Client.create(req.body);
+        console.log("POST /client - TenantId:", tenantId);
+        
+        const newClient = await Client.create({
+            ...req.body,
+            tenantId // Inyectar tenantId
+        });
         console.log("POST /client - Cliente creado:", newClient?.idClient);
         res.status(201).json(newClient);
     } catch (error) {
@@ -22,7 +28,11 @@ exports.createClient = async (req, res) => {
 // GET: Obtener todos los clientes
 exports.getAllClients = async (req, res) => {
     try {
-        const clients = await Client.findAll();
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
+        
+        const clients = await Client.findAll({
+            where: { tenantId } // Filtrar por tenant
+        });
         res.status(200).json(clients);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener los clientes', details: error.message });
@@ -32,8 +42,11 @@ exports.getAllClients = async (req, res) => {
 // GET: Obtener un cliente por ID
 exports.getClientById = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
-        const client = await Client.findByPk(idClient, {
+        
+        const client = await Client.findOne({
+            where: { idClient, tenantId }, // Filtrar por tenant
             include: [
                 {
                     model: Lease,
@@ -59,6 +72,7 @@ exports.getClientById = async (req, res) => {
 // PUT: Actualizar un cliente
 exports.updateClient = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
         // Solo actualizamos mobilePhone y email
         const dataToUpdate = {};
@@ -69,7 +83,9 @@ exports.updateClient = async (req, res) => {
             return res.status(400).json({ error: 'No se envió ningún cambio en teléfono o mail' });
         }
 
-        const updated = await Client.update(dataToUpdate, { where: { idClient } });
+        const updated = await Client.update(dataToUpdate, { 
+            where: { idClient, tenantId } // Filtrar por tenant
+        });
 
         if (!updated[0]) {
             return res.status(404).json({ error: 'Cliente no encontrado' });
@@ -88,8 +104,12 @@ exports.updateClient = async (req, res) => {
 // DELETE: Eliminar un cliente
 exports.deleteClient = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
-        const deleted = await Client.destroy({ where: { idClient } });
+        
+        const deleted = await Client.destroy({ 
+            where: { idClient, tenantId } // Filtrar por tenant
+        });
 
         if (!deleted) {
             return res.status(404).json({ error: 'Cliente no encontrado' });

@@ -9,7 +9,8 @@ exports.createGarantorsForLease = async (req, res) => {
     const guarantors = req.body.guarantors; // Array de garantes
 
     // Validar que el contrato existe
-    const lease = await Lease.findByPk(leaseId);
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const lease = await Lease.findOne({ where: { id: leaseId, tenantId } });
     console.log("[createGarantorsForLease] Lease encontrado:", lease);
     if (!lease) {
       console.error("[createGarantorsForLease] No se encontró el contrato de alquiler con ID:", leaseId);
@@ -60,7 +61,8 @@ exports.updateGarantor = async (req, res) => {
       const updatedData = req.body;
   
       // Verificar que el garante existe
-      const guarantor = await Garantor.findByPk(guarantorId);
+      const { tenantId } = req.user; // Obtener tenantId del token JWT
+      const guarantor = await Garantor.findOne({ where: { id: guarantorId, tenantId } });
       if (!guarantor) {
         return res.status(404).json({ error: "Garante no encontrado" });
       }
@@ -82,7 +84,9 @@ exports.updateGarantor = async (req, res) => {
       const { leaseId } = req.params;
   
       // Verificar que el contrato existe
-      const lease = await Lease.findByPk(leaseId, {
+      const { tenantId } = req.user; // Obtener tenantId del token JWT
+      const lease = await Lease.findOne({
+        where: { id: leaseId, tenantId },
         include: { model: Garantor },
       });
       if (!lease) {

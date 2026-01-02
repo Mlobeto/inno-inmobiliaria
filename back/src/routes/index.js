@@ -1,4 +1,5 @@
 const { Router } = require("express");
+const { requireTenantScope } = require("../middlewares/platformAdminMiddleware");
 
 const router = Router();
 
@@ -13,18 +14,24 @@ try {
     console.error("No se pudo encontrar clientWithRole:", error);
   }
 
-router.use("/admin", require("./admin"));
+// Rutas públicas (sin requireTenantScope)
 router.use("/auth", require("./auth"));
-router.use("/client", require("./client"));
-router.use("/lease", require("./lease"));
-router.use("/payment", require("./payment"));
-router.use("/property", require("./property"));
-router.use("/garantor", require("./garantor"));
-router.use("/import", require("./import"));
-router.use("/pdf", require("./pdf")); // PDF generation and templates
-router.use("/tenant", require("./tenant")); // Tenant management and signature
-router.use("/subscriptions", require("./subscriptionRoutes")); // Plans and subscriptions
 router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
+
+// Rutas de administrador de plataforma (solo PLATFORM_ADMIN)
+router.use("/platform-admin", require("./platformAdmin"));
+
+// Rutas de tenants (requieren tenantId - no accesibles por PLATFORM_ADMIN)
+router.use("/admin", requireTenantScope, require("./admin"));
+router.use("/client", requireTenantScope, require("./client"));
+router.use("/lease", requireTenantScope, require("./lease"));
+router.use("/payment", requireTenantScope, require("./payment"));
+router.use("/property", requireTenantScope, require("./property"));
+router.use("/garantor", requireTenantScope, require("./garantor"));
+router.use("/import", requireTenantScope, require("./import"));
+router.use("/pdf", requireTenantScope, require("./pdf")); // PDF generation and templates
+router.use("/tenant", requireTenantScope, require("./tenant")); // Tenant management and signature
+router.use("/subscriptions", requireTenantScope, require("./subscriptionRoutes")); // Plans and subscriptions
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
 
 module.exports = router;

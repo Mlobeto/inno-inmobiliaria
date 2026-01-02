@@ -4,6 +4,7 @@ const { Client, Property, ClientProperty } = require('../data');
 exports.addPropertyToClientWithRole = async (req, res) => {
     try {
         const { idClient, propertyId, role, clientData } = req.body;
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
 
         // Validación de campos
         if (!propertyId || !role) {
@@ -14,7 +15,7 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         }
 
         // Buscar al cliente por su idClient
-        let client = idClient ? await Client.findOne({ where: { idClient } }) : null;
+        let client = idClient ? await Client.findOne({ where: { idClient, tenantId } }) : null;
 
         // Si no existe, intenta crear el cliente si se envía clientData
         if (!client) {
@@ -22,7 +23,7 @@ exports.addPropertyToClientWithRole = async (req, res) => {
                 return res.status(400).json({ error: 'Cliente no encontrado y no se proporcionaron datos para crearlo.' });
             }
             try {
-                client = await Client.create(clientData);
+                client = await Client.create({ ...clientData, tenantId });
             } catch (error) {
                 return res.status(400).json({
                     error: 'Error al crear el cliente',
@@ -32,7 +33,7 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         }
 
         // Buscar la propiedad por ID
-        const property = await Property.findByPk(propertyId);
+        const property = await Property.findOne({ where: { propertyId, tenantId } });
         if (!property) {
             return res.status(404).json({ error: 'Propiedad no encontrada' });
         }

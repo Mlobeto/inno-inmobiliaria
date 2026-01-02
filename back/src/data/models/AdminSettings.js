@@ -57,16 +57,15 @@ module.exports = (sequelize) => {
       comment: 'Texto adicional para pie de contratos',
     },
     
-    // 🆕 Multi-tenancy (para futuro - sin FK por ahora)
-    tenant_id: {
-      type: DataTypes.UUID,
+    // 🆕 Multi-tenancy
+    tenantId: {
+      type: DataTypes.INTEGER,
       allowNull: true,
+      references: {
+        model: 'tenants',
+        key: 'tenantId',
+      },
       comment: 'ID del tenant (null = configuración global)',
-      // TODO: Agregar foreign key cuando creemos tabla tenants en Fase 1
-      // references: {
-      //   model: 'tenants',
-      //   key: 'id',
-      // },
     },
     
     // Configuración adicional (JSON flexible)
@@ -78,6 +77,14 @@ module.exports = (sequelize) => {
     },
     
   }, {
+    scopes: {
+      byTenant: (tenantId) => ({
+        where: { tenantId }
+      }),
+    },
+    indexes: [
+      { fields: ['tenantId'] },
+    ],
     tableName: 'admin_settings',
     timestamps: true,
   });

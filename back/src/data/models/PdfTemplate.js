@@ -104,6 +104,11 @@ module.exports = (sequelize) => {
       tableName: "pdf_templates",
       timestamps: true,
       paranoid: true, // Soft delete
+      scopes: {
+        byTenant: (tenantId) => ({
+          where: { tenantId }
+        }),
+      },
       indexes: [
         {
           fields: ["tenantId", "templateType"],

@@ -45,6 +45,8 @@ const importClients = catchedAsync(async (req, res) => {
     });
   }
 
+  const { tenantId } = req.user; // Obtener tenantId del token JWT
+
   try {
     // Leer el archivo Excel
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
@@ -123,6 +125,7 @@ const importClients = catchedAsync(async (req, res) => {
         // Verificar si ya existe el CUIL o email
         const existingClient = await Client.findOne({
           where: {
+            tenantId, // Filtrar por tenant
             $or: [
               { cuil: row.cuil },
               { email: row.email }
@@ -142,6 +145,7 @@ const importClients = catchedAsync(async (req, res) => {
 
         // Crear el cliente
         const clientData = {
+          tenantId, // Inyectar tenantId
           cuil: row.cuil,
           name: row.name.trim(),
           email: row.email.trim(),
@@ -199,6 +203,8 @@ const importProperties = catchedAsync(async (req, res) => {
       message: 'No se ha subido ningún archivo'
     });
   }
+
+  const { tenantId } = req.user; // Obtener tenantId del token JWT
 
   try {
     // Leer el archivo Excel
@@ -298,6 +304,7 @@ const importProperties = catchedAsync(async (req, res) => {
 
         // Crear la propiedad
         const propertyData = {
+          tenantId, // Inyectar tenantId
           address: row.address.trim(),
           neighborhood: row.neighborhood || null,
           socio: row.socio || null,

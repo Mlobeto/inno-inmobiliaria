@@ -2,6 +2,7 @@ const { PaymentReceipt, Lease, Client, Property } = require('../data');
 
 exports.createPayment = async (req, res) => {
     try {
+      const { tenantId } = req.user; // Obtener tenantId del token JWT (una sola vez)
       const {
         idClient,
         leaseId,
@@ -35,7 +36,7 @@ exports.createPayment = async (req, res) => {
       // Validar que solo exista un pago inicial por contrato
       if (type === "initial") {
         const existingInitial = await PaymentReceipt.findOne({
-          where: { leaseId, type: 'initial' },
+          where: { leaseId, type: 'initial', tenantId }, // Filtrar por tenant
         });
         if (existingInitial) {
           return res.status(400).json({ 
@@ -51,7 +52,7 @@ exports.createPayment = async (req, res) => {
         // Si es cuota, se requiere calcular o recibir installmentNumber y totalInstallments.
         // Podés calcular el número siguiente si no lo pasás desde el front:
         const lastReceipt = await PaymentReceipt.findOne({
-          where: { leaseId, type: 'installment' },
+          where: { leaseId, type: 'installment', tenantId }, // Filtrar por tenant
           order: [['installmentNumber', 'DESC']],
         });
         finalInstallmentNumber = lastReceipt ? lastReceipt.installmentNumber + 1 : 1;
@@ -67,6 +68,7 @@ exports.createPayment = async (req, res) => {
   
       // Para comisión y pago inicial, no se requieren installmentNumber y totalInstallments.
       const newPaymentReceipt = await PaymentReceipt.create({
+        tenantId, // Inyectar tenantId
         idClient,
         leaseId,
         paymentDate,
@@ -90,10 +92,11 @@ exports.createPayment = async (req, res) => {
     
 exports.getPaymentsByIdClient = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
 
         const payments = await PaymentReceipt.findAll({
-            where: { idClient },
+            where: { idClient, tenantId }, // Filtrar por tenant
             include: [
                 {
                     model: Lease,
@@ -113,10 +116,11 @@ exports.getPaymentsByIdClient = async (req, res) => {
 };
 exports.getPaymentsByLeaseId = async (req, res) => {
     try {
+        const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { leaseId } = req.params;
 
         const payments = await PaymentReceipt.findAll({
-            where: { leaseId },
+            where: { leaseId, tenantId }, // Filtrar por tenant
             include: [
                 { model: Client }, // Incluye información del cliente
                 { model: Lease },  // Incluye información del contrato
@@ -135,7 +139,10 @@ exports.getPaymentsByLeaseId = async (req, res) => {
 
 exports.getAllPayments = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    
     const payments = await PaymentReceipt.findAll({
+      where: { tenantId }, // Filtrar por tenant
       include: [
         { model: Client }, // Información del cliente
         { 

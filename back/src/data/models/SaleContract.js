@@ -63,6 +63,11 @@ module.exports = (sequelize) => {
       allowNull: false,
     },
   }, {
+    scopes: {
+      byTenant: (tenantId) => ({
+        where: { tenantId }
+      }),
+    },
     indexes: [
       { fields: ['tenantId'] },
       { fields: ['agentId'] },

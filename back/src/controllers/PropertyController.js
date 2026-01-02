@@ -61,7 +61,10 @@ exports.createProperty = async (req, res) => {
       }
   
       // Crear la propiedad
+      const { tenantId } = req.user; // Obtener tenantId del token JWT
+      
       const newProperty = await Property.create({
+        tenantId, // Inyectar tenantId
         address,
         neighborhood,
         city,
@@ -139,6 +142,7 @@ exports.getPropertiesByIdClient = async (req, res) => {
 
 exports.getPropertiesByType = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { type } = req.params;
     if (!["venta", "alquiler"].includes(type)) {
       return res
@@ -146,7 +150,9 @@ exports.getPropertiesByType = async (req, res) => {
         .json({ error: 'Tipo inválido. Debe ser "venta" o "alquiler".' });
     }
 
-    const properties = await Property.findAll({ where: { type } });
+    const properties = await Property.findAll({ 
+      where: { type, tenantId } // Filtrar por tenant
+    });
     res.status(200).json(properties);
   } catch (error) {
     res
@@ -161,14 +167,18 @@ exports.getPropertiesByType = async (req, res) => {
 // PUT: Actualizar una propiedad
 exports.updateProperty = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { propertyId } = req.params;
     
     console.log('[UpdateProperty] Datos recibidos:', {
       propertyId,
+      tenantId,
       body: req.body
     });
 
-    const updated = await Property.update(req.body, { where: { propertyId } });
+    const updated = await Property.update(req.body, { 
+      where: { propertyId, tenantId } // Filtrar por tenant
+    });
     
     console.log('[UpdateProperty] Resultado:', updated);
     
@@ -195,8 +205,12 @@ exports.updateProperty = async (req, res) => {
 // DELETE: Eliminar una propiedad
 exports.deleteProperty = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { propertyId } = req.params;
-    const deleted = await Property.destroy({ where: { propertyId } });
+    
+    const deleted = await Property.destroy({ 
+      where: { propertyId, tenantId } // Filtrar por tenant
+    });
     if (!deleted) {
       return res.status(404).json({ error: "Propiedad no encontrada" });
     }
@@ -264,6 +278,9 @@ exports.getFilteredProperties = async (req, res) => {
     if (comision) where.comision = comision;
 
     // Paginación
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    where.tenantId = tenantId; // Filtrar por tenant
+    
     const offset = (page - 1) * limit; // Calcular el offset de la página actual
     const properties = await Property.findAll({
       where,
@@ -282,8 +299,11 @@ exports.getFilteredProperties = async (req, res) => {
 
 exports.getAllProperties = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    
     // Obtener todas las propiedades con los clientes relacionados y sus roles
     const properties = await Property.findAll({
+      where: { tenantId }, // Filtrar por tenant
       include: [
         {
           model: Client,
@@ -308,9 +328,10 @@ exports.getAllProperties = async (req, res) => {
 
 exports.getPropertyById = async (req, res) => {
   try {
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { propertyId } = req.params;
     console.log('Params received:', req.params);
-    console.log('Buscando propiedad con ID:', propertyId);
+    console.log('Buscando propiedad con ID:', propertyId, 'Tenant:', tenantId);
 
     // Convert propertyId to integer
     const id = parseInt(propertyId);
@@ -318,7 +339,8 @@ exports.getPropertyById = async (req, res) => {
       return res.status(400).json({ error: 'ID de propiedad inválido' });
     }
 
-    const property = await Property.findByPk(id, {
+    const property = await Property.findOne({
+      where: { propertyId: id, tenantId }, // Filtrar por tenant
       include: [
         {
           model: Client,

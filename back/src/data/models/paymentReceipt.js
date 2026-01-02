@@ -46,9 +46,26 @@ module.exports = (sequelize) => {
                 allowNull: false,
                 defaultValue: "pending",
             },
+            tenantId: {
+                type: DataTypes.INTEGER,
+                allowNull: true,
+                references: {
+                    model: 'tenants',
+                    key: 'tenantId',
+                },
+                comment: 'ID del tenant (multitenant support)',
+            },
         },
         {
             paranoid: true,
+            scopes: {
+                byTenant: (tenantId) => ({
+                    where: { tenantId }
+                }),
+            },
+            indexes: [
+                { fields: ['tenantId'] },
+            ],
         }
     );
 };

@@ -221,6 +221,11 @@ Estamos a tu entera disposición por dudas, precio o consultas.`,
     {
       freezeTableName: true,
       paranoid: true,
+      scopes: {
+        byTenant: (tenantId) => ({
+          where: { tenantId }
+        }),
+      },
       indexes: [
         { fields: ['tenantId'] },
         { fields: ['agentId'] },

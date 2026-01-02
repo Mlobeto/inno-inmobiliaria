@@ -9,17 +9,15 @@ const seed = require('./src/scripts/seedData.js'); // Ajusta la ruta si es neces
 // En producción no usamos sync, las tablas ya existen por migraciones
 const startServer = async () => {
   try {
-    // Solo hacer sync en desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      await conn.sync({ alter: true });
-      console.log('✅ Base de datos sincronizada (desarrollo)');
-      // Ejecuta el seed antes de levantar el servidor
-      // await seed();
-    } else {
-      // En producción solo verificamos la conexión
-      await conn.authenticate();
-      console.log('✅ Conexión a base de datos establecida (producción)');
-    }
+    // Solo verificar conexión en ambos entornos (las tablas se manejan con migraciones)
+    await conn.authenticate();
+    console.log(`✅ Conexión a base de datos establecida (${process.env.NODE_ENV || 'desarrollo'})`);
+    
+    // Si necesitas sincronizar modelos, descomenta la siguiente línea (solo en desarrollo)
+    // await conn.sync({ alter: false });
+    
+    // Ejecuta el seed antes de levantar el servidor (solo si es necesario)
+    // await seed();
 
     app.listen(PORT, () => {
       console.log(`🚀 listening on port: ${PORT} 🚀`);

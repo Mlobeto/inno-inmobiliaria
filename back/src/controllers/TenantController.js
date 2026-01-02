@@ -8,7 +8,7 @@ const cloudinaryHelper = require("../utils/cloudinaryHelper");
  */
 const uploadSignature = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { signatureDataUrl } = req.body;
 
     if (!signatureDataUrl) {
@@ -86,7 +86,7 @@ const uploadSignature = async (req, res) => {
  */
 const getSignature = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const tenant = await Tenant.findByPk(tenantId, {
       attributes: ["signatureUrl"],
@@ -122,7 +122,7 @@ const getSignature = async (req, res) => {
  */
 const deleteSignature = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const tenant = await Tenant.findByPk(tenantId);
     if (!tenant) {
@@ -172,7 +172,7 @@ const deleteSignature = async (req, res) => {
  */
 const getTenantInfo = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const tenant = await Tenant.findByPk(tenantId, {
       attributes: [
@@ -221,7 +221,7 @@ const getTenantInfo = async (req, res) => {
  */
 const updateTenantInfo = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { businessName, email, phone, address, logo } = req.body;
 
     const tenant = await Tenant.findByPk(tenantId);

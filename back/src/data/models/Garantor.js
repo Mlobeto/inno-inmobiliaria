@@ -55,5 +55,23 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    tenantId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: 'tenants',
+        key: 'tenantId',
+      },
+      comment: 'ID del tenant (multitenant support)',
+    },
+  }, {
+    scopes: {
+      byTenant: (tenantId) => ({
+        where: { tenantId }
+      }),
+    },
+    indexes: [
+      { fields: ['tenantId'] },
+    ],
   });
 };

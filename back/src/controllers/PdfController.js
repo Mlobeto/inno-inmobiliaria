@@ -9,7 +9,7 @@ const pdfService = require("../services/pdfService");
 const generatePdf = async (req, res) => {
   try {
     const { templateType, templateId, dataId, customVariables } = req.body;
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     // Validar parámetros requeridos
     if (!templateType || !dataId) {
@@ -156,7 +156,7 @@ const generatePdf = async (req, res) => {
  */
 const getTemplates = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { templateType, isActive } = req.query;
 
     const where = { tenantId };
@@ -197,7 +197,7 @@ const getTemplates = async (req, res) => {
 const getTemplateById = async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const template = await PdfTemplate.findOne({
       where: { id, tenantId },
@@ -238,8 +238,7 @@ const getTemplateById = async (req, res) => {
  */
 const createTemplate = async (req, res) => {
   try {
-    const tenantId = req.tenantId;
-    const adminId = req.admin?.id;
+    const { tenantId, adminId } = req.user; // Obtener tenantId y adminId del token JWT
 
     const {
       templateType,
@@ -316,7 +315,7 @@ const createTemplate = async (req, res) => {
 const updateTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const template = await PdfTemplate.findOne({
       where: { id, tenantId },
@@ -394,7 +393,7 @@ const updateTemplate = async (req, res) => {
 const deleteTemplate = async (req, res) => {
   try {
     const { id } = req.params;
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     const template = await PdfTemplate.findOne({
       where: { id, tenantId },
@@ -431,7 +430,7 @@ const deleteTemplate = async (req, res) => {
 const previewTemplate = async (req, res) => {
   try {
     const { templateId, htmlTemplate, styles, headerHtml, footerHtml, sampleData } = req.body;
-    const tenantId = req.tenantId;
+    const { tenantId } = req.user; // Obtener tenantId del token JWT
 
     let template;
     
