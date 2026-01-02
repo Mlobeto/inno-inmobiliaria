@@ -98,16 +98,32 @@ AGENT (tenantId = X)
 - ✅ tenantId: NULL
 
 #### PlatformAdminController ✅ CREADO
-**Endpoints implementados (9):**
+**Endpoints implementados (10):**
 - ✅ `GET /platform-admin/dashboard` - Métricas generales
 - ✅ `GET /platform-admin/metrics` - Growth, engagement, retention
 - ✅ `GET /platform-admin/revenue` - MRR, ARR, revenue por plan
 - ✅ `GET /platform-admin/tenants` - Lista con paginación y filtros
+- ✅ `POST /platform-admin/tenants/create-manual` - 🆕 Crear tenant sin MercadoPago
 - ✅ `GET /platform-admin/tenants/:id` - Detalle de tenant
 - ✅ `PUT /platform-admin/tenants/:id` - Actualizar tenant
 - ✅ `POST /platform-admin/tenants/:id/suspend` - Suspender
 - ✅ `POST /platform-admin/tenants/:id/activate` - Reactivar
 - ✅ `GET /platform-admin/subscriptions` - Lista global de suscripciones
+
+**🆕 Creación Manual de Tenants:**
+El Platform Admin puede crear tenants sin pasar por MercadoPago, útil para:
+- Demos y pilotos con clientes potenciales
+- Testing interno
+- Clientes especiales (partners, patrocinadores)
+- Onboarding controlado antes de pagar
+
+Características:
+- ✅ Crea tenant + suscripción manual
+- ✅ Opcionalmente crea SUPER_ADMIN inicial con credenciales
+- ✅ Configurable: plan, duración, límites (agentes, propiedades)
+- ✅ Sin costo (amount: 0)
+- ✅ No depende de webhooks de MercadoPago
+- ✅ Control total sobre expiración
 
 **Rutas configuradas:**
 - ✅ `/platform-admin/*` protegidas con `isPlatformAdmin`
@@ -115,6 +131,18 @@ AGENT (tenantId = X)
 - ✅ Rutas públicas: `/auth`, `/webhooks`
 
 ### Sprint 2: Frontend Platform Admin ⏳ PENDIENTE
+
+#### Redux Setup ✅ COMPLETADO
+- ✅ `baseApi.js` - RTK Query base configurada
+- ✅ `platformAdminApi.js` - 10 endpoints con hooks automáticos
+- ✅ `platformAdminSlice.js` - Estado local (filtros, UI)
+- ✅ `platformAdmin.js` - Exports centralizados
+- ✅ Store actualizado con RTK Query middleware
+
+#### Componentes Creados:
+- ✅ `PlatformDashboard.jsx` - Dashboard con KPIs (ejemplo)
+- ✅ `TenantActions.jsx` - Suspender/activar tenants (ejemplo)
+- ✅ `CreateManualTenantForm.jsx` - Formulario para crear tenants manuales
 
 #### Páginas a crear:
 - [ ] PlatformDashboard - Vista general con métricas

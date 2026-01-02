@@ -1,6 +1,5 @@
-const { Tenant, Subscription, Admin, Client, Property, Lease, PaymentReceipt } = require('../data');
+const { Tenant, Subscription, Admin, Client, Property, Lease, PaymentReceipt, sequelize } = require('../data');
 const { Op } = require('sequelize');
-const sequelize = require('../data/models').sequelize;
 
 /**
  * @route GET /api/platform-admin/dashboard
@@ -615,6 +614,143 @@ exports.getMetrics = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al obtener métricas',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * @route POST /api/platform-admin/tenants/create-manual
+ * @desc Crea un tenant manualmente sin pasar por MercadoPago
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.createManualTenant = async (req, res) => {
+  try {
+    const {
+      businessName,
+      email,
+      subdomain,
+      phone,
+      address,
+      plan = 'free',
+      durationDays = 30,
+      maxAgents = 5,
+      maxProperties = 100,
+      features = ['clients', 'properties', 'leases', 'payments'],
+      adminUsername,
+      adminPassword,
+      adminFullName,
+      adminEmail,
+      notes,
+    } = req.body;
+
+    // Validaciones
+    if (!businessName || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'businessName y email son requeridos'
+      });
+    }
+
+    // Verificar si el email ya existe
+    const existingTenant = await Tenant.findOne({ where: { email } });
+    if (existingTenant) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un tenant con ese email'
+      });
+    }
+
+    // Verificar si el subdomain ya existe (si se proporciona)
+    if (subdomain) {
+      const existingSubdomain = await Tenant.findOne({ where: { subdomain } });
+      if (existingSubdomain) {
+        return res.status(400).json({
+          success: false,
+          message: 'El subdominio ya está en uso'
+        });
+      }
+    }
+
+    // Generar subdomain si no se proporciona
+    const finalSubdomain = subdomain || businessName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 30);
+
+    // Crear el tenant
+    const newTenant = await Tenant.create({
+      businessName,
+      email,
+      subdomain: finalSubdomain,
+      phone: phone || null,
+      address: address || null,
+      plan,
+      status: 'active',
+      maxAgents,
+      maxProperties,
+      features,
+      notes: notes || 'Tenant creado manualmente por Platform Admin',
+    });
+
+    // Crear suscripción manual
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + durationDays);
+
+    const subscription = await Subscription.create({
+      tenantId: newTenant.tenantId,
+      planId: plan,
+      status: durationDays > 0 ? 'trialing' : 'active',
+      startDate,
+      endDate,
+      trialEndDate: durationDays > 0 ? endDate : null,
+      amount: 0, // Sin costo para trials manuales
+      currency: 'ARS',
+      paymentMethod: 'manual',
+      mpPreapprovalId: null, // Sin MercadoPago
+      mpPayerId: null,
+      autoRenew: false, // No se renueva automáticamente
+    });
+
+    // Crear admin inicial si se proporcionan credenciales
+    let adminUser = null;
+    if (adminUsername && adminPassword) {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+      adminUser = await Admin.create({
+        tenantId: newTenant.tenantId,
+        username: adminUsername,
+        password: hashedPassword,
+        fullName: adminFullName || businessName,
+        email: adminEmail || email,
+        role: 'SUPER_ADMIN',
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Tenant creado exitosamente',
+      data: {
+        tenant: newTenant,
+        subscription,
+        admin: adminUser ? {
+          adminId: adminUser.adminId,
+          username: adminUser.username,
+          email: adminUser.email,
+          temporaryPassword: adminPassword, // Solo en respuesta, no se guarda
+        } : null,
+        loginUrl: `https://${finalSubdomain}.innoinmo.com/login`, // Ajustar según tu dominio
+        expiresAt: endDate,
+      }
+    });
+  } catch (error) {
+    console.error('Error creando tenant manual:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al crear tenant',
       error: error.message
     });
   }

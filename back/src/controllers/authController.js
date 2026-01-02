@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const {Admin} = require('../data');  // Modelo de administrador
+const crypto = require('crypto');
+const {Admin, PasswordResetToken} = require('../data');  // Modelo de administrador
+const { sendPasswordResetEmail, sendPasswordChangedEmail } = require('../emailService');
 require('dotenv').config();  // Para usar las variables de entorno
 
 // Registrar un administrador
@@ -59,7 +61,8 @@ exports.loginAdmin = async (req, res) => {
       admin: {
         adminId: admin.adminId,
         username: admin.username,
-        role: admin.role
+        role: admin.role,
+        tenantId: admin.tenantId || null // Importante para diferenciar PLATFORM_ADMIN
       }
     });
   } catch (error) {
@@ -93,7 +96,8 @@ exports.verifyToken = async (req, res) => {
       admin: {
         adminId: admin.adminId,
         username: admin.username,
-        role: admin.role
+        role: admin.role,
+        tenantId: admin.tenantId || null
       }
     });
   } catch (error) {
@@ -149,6 +153,163 @@ exports.editAdmin = async (req, res) => {
     res.status(500).json({ message: 'Error al editar administrador', error: error.message });
   }
 };
+
+// ==================== RECUPERACIÓN DE CONTRASEÑA ====================
+
+/**
+ * Solicitar recuperación de contraseña
+ * Genera un token y envía email con link de reset
+ */
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  
+  console.log('POST /auth/forgot-password - Solicitud para:', email);
+
+  try {
+    // Buscar admin por email (puede ser username o email dependiendo de tu schema)
+    const admin = await Admin.findOne({ 
+      where: { username: email } // Ajustar si tienes campo email separado
+    });
+
+    // Por seguridad, siempre respondemos con éxito aunque no exista el usuario
+    if (!admin) {
+      console.log('POST /auth/forgot-password - Usuario no encontrado:', email);
+      return res.status(200).json({ 
+        message: 'Si el email existe, recibirás un link de recuperación' 
+      });
+    }
+
+    // Generar token único y seguro
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    
+    // Establecer expiración: 1 hora desde ahora
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    // Invalidar tokens anteriores del mismo usuario
+    await PasswordResetToken.update(
+      { used: true },
+      { 
+        where: { 
+          adminId: admin.adminId,
+          used: false 
+        } 
+      }
+    );
+
+    // Crear nuevo token
+    await PasswordResetToken.create({
+      adminId: admin.adminId,
+      email: admin.username, // O admin.email si tienes ese campo
+      token: hashedToken,
+      expiresAt,
+      used: false
+    });
+
+    // Enviar email (usar el token sin hashear en el link)
+    try {
+      await sendPasswordResetEmail(admin.username, resetToken, admin.username);
+      console.log('POST /auth/forgot-password - Email enviado a:', email);
+    } catch (emailError) {
+      console.error('Error al enviar email:', emailError);
+      // No revelar error de email al cliente por seguridad
+    }
+
+    res.status(200).json({ 
+      message: 'Si el email existe, recibirás un link de recuperación',
+      // En desarrollo, devolver el token (ELIMINAR EN PRODUCCIÓN)
+      ...(process.env.NODE_ENV === 'development' && { token: resetToken })
+    });
+
+  } catch (error) {
+    console.error('POST /auth/forgot-password - Error:', error);
+    res.status(500).json({ 
+      message: 'Error al procesar solicitud', 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Resetear contraseña con token
+ * Valida el token y actualiza la contraseña
+ */
+exports.resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  
+  console.log('POST /auth/reset-password - Intento de reset');
+
+  try {
+    // Validar que se envió contraseña
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ 
+        message: 'La contraseña debe tener al menos 6 caracteres' 
+      });
+    }
+
+    // Hashear el token recibido para compararlo con la BD
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Buscar token válido
+    const resetToken = await PasswordResetToken.findOne({
+      where: {
+        token: hashedToken,
+        used: false,
+        expiresAt: {
+          [require('sequelize').Op.gt]: new Date() // Token no expirado
+        }
+      },
+      include: [{
+        model: Admin,
+        as: 'admin'
+      }]
+    });
+
+    if (!resetToken) {
+      console.log('POST /auth/reset-password - Token inválido o expirado');
+      return res.status(400).json({ 
+        message: 'Token inválido o expirado. Solicita uno nuevo.' 
+      });
+    }
+
+    // Actualizar contraseña del admin
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await Admin.update(
+      { password: hashedPassword },
+      { where: { adminId: resetToken.adminId } }
+    );
+
+    // Marcar token como usado
+    await resetToken.update({ used: true });
+
+    // Enviar email de confirmación
+    try {
+      await sendPasswordChangedEmail(
+        resetToken.email, 
+        resetToken.admin.username
+      );
+      console.log('POST /auth/reset-password - Email de confirmación enviado');
+    } catch (emailError) {
+      console.error('Error al enviar email de confirmación:', emailError);
+      // No bloquear el proceso si falla el email
+    }
+
+    console.log('POST /auth/reset-password - Contraseña actualizada para:', resetToken.email);
+
+    res.status(200).json({ 
+      message: 'Contraseña actualizada exitosamente. Ya puedes iniciar sesión.' 
+    });
+
+  } catch (error) {
+    console.error('POST /auth/reset-password - Error:', error);
+    res.status(500).json({ 
+      message: 'Error al resetear contraseña', 
+      error: error.message 
+    });
+  }
+};
+
 
 // Eliminar administrador
 exports.deleteAdmin = async (req, res) => {

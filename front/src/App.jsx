@@ -10,7 +10,9 @@ import PanelPropiedades from "./Components/Admin/PanelPropiedades";
 import ListadoDeClientes from "./Components/Clientes/ListadoDeClientes";
 import Listado from "./Components/Propiedades/Listado";
 import FiltroPropiedades from "./Components/Propiedades/FiltroPropiedades"
-import LoginAdmin from "./Components/Admin/Login/Login";
+import LoginAdmin from "./Admin/Login/Login"; // 🔄 ACTUALIZADO: Nueva ruta
+import ForgotPassword from "./Admin/Login/ForgotPassword"; // 🆕 NUEVO
+import ResetPassword from "./Admin/Login/ResetPassword"; // 🆕 NUEVO
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
@@ -222,7 +224,10 @@ function App() {
         element={<CompanySettings />} 
       />
 
+      {/* Autenticación */}
       <Route path="/login" element={<LoginAdmin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} /> {/* 🆕 NUEVO */}
+      <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* 🆕 NUEVO */}
     </Routes>
     </>
   );

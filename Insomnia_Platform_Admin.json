@@ -1,0 +1,336 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-01-02T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "wrk_platform_admin",
+      "_type": "workspace",
+      "name": "InnoInmo - Platform Admin",
+      "description": "API endpoints para el panel de administrador de plataforma",
+      "scope": "collection"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "base_url": "http://localhost:3001",
+        "token": ""
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "token"]
+      },
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "env_production",
+      "_type": "environment",
+      "name": "Production",
+      "data": {
+        "base_url": "https://inno-inmobiliaria-production.up.railway.app",
+        "token": ""
+      },
+      "dataPropertyOrder": {
+        "&": ["base_url", "token"]
+      },
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "folder_auth",
+      "_type": "request_group",
+      "name": "🔐 Autenticación",
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "folder_auth",
+      "name": "Login Platform Admin",
+      "method": "POST",
+      "url": "{{ _.base_url }}/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"platform_admin\",\n  \"password\": \"ChangeMe123!\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Login como Platform Admin. Copia el token de la respuesta y pégalo en el Environment (token variable)."
+    },
+    {
+      "_id": "folder_dashboard",
+      "_type": "request_group",
+      "name": "📊 Dashboard & Métricas",
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "req_dashboard",
+      "_type": "request",
+      "parentId": "folder_dashboard",
+      "name": "Dashboard General",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/dashboard",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Obtiene métricas generales: total tenants, suscripciones activas, MRR, ARR, churn rate"
+    },
+    {
+      "_id": "req_metrics",
+      "_type": "request",
+      "parentId": "folder_dashboard",
+      "name": "Métricas Avanzadas",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/metrics",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Growth rate, engagement rate, retention rate, avg subscription value"
+    },
+    {
+      "_id": "req_revenue",
+      "_type": "request",
+      "parentId": "folder_dashboard",
+      "name": "Revenue (Ingresos)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/revenue?period=month",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "period",
+          "value": "month",
+          "description": "month, quarter, year"
+        }
+      ],
+      "description": "Análisis de ingresos: MRR, ARR, revenue por mes, revenue por plan"
+    },
+    {
+      "_id": "folder_tenants",
+      "_type": "request_group",
+      "name": "🏢 Gestión de Tenants",
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "req_list_tenants",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Listar Tenants",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/tenants?page=1&limit=20",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "page",
+          "value": "1",
+          "description": "Número de página"
+        },
+        {
+          "name": "limit",
+          "value": "20",
+          "description": "Cantidad por página"
+        },
+        {
+          "name": "status",
+          "value": "",
+          "description": "active, suspended (opcional)"
+        },
+        {
+          "name": "plan",
+          "value": "",
+          "description": "Filtrar por planId (opcional)"
+        },
+        {
+          "name": "search",
+          "value": "",
+          "description": "Buscar por nombre, email o subdomain (opcional)"
+        }
+      ],
+      "description": "Lista paginada de todos los tenants con sus suscripciones"
+    },
+    {
+      "_id": "req_get_tenant",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Detalle de Tenant",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/tenants/1",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Obtiene detalle completo de un tenant con estadísticas de uso (clients, properties, leases, payments)"
+    },
+    {
+      "_id": "req_create_manual_tenant",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Crear Tenant Manual",
+      "method": "POST",
+      "url": "{{ _.base_url }}/platform-admin/tenants/create-manual",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"businessName\": \"Inmobiliaria Demo\",\n  \"email\": \"demo@inmobiliaria.com\",\n  \"subdomain\": \"demo-inmobiliaria\",\n  \"phone\": \"+54 9 11 1234-5678\",\n  \"plan\": \"professional\",\n  \"durationDays\": 30,\n  \"maxAgents\": 5,\n  \"maxProperties\": 100,\n  \"adminUsername\": \"admin_demo\",\n  \"adminPassword\": \"DemoPass123!\",\n  \"adminFullName\": \"Admin Demo\",\n  \"adminEmail\": \"admin@inmobiliaria.com\",\n  \"notes\": \"Cliente piloto - Demo para presentación\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Crea un tenant manualmente sin MercadoPago (para demos, pilots, clientes especiales)"
+    },
+    {
+      "_id": "req_update_tenant",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Actualizar Tenant",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/platform-admin/tenants/1",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"businessName\": \"Inmobiliaria Actualizada\",\n  \"email\": \"nuevo@email.com\",\n  \"phone\": \"+54911234567\",\n  \"status\": \"active\",\n  \"maxAgents\": 10,\n  \"maxProperties\": 500\n}"
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Actualiza información de un tenant (nombre, email, límites, etc.)"
+    },
+    {
+      "_id": "req_suspend_tenant",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Suspender Tenant",
+      "method": "POST",
+      "url": "{{ _.base_url }}/platform-admin/tenants/1/suspend",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"reason\": \"Falta de pago\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Suspende un tenant con una razón específica"
+    },
+    {
+      "_id": "req_activate_tenant",
+      "_type": "request",
+      "parentId": "folder_tenants",
+      "name": "Reactivar Tenant",
+      "method": "POST",
+      "url": "{{ _.base_url }}/platform-admin/tenants/1/activate",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Reactiva un tenant suspendido"
+    },
+    {
+      "_id": "folder_subscriptions",
+      "_type": "request_group",
+      "name": "💳 Suscripciones",
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "req_list_subscriptions",
+      "_type": "request",
+      "parentId": "folder_subscriptions",
+      "name": "Listar Suscripciones",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/subscriptions?page=1&limit=20",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "parameters": [
+        {
+          "name": "page",
+          "value": "1",
+          "description": "Número de página"
+        },
+        {
+          "name": "limit",
+          "value": "20",
+          "description": "Cantidad por página"
+        },
+        {
+          "name": "status",
+          "value": "",
+          "description": "active, trialing, canceled, expired (opcional)"
+        },
+        {
+          "name": "planId",
+          "value": "",
+          "description": "Filtrar por plan (opcional)"
+        }
+      ],
+      "description": "Lista global de todas las suscripciones con información del tenant"
+    },
+    {
+      "_id": "folder_tenant_routes",
+      "_type": "request_group",
+      "name": "🔒 Rutas de Tenant (Requieren tenantId)",
+      "parentId": "wrk_platform_admin",
+      "description": "Estas rutas NO son accesibles por PLATFORM_ADMIN, solo por SUPER_ADMIN/AGENT"
+    },
+    {
+      "_id": "req_get_clients",
+      "_type": "request",
+      "parentId": "folder_tenant_routes",
+      "name": "Listar Clientes (Bloqueado)",
+      "method": "GET",
+      "url": "{{ _.base_url }}/client",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Esta ruta debe devolver 403 si estás logueado como PLATFORM_ADMIN (no tiene tenantId)"
+    }
+  ]
+}

@@ -1,18 +1,28 @@
 const express = require('express');
-const { register, loginAdmin, getAllAdmins, verifyToken, editAdmin, deleteAdmin } = require('../controllers/authController');
+const { 
+  register, 
+  loginAdmin, 
+  getAllAdmins, 
+  verifyToken, 
+  editAdmin, 
+  deleteAdmin,
+  forgotPassword,
+  resetPassword
+} = require('../controllers/authController');
 const router = express.Router();
 
-
+// Autenticación básica
 router.post('/register', register);
-
 router.post('/login', loginAdmin);
-
 router.get('/verify', verifyToken);
 
+// Recuperación de contraseña
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+
+// Gestión de admins
 router.get('/admin', getAllAdmins);
-
 router.put('/:adminId', editAdmin);
-
-router.delete('/:adminId', deleteAdmin)
+router.delete('/:adminId', deleteAdmin);
 
 module.exports = router;

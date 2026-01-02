@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const platformAdminController = require('../controllers/PlatformAdminController');
-const { authenticate } = require('../middlewares/authMiddleware');
+const authMiddleware = require('../middlewares/authMiddleware');
 const { isPlatformAdmin } = require('../middlewares/platformAdminMiddleware');
 
 // Aplicar autenticación y validación de PLATFORM_ADMIN a todas las rutas
-router.use(authenticate);
+router.use(authMiddleware);
 router.use(isPlatformAdmin);
 
 /**
@@ -19,6 +19,7 @@ router.get('/revenue', platformAdminController.getRevenue);
  * Gestión de tenants
  */
 router.get('/tenants', platformAdminController.listTenants);
+router.post('/tenants/create-manual', platformAdminController.createManualTenant);
 router.get('/tenants/:tenantId', platformAdminController.getTenantDetail);
 router.put('/tenants/:tenantId', platformAdminController.updateTenant);
 router.post('/tenants/:tenantId/suspend', platformAdminController.suspendTenant);

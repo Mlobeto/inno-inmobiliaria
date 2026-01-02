@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { loginAdmin } from '../../../redux/Actions/actions'; 
+import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
+
+// Usar Redux desde shared
+import { useLoginMutation, setCredentials } from '../../../shared/redux';
 
 const LoginAdmin = () => {
   const [username, setUsername] = useState('');
@@ -9,16 +11,35 @@ const LoginAdmin = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  const error = useSelector((state) => state.error);
+  
+  // RTK Query mutation hook
+  const [login, { isLoading, error }] = useLoginMutation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const result = await dispatch(loginAdmin({ username, password }));
     
-    // Solo navegar si el login fue exitoso
-    if (result.type === 'LOGIN_SUCCESS') {
-      navigate('/panel');
+    try {
+      // Ejecutar login mutation
+      const result = await login({ username, password }).unwrap();
+      
+      // Guardar credenciales en Redux
+      dispatch(setCredentials({
+        token: result.token,
+        admin: result.admin
+      }));
+      
+      // Redirigir según tipo de usuario
+      if (result.isPlatformAdmin) {
+        // PLATFORM_ADMIN → Panel de administrador de plataforma
+        navigate('/platform-admin/dashboard');
+      } else {
+        // Tenant admin/agent → Panel de inmobiliaria
+        navigate('/panel');
+      }
+      
+    } catch (err) {
+      console.error('Error en login:', err);
+      // El error se muestra automáticamente en el UI
     }
   };
 
@@ -37,7 +58,13 @@ const LoginAdmin = () => {
           <h2 className="text-2xl font-semibold text-gray-700 mb-6 text-center uppercase">
             Iniciar sesión
           </h2>
-          {error && <p className="text-red-500 text-center mb-4">{error}</p>}
+          
+          {/* Mostrar error si existe */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+              {error?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.'}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
@@ -51,6 +78,8 @@ const LoginAdmin = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Ingresa tu usuario"
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                disabled={isLoading}
+                required
               />
             </div>
 
@@ -65,15 +94,44 @@ const LoginAdmin = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Ingresa tu contraseña"
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                disabled={isLoading}
+                required
               />
+            </div>
+
+            {/* Link de recuperación de contraseña */}
+            <div className="mb-4 text-right">
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
 
             <div className="flex items-center justify-between">
               <button
                 type="submit"
-                className="bg-lime-500 hover:bg-lime-600 text-black font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+                disabled={isLoading}
+                className={`
+                  w-full font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline
+                  ${isLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-lime-500 hover:bg-lime-600 text-black'
+                  }
+                `}
               >
-                Iniciar sesión
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Iniciando sesión...
+                  </span>
+                ) : (
+                  'Iniciar sesión'
+                )}
               </button>
             </div>
           </form>

@@ -73,7 +73,8 @@ const {
   Commission,
   PdfTemplate,
   Plan,
-  Subscription
+  Subscription,
+  PasswordResetToken
 } = sequelize.models;
 
 // 1. Relaciones entre Client y Property a través de ClientProperty (many-to-many)
@@ -407,6 +408,16 @@ Subscription.belongsTo(Plan, {
 Plan.hasMany(Subscription, {
   foreignKey: 'planId',
   sourceKey: 'planId'
+});
+
+// Relación Admin - PasswordResetToken (uno a muchos)
+Admin.hasMany(PasswordResetToken, {
+  foreignKey: 'adminId',
+  sourceKey: 'adminId'
+});
+PasswordResetToken.belongsTo(Admin, {
+  foreignKey: 'adminId',
+  targetKey: 'adminId'
 });
 
 //---------------------------------------------------------------------------------//
