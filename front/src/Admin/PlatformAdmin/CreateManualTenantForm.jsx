@@ -5,8 +5,8 @@
  * Útil para demos, pilotos, clientes especiales, etc.
  */
 
-{ useState } from 'react';
-import { useCreateManualTenantMutation } from '../../../shared/redux';
+import { useState, useEffect } from 'react';
+import { useCreateManualTenantMutation, useCheckSubdomainAvailabilityQuery } from '@shared/redux';
 
 const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
   const [createTenant, { isLoading, isError, error }] = useCreateManualTenantMutation();
@@ -15,6 +15,7 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
     businessName: '',
     email: '',
     subdomain: '',
+    cuit: '',
     phone: '',
     address: '',
     plan: 'free',
@@ -29,21 +30,61 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
   });
   
   const [createdTenant, setCreatedTenant] = useState(null);
+  const [subdomainToCheck, setSubdomainToCheck] = useState('');
+  
+  // Validación de subdomain en tiempo real (debounce)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.subdomain && formData.subdomain.length >= 3) {
+        setSubdomainToCheck(formData.subdomain);
+      } else {
+        setSubdomainToCheck('');
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [formData.subdomain]);
+  
+  // Query para verificar disponibilidad
+  const { data: subdomainCheck, isFetching: checkingSubdomain } = useCheckSubdomainAvailabilityQuery(
+    subdomainToCheck,
+    { skip: !subdomainToCheck }
+  );
   
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Si es subdomain, convertir a minúsculas y quitar caracteres inválidos
+    if (name === 'subdomain') {
+      const cleanValue = value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '')
+        .replace(/^-+|-+$/g, ''); // No permitir guiones al inicio/fin
+      
+      setFormData(prev => ({
+        ...prev,
+        [name]: cleanValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validaciones básicas
-    if (!formData.businessName || !formData.email) {
-      alert('Nombre de negocio y email son requeridos');
+    if (!formData.businessName || !formData.email || !formData.subdomain) {
+      alert('Nombre de negocio, email y subdomain son requeridos');
+      return;
+    }
+    
+    // Validar que el subdomain esté disponible
+    if (subdomainCheck && !subdomainCheck.available) {
+      alert('El subdomain no está disponible. Por favor elige otro.');
       return;
     }
     
@@ -153,6 +194,7 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
                 businessName: '',
                 email: '',
                 subdomain: '',
+                cuit: '',
                 phone: '',
                 address: '',
                 plan: 'free',
@@ -227,19 +269,63 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Subdomain (opcional)
+                CUIT * <span className="text-xs text-gray-500">(formato: XX-XXXXXXXX-X)</span>
               </label>
               <input
                 type="text"
-                name="subdomain"
-                value={formData.subdomain}
+                name="cuit"
+                value={formData.cuit}
                 onChange={handleChange}
+                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="inmobiliaria-sm"
+                placeholder="20-12345678-9"
+                pattern="\d{2}-\d{8}-\d"
               />
+            </div>
+            
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Subdomain * <span className="text-xs text-gray-500">(será parte de la URL)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="subdomain"
+                  value={formData.subdomain}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formData.subdomain && subdomainCheck
+                      ? subdomainCheck.available
+                        ? 'border-green-500'
+                        : 'border-red-500'
+                      : 'border-gray-300'
+                  }`}
+                  placeholder="inmobiliaria-sm"
+                  minLength="3"
+                  maxLength="30"
+                />
+                {checkingSubdomain && (
+                  <span className="absolute right-3 top-3 text-gray-400">
+                    Verificando...
+                  </span>
+                )}
+                {formData.subdomain && subdomainCheck && !checkingSubdomain && (
+                  <span className={`absolute right-3 top-3 ${
+                    subdomainCheck.available ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {subdomainCheck.available ? '✓ Disponible' : '✗ No disponible'}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Si no se especifica, se genera automáticamente
+                Solo letras minúsculas, números y guiones. Mínimo 3 caracteres.
               </p>
+              {formData.subdomain && subdomainCheck && !subdomainCheck.available && (
+                <p className="text-xs text-red-600 mt-1">
+                  {subdomainCheck.message}
+                </p>
+              )}
             </div>
             
             <div>
@@ -404,7 +490,6 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
             </div>
           </div>
         </div>
-        
         {/* Notas */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -438,7 +523,7 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
           </button>
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || checkingSubdomain || (formData.subdomain && subdomainCheck && !subdomainCheck.available)}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Creando...' : '✨ Crear Tenant'}

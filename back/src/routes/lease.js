@@ -17,7 +17,11 @@ const {
   getUpdateStatistics,
   bulkUpdateLeases
 } = require('../controllers');
+const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 const router = express.Router();
+
+// Todas las rutas requieren tenancyMiddleware
+router.use(tenancyMiddleware);
 
 // Add logging middleware
 router.use((req, res, next) => {

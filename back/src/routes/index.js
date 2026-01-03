@@ -1,5 +1,6 @@
 const { Router } = require("express");
 const { requireTenantScope } = require("../middlewares/platformAdminMiddleware");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 const router = Router();
 
@@ -22,16 +23,16 @@ router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
 router.use("/platform-admin", require("./platformAdmin"));
 
 // Rutas de tenants (requieren tenantId - no accesibles por PLATFORM_ADMIN)
-router.use("/admin", requireTenantScope, require("./admin"));
-router.use("/client", requireTenantScope, require("./client"));
-router.use("/lease", requireTenantScope, require("./lease"));
-router.use("/payment", requireTenantScope, require("./payment"));
-router.use("/property", requireTenantScope, require("./property"));
-router.use("/garantor", requireTenantScope, require("./garantor"));
-router.use("/import", requireTenantScope, require("./import"));
-router.use("/pdf", requireTenantScope, require("./pdf")); // PDF generation and templates
-router.use("/tenant", requireTenantScope, require("./tenant")); // Tenant management and signature
-router.use("/subscriptions", requireTenantScope, require("./subscriptionRoutes")); // Plans and subscriptions
+router.use("/admin", require("./admin")); // Maneja auth + tenancy internamente
+router.use("/client", authMiddleware, requireTenantScope, require("./client"));
+router.use("/lease", authMiddleware, requireTenantScope, require("./lease"));
+router.use("/payment", authMiddleware, requireTenantScope, require("./payment"));
+router.use("/property", authMiddleware, requireTenantScope, require("./property"));
+router.use("/garantor", authMiddleware, requireTenantScope, require("./garantor"));
+router.use("/import", authMiddleware, requireTenantScope, require("./import"));
+router.use("/pdf", authMiddleware, requireTenantScope, require("./pdf")); // PDF generation and templates
+router.use("/tenant", authMiddleware, requireTenantScope, require("./tenant")); // Tenant management and signature
+router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
 
 module.exports = router;

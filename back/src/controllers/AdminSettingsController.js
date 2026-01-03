@@ -3,11 +3,16 @@ const { AdminSettings } = require('../data');
 // 🆕 Obtener TODA la configuración de la inmobiliaria
 exports.getSettings = async (req, res) => {
   try {
+    console.log('🔍 getSettings - req.user:', req.user);
     const { tenantId } = req.user; // Obtener tenantId del token JWT
+    console.log('🔍 getSettings - tenantId:', tenantId);
+    
     let settings = await AdminSettings.findOne({ where: { tenantId } });
+    console.log('🔍 getSettings - settings found:', settings ? 'Yes' : 'No');
     
     // Si no existe, crear con valores por defecto
     if (!settings) {
+      console.log('🔍 getSettings - Creating new settings...');
       settings = await AdminSettings.create({
         tenantId,
         company_name: 'Mi Inmobiliaria',
@@ -17,10 +22,12 @@ exports.getSettings = async (req, res) => {
         company_registration: '',
         company_cuit: '',
       });
+      console.log('🔍 getSettings - New settings created:', settings.id);
     }
 
     res.status(200).json(settings);
   } catch (error) {
+    console.error('❌ getSettings error:', error);
     res.status(500).json({ error: 'Error al obtener configuración', details: error.message });
   }
 };

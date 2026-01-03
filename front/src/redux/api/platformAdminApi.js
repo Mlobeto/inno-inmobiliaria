@@ -65,6 +65,14 @@ export const platformAdminApi = baseApi.injectEndpoints({
     }),
 
     /**
+     * GET /platform-admin/tenants/check-subdomain/:subdomain
+     * Verificar disponibilidad de subdomain
+     */
+    checkSubdomainAvailability: builder.query({
+      query: (subdomain) => `/platform-admin/tenants/check-subdomain/${subdomain}`,
+    }),
+
+    /**
      * POST /platform-admin/tenants/create-manual
      * Crea un tenant manualmente sin MercadoPago (para demos, trials, etc.)
      */
@@ -180,6 +188,7 @@ export const {
   
   // Tenants
   useListTenantsQuery,
+  useCheckSubdomainAvailabilityQuery,
   useCreateManualTenantMutation,
   useGetTenantDetailQuery,
   useUpdateTenantMutation,

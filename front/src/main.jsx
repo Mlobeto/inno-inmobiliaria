@@ -7,9 +7,27 @@ import { store } from "./redux/Store/store";
 import { Provider } from "react-redux";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { restoreSession } from '@shared/redux';
 
-//axios.defaults.baseURL = "http://localhost:3001";
-axios.defaults.baseURL = "https://qlinmobiliaria.onrender.com";
+axios.defaults.baseURL = "http://localhost:3001/api";
+//axios.defaults.baseURL = "https://qlinmobiliaria.onrender.com";
+
+// Configurar interceptor para incluir token en todas las peticiones
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Restaurar sesión desde localStorage
+store.dispatch(restoreSession());
 
 // Registrar Service Worker para PWA
 if ('serviceWorker' in navigator) {

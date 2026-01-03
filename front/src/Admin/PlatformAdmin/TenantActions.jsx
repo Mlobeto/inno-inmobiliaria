@@ -10,7 +10,7 @@ import {
   useUpdateTenantMutation,
   useSuspendTenantMutation,
   useActivateTenantMutation,
-} from '../../../shared/redux';
+} from '@shared/redux';
 
 const TenantActions = ({ tenant, onSuccess }) => {
   const [showSuspendModal, setShowSuspendModal] = useState(false);

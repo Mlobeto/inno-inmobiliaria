@@ -46,11 +46,6 @@ module.exports = (sequelize) => {
     },
     
     // Configuración de contratos
-    signatureUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: 'URL de la firma del responsable',
-    },
     contract_footer_text: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -59,7 +54,7 @@ module.exports = (sequelize) => {
     
     // 🆕 Multi-tenancy
     tenantId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       allowNull: true,
       references: {
         model: 'tenants',
@@ -76,6 +71,18 @@ module.exports = (sequelize) => {
       comment: 'Configuraciones adicionales en JSON',
     },
     
+    // Timestamps (camelCase en la BD, no snake_case)
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: 'createdAt', // Explícitamente usar camelCase
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: 'updatedAt', // Explícitamente usar camelCase
+    },
+    
   }, {
     scopes: {
       byTenant: (tenantId) => ({
@@ -86,7 +93,8 @@ module.exports = (sequelize) => {
       { fields: ['tenantId'] },
     ],
     tableName: 'admin_settings',
-    timestamps: true,
+    underscored: true, // Usar snake_case para columnas
+    timestamps: true, // La tabla tiene createdAt y updatedAt
   });
 
   return AdminSettings;

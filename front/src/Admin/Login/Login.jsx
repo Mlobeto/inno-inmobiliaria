@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Usar Redux desde shared
-import { useLoginMutation, setCredentials } from '../../../shared/redux';
+import { useLoginMutation, setCredentials } from '@shared/redux';
 
 const LoginAdmin = () => {
   const [username, setUsername] = useState('');

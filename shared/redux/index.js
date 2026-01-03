@@ -36,12 +36,76 @@ export {
   useGetRevenueQuery,
   useListTenantsQuery,
   useCreateManualTenantMutation,
+  useCheckSubdomainAvailabilityQuery,
   useGetTenantDetailQuery,
   useUpdateTenantMutation,
   useSuspendTenantMutation,
   useActivateTenantMutation,
   useListSubscriptionsQuery,
 } from './api/platformAdminApi';
+
+// ==================== SUBSCRIPTION API ====================
+export {
+  subscriptionApi,
+  useGetCurrentSubscriptionQuery,
+  useGetPlansQuery,
+} from './api/subscriptionApi';
+
+// ==================== CLIENT API ====================
+export {
+  clientApi,
+  useGetAllClientsQuery,
+  useGetClientByIdQuery,
+  useLazyGetClientByIdQuery,
+  useCreateClientMutation,
+  useUpdateClientMutation,
+  useDeleteClientMutation,
+} from './api/clientApi';
+
+// ==================== PROPERTY API ====================
+export {
+  propertyApi,
+  useGetAllPropertiesQuery,
+  useGetPropertyByIdQuery,
+  useLazyGetPropertyByIdQuery,
+  useGetPropertiesByClientQuery,
+  useLazyGetPropertiesByClientQuery,
+  useGetPropertiesByTypeQuery,
+  useCreatePropertyMutation,
+  useUpdatePropertyMutation,
+  useDeletePropertyMutation,
+} from './api/propertyApi';
+
+// ==================== LEASE API ====================
+export {
+  leaseApi,
+  useGetAllLeasesQuery,
+  useGetLeaseByIdQuery,
+  useLazyGetLeaseByIdQuery,
+  useGetLeasesByClientQuery,
+  useLazyGetLeasesByClientQuery,
+  useCreateLeaseMutation,
+  useUpdateLeaseMutation,
+  useUpdateLeaseRentMutation,
+  useQuickUpdateLeaseMutation,
+  useBulkUpdateLeasesMutation,
+  useGetPendingUpdatesQuery,
+  useGetLeaseHistoryQuery,
+  useGetUpdateStatsQuery,
+} from './api/leaseApi';
+
+// ==================== PAYMENT API ====================
+export {
+  paymentApi,
+  useGetAllPaymentsQuery,
+  useGetPaymentsByLeaseQuery,
+  useLazyGetPaymentsByLeaseQuery,
+  useGetPaymentsByClientQuery,
+  useLazyGetPaymentsByClientQuery,
+  useCreatePaymentMutation,
+  useUpdatePaymentMutation,
+  useDeletePaymentMutation,
+} from './api/paymentApi';
 
 // ==================== AUTH SLICE ====================
 export {

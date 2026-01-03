@@ -1,8 +1,12 @@
 const express = require('express');
 const multer = require('multer');
 const { importClients, importProperties } = require('../controllers/importController');
+const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 
 const router = express.Router();
+
+// Todas las rutas requieren tenancyMiddleware
+router.use(tenancyMiddleware);
 
 // Configuración de multer para manejar archivos en memoria
 const storage = multer.memoryStorage();

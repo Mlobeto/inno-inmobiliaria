@@ -576,7 +576,7 @@ exports.getAllLeases = async (req, res) => {
         { model: Property },
         { model: PaymentReceipt, required: false },
         { model: Garantor, required: false },
-        { model: Client, as: 'Tenant', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
+        { model: Client, as: 'Renter', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
         { model: Client, as: 'Landlord', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
         { model: RentUpdate, required: false, order: [['updateDate', 'DESC']] }
       ],
@@ -936,9 +936,10 @@ exports.getLeasesPendingUpdate = async (req, res) => {
     
     // 🔧 Definir 'now' al inicio de la función
     const now = new Date();
+    const { tenantId } = req.user; // Obtener tenantId
     
     const leases = await Lease.findAll({
-      where: { status: 'active' },
+      where: { status: 'active', tenantId }, // Filtrar por tenant
       include: [
         { model: Property },
         { model: Client, as: 'Tenant', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
@@ -1054,9 +1055,16 @@ exports.getLeaseUpdateHistory = async (req, res) => {
       });
     }
     
+    const { tenantId } = req.user; // Obtener tenantId
+    
     // Obtener todas las actualizaciones del contrato
     const updates = await RentUpdate.findAll({
       where: { leaseId: id },
+      include: [{
+        model: Lease,
+        where: { tenantId }, // Verificar que el lease pertenece al tenant
+        attributes: []
+      }],
       order: [['updateDate', 'DESC']] // Más recientes primero
     });
     
@@ -1320,8 +1328,10 @@ exports.getUpdateStatistics = async (req, res) => {
   try {
     console.log('📈 Generando estadísticas de actualizaciones...');
     
+    const { tenantId } = req.user; // Obtener tenantId
+    
     // Obtener todos los contratos activos
-    const totalActiveLeases = await Lease.count({ where: { status: 'active' } });
+    const totalActiveLeases = await Lease.count({ where: { status: 'active', tenantId } });
     
     // Obtener contratos que necesitan actualización
     const pendingResponse = await exports.getLeasesPendingUpdate({ query: {} }, {
@@ -1367,7 +1377,7 @@ exports.getUpdateStatistics = async (req, res) => {
         'updateFrequency',
         [Lease.sequelize.fn('COUNT', Lease.sequelize.col('id')), 'count']
       ],
-      where: { status: 'active' },
+      where: { status: 'active', tenantId },
       group: ['updateFrequency'],
       raw: true
     });
@@ -1437,6 +1447,7 @@ exports.getUpdateStatistics = async (req, res) => {
 exports.getExpiringLeases = async (req, res) => {
   try {
     const { months = 3 } = req.query; // Por defecto, mostrar los que vencen en 3 meses
+    const { tenantId } = req.user; // Obtener tenantId
     
     console.log(`⏰ Buscando contratos que vencen en los próximos ${months} meses...`);
     
@@ -1445,7 +1456,7 @@ exports.getExpiringLeases = async (req, res) => {
     futureDate.setMonth(futureDate.getMonth() + parseInt(months));
     
     const leases = await Lease.findAll({
-      where: { status: 'active' },
+      where: { status: 'active', tenantId },
       include: [
         { model: Property, attributes: ['address'] },
         { model: Client, as: 'Tenant', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },

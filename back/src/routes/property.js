@@ -10,8 +10,12 @@ const {
   getFilteredProperties,
   getWhatsAppText
 } = require("../controllers");
+const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 
 const router = Router();
+
+// Todas las rutas requieren tenancyMiddleware
+router.use(tenancyMiddleware);
 
 // Middleware para loggear todas las peticiones a /property
 router.use((req, res, next) => {

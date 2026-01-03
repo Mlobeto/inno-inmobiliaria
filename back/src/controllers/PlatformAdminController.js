@@ -17,7 +17,7 @@ exports.getDashboard = async (req, res) => {
     const activeSubscriptions = await Subscription.count({ 
       where: { 
         status: 'active',
-        endDate: { [Op.gt]: new Date() }
+        currentPeriodEnd: { [Op.gt]: new Date() }
       } 
     });
 
@@ -35,7 +35,7 @@ exports.getDashboard = async (req, res) => {
     const mrrResult = await Subscription.findAll({
       where: { 
         status: 'active',
-        endDate: { [Op.gt]: new Date() }
+        currentPeriodEnd: { [Op.gt]: new Date() }
       },
       attributes: [
         [sequelize.fn('SUM', sequelize.col('amount')), 'totalMRR']
@@ -82,7 +82,7 @@ exports.getDashboard = async (req, res) => {
     const trialTenants = await Subscription.count({
       where: { 
         status: 'trialing',
-        endDate: { [Op.gt]: new Date() }
+        currentPeriodEnd: { [Op.gt]: new Date() }
       }
     });
 
@@ -619,8 +619,52 @@ exports.getMetrics = async (req, res) => {
   }
 };
 
-/**
- * @route POST /api/platform-admin/tenants/create-manual
+/** * @route GET /api/platform-admin/tenants/check-subdomain/:subdomain
+ * @desc Verificar si un subdomain está disponible
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.checkSubdomainAvailability = async (req, res) => {
+  try {
+    const { subdomain } = req.params;
+    
+    // Validar formato del subdomain
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
+    if (!subdomainRegex.test(subdomain)) {
+      return res.status(400).json({
+        success: false,
+        available: false,
+        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).'
+      });
+    }
+    
+    // Verificar si ya existe
+    const existingTenant = await Tenant.findOne({ where: { subdomain } });
+    
+    if (existingTenant) {
+      return res.status(200).json({
+        success: true,
+        available: false,
+        message: 'Este subdomain ya está en uso'
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      available: true,
+      message: 'Subdomain disponible'
+    });
+    
+  } catch (error) {
+    console.error('Error verificando subdomain:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar subdomain',
+      error: error.message
+    });
+  }
+};
+
+/** * @route POST /api/platform-admin/tenants/create-manual
  * @desc Crea un tenant manualmente sin pasar por MercadoPago
  * @access Private (PLATFORM_ADMIN only)
  */
@@ -630,6 +674,7 @@ exports.createManualTenant = async (req, res) => {
       businessName,
       email,
       subdomain,
+      cuit,
       phone,
       address,
       plan = 'free',
@@ -645,10 +690,19 @@ exports.createManualTenant = async (req, res) => {
     } = req.body;
 
     // Validaciones
-    if (!businessName || !email) {
+    if (!businessName || !email || !subdomain) {
       return res.status(400).json({
         success: false,
-        message: 'businessName y email son requeridos'
+        message: 'businessName, email y subdomain son requeridos'
+      });
+    }
+    
+    // Validar formato del subdomain
+    const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
+    if (!subdomainRegex.test(subdomain)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).'
       });
     }
 
@@ -672,6 +726,17 @@ exports.createManualTenant = async (req, res) => {
       }
     }
 
+    // Verificar si el CUIT ya existe
+    if (cuit) {
+      const existingCuit = await Tenant.findOne({ where: { cuit } });
+      if (existingCuit) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe un tenant con ese CUIT'
+        });
+      }
+    }
+
     // Generar subdomain si no se proporciona
     const finalSubdomain = subdomain || businessName
       .toLowerCase()
@@ -684,10 +749,11 @@ exports.createManualTenant = async (req, res) => {
       businessName,
       email,
       subdomain: finalSubdomain,
+      cuit,
       phone: phone || null,
       address: address || null,
-      plan,
-      status: 'active',
+      plan: plan.toUpperCase(),
+      status: 'ACTIVE',
       maxAgents,
       maxProperties,
       features,
@@ -701,7 +767,7 @@ exports.createManualTenant = async (req, res) => {
 
     const subscription = await Subscription.create({
       tenantId: newTenant.tenantId,
-      planId: plan,
+      planId: plan.toLowerCase(),
       status: durationDays > 0 ? 'trialing' : 'active',
       startDate,
       endDate,

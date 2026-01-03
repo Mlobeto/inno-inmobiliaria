@@ -8,7 +8,7 @@ import {
   baseApi,
   authReducer,
   platformAdminReducer 
-} from '../../../shared/redux';
+} from '@shared/redux';
 
 export const store = configureStore({
   reducer: {

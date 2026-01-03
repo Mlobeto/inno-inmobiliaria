@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useResetPasswordMutation } from '../../../shared/redux';
+import { useResetPasswordMutation } from '@shared/redux';
 
 const ResetPassword = () => {
   const { token } = useParams(); // Token desde la URL /reset-password/:token

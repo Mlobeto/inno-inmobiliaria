@@ -15,7 +15,7 @@ import {
   useGetRevenueQuery,
   setActiveView,
   selectActiveView,
-} from '../../../shared/redux';
+} from '@shared/redux';
 
 const PlatformDashboard = () => {
   const dispatch = useDispatch();

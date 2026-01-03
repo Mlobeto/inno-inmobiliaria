@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { 
@@ -8,12 +9,14 @@ import {
   IoMailOutline,
   IoDocumentTextOutline,
   IoSaveOutline,
-  IoImageOutline
+  IoImageOutline,
+  IoArrowBackOutline
 } from 'react-icons/io5';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const CompanySettings = () => {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState({
     company_name: '',
     company_address: '',
@@ -36,7 +39,7 @@ const CompanySettings = () => {
   const loadSettings = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/admin/settings`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -66,7 +69,7 @@ const CompanySettings = () => {
 
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('token');
       await axios.put(`${API_URL}/admin/settings`, settings, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -93,6 +96,13 @@ const CompanySettings = () => {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <button
+            onClick={() => navigate('/panel')}
+            className="flex items-center text-blue-600 hover:text-blue-800 mb-4 transition-colors"
+          >
+            <IoArrowBackOutline className="w-5 h-5 mr-2" />
+            Volver al Panel
+          </button>
           <div className="flex items-center space-x-3">
             <IoBusinessOutline className="w-8 h-8 text-blue-600" />
             <div>

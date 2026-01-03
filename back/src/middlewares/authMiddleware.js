@@ -1,7 +1,8 @@
 const jwt = require('jsonwebtoken');
+const { Admin } = require('../data');
 require('dotenv').config();
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -12,8 +13,27 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    req.adminId = verified.id; // Asegúrate de que coincida con el payload del token
-    req.role = verified.role; // Si necesitas el rol
+    
+    // Buscar el admin completo en la base de datos
+    const admin = await Admin.findByPk(verified.id);
+    
+    if (!admin) {
+      return res.status(401).json({ message: 'Usuario no encontrado' });
+    }
+    
+    // Establecer req.user con toda la información del admin
+    req.user = {
+      adminId: admin.adminId,
+      username: admin.username,
+      email: admin.email,
+      role: admin.role,
+      tenantId: admin.tenantId
+    };
+    
+    // Mantener compatibilidad con código antiguo
+    req.adminId = verified.id;
+    req.role = verified.role;
+    
     next();
   } catch (error) {
     res.status(401).json({ message: 'Token inválido o expirado' });

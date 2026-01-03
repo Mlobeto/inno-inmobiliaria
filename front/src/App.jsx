@@ -13,6 +13,9 @@ import FiltroPropiedades from "./Components/Propiedades/FiltroPropiedades"
 import LoginAdmin from "./Admin/Login/Login"; // 🔄 ACTUALIZADO: Nueva ruta
 import ForgotPassword from "./Admin/Login/ForgotPassword"; // 🆕 NUEVO
 import ResetPassword from "./Admin/Login/ResetPassword"; // 🆕 NUEVO
+import PlatformAdminDashboard from "./Admin/PlatformAdmin/Dashboard"; // 🆕 NUEVO
+import TenantList from "./Admin/PlatformAdmin/TenantList"; // 🆕 NUEVO
+import TenantDetail from "./Admin/PlatformAdmin/TenantDetail"; // 🆕 NUEVO
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
@@ -228,6 +231,11 @@ function App() {
       <Route path="/login" element={<LoginAdmin />} />
       <Route path="/forgot-password" element={<ForgotPassword />} /> {/* 🆕 NUEVO */}
       <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* 🆕 NUEVO */}
+      
+      {/* Platform Admin */}
+      <Route path="/platform-admin/dashboard" element={<PlatformAdminDashboard />} /> {/* 🆕 NUEVO */}
+      <Route path="/platform-admin/tenants" element={<TenantList />} /> {/* 🆕 NUEVO */}
+      <Route path="/platform-admin/tenants/:tenantId" element={<TenantDetail />} /> {/* 🆕 NUEVO */}
     </Routes>
     </>
   );

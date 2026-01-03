@@ -63,6 +63,10 @@ export const platformAdminApi = baseApi.injectEndpoints({
       ],
     }),
 
+    checkSubdomainAvailability: builder.query({
+      query: (subdomain) => `/platform-admin/tenants/check-subdomain/${subdomain}`,
+    }),
+
     getTenantDetail: builder.query({
       query: (tenantId) => `/platform-admin/tenants/${tenantId}`,
       providesTags: (result, error, tenantId) => [{ type: 'Tenants', id: tenantId }],
@@ -143,6 +147,7 @@ export const {
   // Tenants
   useListTenantsQuery,
   useCreateManualTenantMutation,
+  useCheckSubdomainAvailabilityQuery,
   useGetTenantDetailQuery,
   useUpdateTenantMutation,
   useSuspendTenantMutation,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useForgotPasswordMutation } from '../../../shared/redux';
+import { useForgotPasswordMutation } from '@shared/redux';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');

@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'ql-inmobiliaria-v1';
+const CACHE_NAME = 'ql-inmobiliaria-v2'; // Incrementar versión para forzar actualización
 const urlsToCache = [
   '/',
   '/index.html',
@@ -40,16 +40,32 @@ self.addEventListener('activate', (event) => {
 
 // Estrategia: Network First, fallback a Cache
 self.addEventListener('fetch', (event) => {
+  // Ignorar extensiones de Chrome y otros esquemas no HTTP/HTTPS
+  const url = event.request.url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return;
+  }
+
+  // No cachear peticiones POST, PUT, DELETE (solo GET)
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clonar la respuesta
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        // Solo cachear respuestas exitosas
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            })
+            .catch(() => {
+              // Ignorar errores de caché
+            });
+        }
         
         return response;
       })

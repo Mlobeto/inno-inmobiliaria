@@ -19,6 +19,7 @@ router.get('/revenue', platformAdminController.getRevenue);
  * Gestión de tenants
  */
 router.get('/tenants', platformAdminController.listTenants);
+router.get('/tenants/check-subdomain/:subdomain', platformAdminController.checkSubdomainAvailability);
 router.post('/tenants/create-manual', platformAdminController.createManualTenant);
 router.get('/tenants/:tenantId', platformAdminController.getTenantDetail);
 router.put('/tenants/:tenantId', platformAdminController.updateTenant);

@@ -69,6 +69,7 @@ module.exports = (sequelize) => {
       },
     },
     {
+      tableName: 'admins',
       paranoid: true,
       scopes: {
         byTenant: (tenantId) => ({
