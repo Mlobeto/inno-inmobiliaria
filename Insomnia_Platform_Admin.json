@@ -16,7 +16,7 @@
       "_type": "environment",
       "name": "Base Environment",
       "data": {
-        "base_url": "http://localhost:3001",
+        "base_url": "http://localhost:3001/api",
         "token": ""
       },
       "dataPropertyOrder": {
@@ -44,15 +44,34 @@
       "parentId": "wrk_platform_admin"
     },
     {
+      "_id": "req_register_platform_admin",
+      "_type": "request",
+      "parentId": "folder_auth",
+      "name": "Registrar Platform Admin",
+      "method": "POST",
+      "url": "{{ _.base_url }}/api/auth/register-platform-admin",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"username\": \"platform_admin\",\n  \"password\": \"Admin123\",\n  \"fullName\": \"Platform Administrator\",\n  \"email\": \"admin@innoinmo.com\"\n}"
+      },
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Crea un nuevo Platform Admin sin tenantId. Este usuario puede acceder al dashboard de administración de plataforma."
+    },
+    {
       "_id": "req_login",
       "_type": "request",
       "parentId": "folder_auth",
       "name": "Login Platform Admin",
       "method": "POST",
-      "url": "{{ _.base_url }}/auth/login",
+      "url": "{{ _.base_url }}/api/auth/login",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"username\": \"platform_admin\",\n  \"password\": \"ChangeMe123!\"\n}"
+        "text": "{\n  \"username\": \"platform_admin\",\n  \"password\": \"Admin123\"\n}"
       },
       "headers": [
         {

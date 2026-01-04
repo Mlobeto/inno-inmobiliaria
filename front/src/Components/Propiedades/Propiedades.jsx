@@ -58,6 +58,7 @@ const CreateProperty = () => {
     Inventory: "",
     superficieTotal: "",
     superficieCubierta: "",
+    requisito: "",
   });
   const [showPdfButton, setShowPdfButton] = useState(false);
 
@@ -93,10 +94,49 @@ const CreateProperty = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const processedValue = name === "comision" ? Number(value) : value;
-    setFormData({
-      ...formData,
-      [name]: processedValue,
-    });
+    
+    // Si cambia el tipo a "alquiler" y el campo requisito está vacío, cargar la plantilla
+    if (name === "type" && value === "alquiler" && !formData.requisito) {
+      const plantillaRequisito = `REQUISITOS PARA ALQUILAR
+
+1. Fotocopia D.N.I./ CUIL/CUIT, solicitante/s y garante/s, domicilio y teléfono de los mismos, sino es del dominio del documento electrónico.
+
+2. Fotocopia de los últimos tres recibos de sueldo, y certificado de trabajo, si es autónomo justificación de ingresos, esta puede hacer por un Contador y debe pasar por el Colegio Profesional de Ciencias Económicas, para ser certificada.
+
+3. Tipos de garantía: Cantidad: 1 - con recibos de sueldo o certificación de ingresos.
+   • Recibo de sueldo no inferior al tercio del monto del alquiler Garante:
+
+DNI:
+Domicilio:
+Correo electrónico:
+
+4. Los garantes firman el contrato ante escribano para que les certifique la firma, y cuando firme ante escribano deberá ser legalizado por el colegio de Escribanos.
+
+5. Monto del alquiler mensual: 1º Cuatrimestre $$$$$$$$$$ Para los cuatrimestres siguientes de locación el precio será actualizado conforme el índice de precio al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC).
+
+6. Honorarios de contratos ante escribano y favor de firma inmobiliaria: Igual al monto del alquiler
+
+7. Período de locación: 2 años
+
+8. Certificado de firma ante escribano público.
+
+9. Sellado en rentas provincial
+
+10. No se pide mes de depósito.
+
+11. Reserva con seña 50% del monto del alquiler, validez 7 días hábiles.`;
+      
+      setFormData({
+        ...formData,
+        [name]: processedValue,
+        requisito: plantillaRequisito
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: processedValue,
+      });
+    }
   };
 
   const handleClientSelect = (e) => {
@@ -744,6 +784,27 @@ const CreateProperty = () => {
                       placeholder="https://maps.google.com/..."
                     />
                   </div>
+
+                  {/* Campo Requisito - Solo para propiedades en alquiler */}
+                  {formData.type === "alquiler" && (
+                    <div>
+                      <label htmlFor="requisito" className="block text-slate-300 font-medium mb-2">
+                        Requisitos de Alquiler
+                      </label>
+                      <textarea
+                        id="requisito"
+                        name="requisito"
+                        value={formData.requisito}
+                        onChange={handleChange}
+                        rows="10"
+                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm font-mono text-sm"
+                        placeholder="Requisitos específicos para esta propiedad..."
+                      />
+                      <p className="text-slate-400 text-xs mt-1">
+                        Deja en blanco para usar la plantilla por defecto
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -7,7 +7,9 @@ import PropiedadesPDF from "../PdfTemplates/PropiedadesPdf";
 import CreateLeaseForm from "../Contratos/CreateLeaseForm";
 import CompraVenta from "../Contratos/CompraVenta";
 import WhatsAppButton from './WhatsAppButton';
+import RequisitoButton from './RequisitoButton';
 import ImageManager from './ImageManager';
+import EditPropertyModal from './EditPropertyModal';
 import { 
   IoArrowBackOutline,
   IoHomeOutline,
@@ -18,7 +20,7 @@ import {
   IoPeopleOutline,
   IoLocationOutline,
   IoPricetagOutline,
-  IoSaveOutline,
+ 
   IoCloseOutline,
   IoChevronBackOutline,
   IoChevronForwardOutline,
@@ -47,6 +49,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     }).format(value);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
@@ -55,6 +58,8 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [propertyToEdit, setPropertyToEdit] = useState(null);
   const propertiesPerPage = 5;
 
   // Filtrar solo propiedades disponibles para alquiler/venta según el modo
@@ -75,12 +80,21 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filtrar propiedades por dirección y disponibilidad (optimizado)
-  const filteredProperties = useMemo(() => 
-    availableProperties.filter((property) =>
-      property.address.toLowerCase().includes(searchTerm.toLowerCase())
-    ), [availableProperties, searchTerm]
-  );
+  // Filtrar y ordenar propiedades (optimizado)
+  const filteredProperties = useMemo(() => {
+    return availableProperties
+      .filter((property) =>
+        property.address.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => {
+        // Primero ordenar por disponibilidad (disponibles primero)
+        if (a.isAvailable !== b.isAvailable) {
+          return b.isAvailable ? 1 : -1;
+        }
+        // Luego ordenar por fecha de creación (más recientes primero)
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+  }, [availableProperties, searchTerm]);
 
   // Paginación optimizada
   const paginationData = useMemo(() => {
@@ -123,6 +137,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     return error;
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
     const error = validateField(field, value);
@@ -130,10 +145,11 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   };
 
   const handleEdit = (property) => {
-    setEditingId(property.propertyId);
-    setFormData({ ...property });
+    setPropertyToEdit(property);
+    setShowEditModal(true);
   };
 
+  // eslint-disable-next-line no-unused-vars
   const handleSave = () => {
     const validationErrors = Object.keys(formData).reduce((acc, field) => {
       const error = validateField(field, formData[field]);
@@ -275,206 +291,158 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {paginatedProperties.map((property) => (
-            <div key={property.propertyId} className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10 hover:border-white/20 transition-all duration-300 group">
-              {/* Property Header */}
-              <div className="flex justify-between items-start gap-3 mb-4">
-                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                  <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
-                    <IoBusinessOutline className="w-5 h-5 text-blue-400" />
+            <div key={property.propertyId} className={`bg-white/5 backdrop-blur-sm rounded-xl p-5 border transition-all duration-300 group hover:shadow-xl ${
+              property.isAvailable 
+                ? 'border-green-500/30 hover:border-green-500/50' 
+                : 'border-red-500/30 hover:border-red-500/50 opacity-75'
+            }`}>
+              {/* Header con estado e ID */}
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl">
+                    <IoBusinessOutline className="w-6 h-6 text-blue-400" />
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-white font-semibold truncate">Propiedad #{property.propertyId}</h3>
-                    <p className="text-slate-400 text-sm truncate">{property.type || 'Sin especificar'}</p>
+                  <div>
+                    <h3 className="text-white font-bold text-lg">Propiedad #{property.propertyId}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        property.type === 'alquiler' 
+                          ? 'bg-blue-500/20 text-blue-300' 
+                          : 'bg-purple-500/20 text-purple-300'
+                      }`}>
+                        {property.type === 'alquiler' ? '🏠 Alquiler' : '💰 Venta'}
+                      </span>
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                        property.isAvailable 
+                          ? 'bg-green-500/20 text-green-300' 
+                          : 'bg-red-500/20 text-red-300'
+                      }`}>
+                        {property.isAvailable ? '✓ Disponible' : '✗ No Disponible'}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 
-                {/* Action Buttons - Ahora con wrap para múltiples filas */}
-                <div className="flex flex-wrap gap-1 justify-end max-w-[180px]">
-                  {editingId === property.propertyId ? (
-                    <>
-                      <button 
-                        onClick={handleSave}
-                        className="p-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-colors duration-200"
-                        title="Guardar"
-                      >
-                        <IoSaveOutline className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setEditingId(null)}
-                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors duration-200"
-                        title="Cancelar"
-                      >
-                        <IoCloseOutline className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button 
-                        onClick={() => handleEdit(property)}
-                        className="p-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-colors duration-200"
-                        title="Editar"
-                      >
-                        <IoPencilOutline className="w-4 h-4" />
-                      </button>
-                      <WhatsAppButton 
-                        propertyId={property.propertyId}
-                        property={property}
-                      />
-                      <ImageManager property={property} />
-                      <button 
-                        onClick={() => handleDelete(property.propertyId)}
-                        className="p-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors duration-200"
-                        title="Eliminar"
-                      >
-                        <IoTrashOutline className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => handleEdit(property)}
+                    className="p-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    title="Editar Propiedad"
+                  >
+                    <IoPencilOutline className="w-5 h-5" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(property.propertyId)}
+                    className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    title="Eliminar"
+                  >
+                    <IoTrashOutline className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Property Details */}
-              <div className="space-y-4">
-                {/* Address */}
-                <div className="flex items-start space-x-3">
-                  <IoLocationOutline className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-slate-400 text-sm">Dirección</label>
-                    {editingId === property.propertyId ? (
-                      <div>
-                        <input
-                          className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                          value={formData.address || ""}
-                          onChange={(e) => handleInputChange("address", e.target.value)}
-                          placeholder="Ingrese la dirección"
-                        />
-                        {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
-                      </div>
-                    ) : (
-                      <p className="text-white font-medium mt-1">{property.address}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Neighborhood */}
-                <div className="flex items-start space-x-3">
-                  <IoLocationOutline className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-slate-400 text-sm">Barrio</label>
-                    {editingId === property.propertyId ? (
-                      <div>
-                        <input
-                          className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                          value={formData.neighborhood || ""}
-                          onChange={(e) => handleInputChange("neighborhood", e.target.value)}
-                          placeholder="Ingrese el barrio"
-                        />
-                        {errors.neighborhood && <p className="text-red-400 text-xs mt-1">{errors.neighborhood}</p>}
-                      </div>
-                    ) : (
-                      <p className="text-white font-medium mt-1">{property.neighborhood}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-start space-x-3">
-                  <IoPricetagOutline className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-slate-400 text-sm">Precio</label>
-                    {editingId === property.propertyId ? (
-                      <div>
-                        <input
-                          className="w-full mt-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
-                          value={formData.price || ""}
-                          onChange={(e) => handleInputChange("price", e.target.value)}
-                          placeholder="Ingrese el precio"
-                          type="number"
-                        />
-                        {errors.price && <p className="text-red-400 text-xs mt-1">{errors.price}</p>}
-                      </div>
-                    ) : (
-                      <p className="text-emerald-400 font-bold text-lg mt-1">{formatCurrency(property.price)}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Clients */}
-                <div className="flex items-start space-x-3">
-                  <IoPeopleOutline className="w-5 h-5 text-slate-400 mt-0.5" />
-                  <div className="flex-1">
-                    <label className="text-slate-400 text-sm">Clientes Asignados</label>
-                    <div className="mt-1">
-                      {property.Clients?.length > 0 ? (
-                        <div className="space-y-1">
-                          {property.Clients.map((client) => (
-                            <div key={client.idClient} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2">
-                              <span className="text-white text-sm">{client.name}</span>
-                              <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">
-                                {client.ClientProperty?.role || 'Sin rol'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-slate-400 text-sm italic">Sin clientes asignados</p>
-                      )}
+              {/* Grid de información principal */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Columna izquierda: Ubicación */}
+                <div className="space-y-3">
+                  <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IoLocationOutline className="w-4 h-4 text-blue-400" />
+                      <span className="text-blue-300 text-xs font-semibold uppercase">Ubicación</span>
                     </div>
+                    <p className="text-white font-medium text-base">{property.address}</p>
+                    <p className="text-slate-300 text-sm mt-1">{property.neighborhood}</p>
+                  </div>
+                </div>
+
+                {/* Columna derecha: Precio */}
+                <div className="space-y-3">
+                  <div className="bg-emerald-500/10 rounded-lg p-3 border border-emerald-500/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <IoPricetagOutline className="w-4 h-4 text-emerald-400" />
+                      <span className="text-emerald-300 text-xs font-semibold uppercase">Precio</span>
+                    </div>
+                    <p className="text-emerald-400 font-bold text-2xl">{formatCurrency(property.price)}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Botón contextual y PDF */}
-              {editingId !== property.propertyId && (
-                <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
-                  {/* Botón contextual según el modo */}
-                  {mode !== "default" && (
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => {
-                          console.log("=== Click en botón de selección ===");
-                          console.log("onSelectProperty definido:", !!onSelectProperty);
-                          console.log("Property:", property);
-                          
-                          // Si hay callback de selección, usarlo (cuando viene de CreateLeaseForm)
-                          if (onSelectProperty) {
-                            console.log("Llamando a onSelectProperty...");
-                            onSelectProperty(property);
-                          } else {
-                            console.log("Abriendo modal interno...");
-                            // Si no, usar el modal interno
-                            setSelectedProperty(property);
-                            if (mode === "lease") setShowCreateModal(true);
-                            if (mode === "sale") setShowSaleModal(true);
-                          }
-                        }}
-                        className={`w-full flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] ${
-                          mode === "lease" 
-                            ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                            : "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
-                        }`}
-                      >
-                        {mode === "lease" ? (
-                          <>
-                            <IoKeyOutline className="w-5 h-5 mr-2" />
-                            {onSelectProperty ? "Seleccionar Propiedad" : "Crear Contrato de Alquiler"}
-                          </>
-                        ) : (
-                          <>
-                            <IoBusinessOutline className="w-5 h-5 mr-2" />
-                            {onSelectProperty ? "Seleccionar Propiedad" : "Gestionar Compraventa"}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                  
-                  {/* PDF Button */}
-                  <div className="flex justify-center">
-                    <PropiedadesPDF property={property} />
+              {/* Clientes asignados */}
+              {property.Clients && property.Clients.length > 0 && (
+                <div className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/20 mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <IoPeopleOutline className="w-4 h-4 text-purple-400" />
+                    <span className="text-purple-300 text-xs font-semibold uppercase">Clientes Asignados</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {property.Clients.map((client) => (
+                      <div key={client.idClient} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
+                        <span className="text-white text-sm font-medium">{client.name}</span>
+                        <span className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full">
+                          {client.ClientProperty?.role || 'Sin rol'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
+
+              {/* Footer con acciones */}
+              <div className="pt-4 mt-4 border-t border-white/10">
+                {/* Acciones Rápidas */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <WhatsAppButton 
+                    propertyId={property.propertyId}
+                    property={property}
+                  />
+                  <RequisitoButton property={property} />
+                  <ImageManager property={property} />
+                  <div className="flex-grow flex justify-end">
+                    <PropiedadesPDF property={property} />
+                  </div>
+                </div>
+
+                {/* Botón contextual según el modo */}
+                {mode !== "default" && (
+                  <button
+                    onClick={() => {
+                      console.log("=== Click en botón de selección ===");
+                      console.log("onSelectProperty definido:", !!onSelectProperty);
+                      console.log("Property:", property);
+                      
+                      // Si hay callback de selección, usarlo (cuando viene de CreateLeaseForm)
+                      if (onSelectProperty) {
+                        console.log("Llamando a onSelectProperty...");
+                        onSelectProperty(property);
+                      } else {
+                        console.log("Abriendo modal interno...");
+                        // Si no, usar el modal interno
+                        setSelectedProperty(property);
+                        if (mode === "lease") setShowCreateModal(true);
+                        if (mode === "sale") setShowSaleModal(true);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] shadow-lg ${
+                      mode === "lease" 
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
+                        : "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
+                    }`}
+                  >
+                    {mode === "lease" ? (
+                      <>
+                        <IoKeyOutline className="w-5 h-5 mr-2" />
+                        {onSelectProperty ? "Seleccionar Propiedad" : "Crear Contrato de Alquiler"}
+                      </>
+                    ) : (
+                      <>
+                        <IoBusinessOutline className="w-5 h-5 mr-2" />
+                        {onSelectProperty ? "Seleccionar Propiedad" : "Gestionar Compraventa"}
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -630,6 +598,17 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Edición Completo */}
+      {showEditModal && (
+        <EditPropertyModal
+          property={propertyToEdit}
+          onClose={() => {
+            setShowEditModal(false);
+            setPropertyToEdit(null);
+          }}
+        />
       )}
     </div>
   );

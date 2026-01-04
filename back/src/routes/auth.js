@@ -1,6 +1,7 @@
 const express = require('express');
 const { 
-  register, 
+  register,
+  registerPlatformAdmin,
   loginAdmin, 
   getAllAdmins, 
   verifyToken, 
@@ -13,6 +14,7 @@ const router = express.Router();
 
 // Autenticación básica
 router.post('/register', register);
+router.post('/register-platform-admin', registerPlatformAdmin); // Nueva ruta para Platform Admin
 router.post('/login', loginAdmin);
 router.get('/verify', verifyToken);
 

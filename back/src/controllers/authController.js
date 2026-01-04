@@ -28,6 +28,61 @@ exports.register = async (req, res) => {
     }
   };
 
+// Registrar un Platform Admin (sin tenantId)
+exports.registerPlatformAdmin = async (req, res) => {
+  const { username, password, fullName, email } = req.body;
+
+  console.log('POST /auth/register-platform-admin - Creando Platform Admin:', { username, email });
+
+  try {
+    // Validar datos requeridos
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Username y password son requeridos' });
+    }
+
+    // Verificar que el username no exista
+    const existingAdmin = await Admin.findOne({ where: { username } });
+    if (existingAdmin) {
+      return res.status(409).json({ message: 'El username ya está en uso' });
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear el Platform Admin con tenantId = null
+    const newPlatformAdmin = await Admin.create({
+      username,
+      password: hashedPassword,
+      fullName: fullName || 'Platform Administrator',
+      email: email || null,
+      role: 'PLATFORM_ADMIN',
+      tenantId: null // NULL para Platform Admin
+    });
+
+    console.log('✅ Platform Admin creado:', {
+      adminId: newPlatformAdmin.adminId,
+      username: newPlatformAdmin.username,
+      role: newPlatformAdmin.role,
+      tenantId: newPlatformAdmin.tenantId
+    });
+
+    res.status(201).json({
+      message: 'Platform Admin registrado con éxito',
+      admin: {
+        adminId: newPlatformAdmin.adminId,
+        username: newPlatformAdmin.username,
+        fullName: newPlatformAdmin.fullName,
+        email: newPlatformAdmin.email,
+        role: newPlatformAdmin.role,
+        tenantId: newPlatformAdmin.tenantId
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error al crear Platform Admin:', error);
+    res.status(500).json({ message: 'Error al crear Platform Admin', error: error.message });
+  }
+};
+
 // Iniciar sesión (login)
 exports.loginAdmin = async (req, res) => {
   const { username, password } = req.body;

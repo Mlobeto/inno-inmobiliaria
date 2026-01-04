@@ -90,7 +90,8 @@ exports.createProperty = async (req, res) => {
         socio: socio || null,
         inventory: inventory || null,
         superficieCubierta: superficieCubierta || null,
-        superficieTotal: superficieTotal || null
+        superficieTotal: superficieTotal || null,
+        requisito: req.body.requisito || null
       });
 
       // Si se proporciona idClient y role, crear la relación
@@ -176,9 +177,30 @@ exports.updateProperty = async (req, res) => {
       body: req.body
     });
 
-    const updated = await Property.update(req.body, { 
-      where: { propertyId, tenantId } // Filtrar por tenant
+    const cleanedData = { ...req.body };
+    const numericFields = ['precioReferencia', 'plantQuantity', 'rooms', 'bathrooms'];
+    const textFields = ['frente', 'profundidad', 'matriculaOPadron', 'socio', 'plantType'];
+    
+    numericFields.forEach(field => {
+      if (cleanedData[field] === '' || cleanedData[field] === null || cleanedData[field] === undefined) {
+        cleanedData[field] = null;
+      }
     });
+    
+    // Limpiar campos de texto opcionales: convertir strings vacíos a null
+    textFields.forEach(field => {
+      if (cleanedData[field] === '') {
+        cleanedData[field] = null;
+      }
+    });
+
+    // Mantener requisito si viene en el body
+    if (req.body.requisito !== undefined) {
+      cleanedData.requisito = req.body.requisito || null;
+    }
+
+    const updated = await Property.update(cleanedData, { where: { propertyId, tenantId } });
+
     
     console.log('[UpdateProperty] Resultado:', updated);
     
