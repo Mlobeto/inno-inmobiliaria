@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const platformAdminController = require('../controllers/PlatformAdminController');
+const planController = require('../controllers/PlanController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { isPlatformAdmin } = require('../middlewares/platformAdminMiddleware');
 
@@ -30,5 +31,15 @@ router.post('/tenants/:tenantId/activate', platformAdminController.activateTenan
  * Gestión de suscripciones
  */
 router.get('/subscriptions', platformAdminController.listSubscriptions);
+
+/**
+ * Gestión de planes
+ */
+router.get('/plans', planController.getAllPlans);
+router.get('/plans/:planId', planController.getPlanById);
+router.post('/plans', planController.createPlan);
+router.put('/plans/:planId', planController.updatePlan);
+router.delete('/plans/:planId', planController.deletePlan);
+router.patch('/plans/:planId/toggle-status', planController.togglePlanStatus);
 
 module.exports = router;

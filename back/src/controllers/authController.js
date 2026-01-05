@@ -1,9 +1,17 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const {Admin, PasswordResetToken} = require('../data');  // Modelo de administrador
+const {Admin, PasswordResetToken, Tenant, Subscription, Plan} = require('../data');  // Modelos
 const { sendPasswordResetEmail, sendPasswordChangedEmail } = require('../emailService');
+const { MercadoPagoConfig, PreApproval } = require('mercadopago');
 require('dotenv').config();  // Para usar las variables de entorno
+
+// Configurar MercadoPago
+const mpClient = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN,
+  options: { timeout: 5000 }
+});
+const preApprovalClient = new PreApproval(mpClient);
 
 // Registrar un administrador
 exports.register = async (req, res) => {
@@ -27,6 +35,172 @@ exports.register = async (req, res) => {
       res.status(500).json({ message: 'Error en el registro', error: error.message });
     }
   };
+
+/**
+ * Registrar un nuevo tenant - Registro simple
+ * POST /auth/register-tenant
+ * Body: { fullName, email, password }
+ */
+exports.registerTenant = async (req, res) => {
+  const { fullName, email, password } = req.body;
+  
+  console.log('POST /auth/register-tenant - Datos recibidos:', { fullName, email, hasPassword: !!password });
+
+  try {
+    // Validaciones
+    if (!fullName || !email || !password) {
+      console.log('❌ Validación fallida - Campos faltantes:', { fullName: !!fullName, email: !!email, password: !!password });
+      return res.status(400).json({ 
+        success: false,
+        error: 'Nombre, email y contraseña son requeridos' 
+      });
+    }
+
+    // Verificar si el email ya existe
+    const existingTenant = await Tenant.findOne({ where: { email } });
+    if (existingTenant) {
+      return res.status(409).json({ 
+        success: false,
+        error: 'Ya existe una cuenta con este email' 
+      });
+    }
+
+    // Generar nombre de empresa temporal basado en email
+    const emailUser = email.split('@')[0];
+    const tempCompanyName = `Empresa ${emailUser}`;
+
+    // Generar subdomain automático del email
+    const subdomain = emailUser
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .substring(0, 30);
+
+    // Verificar si el subdomain ya existe (agregar número si es necesario)
+    let finalSubdomain = subdomain;
+    let counter = 1;
+    while (await Tenant.findOne({ where: { subdomain: finalSubdomain } })) {
+      finalSubdomain = `${subdomain}-${counter}`;
+      counter++;
+    }
+
+    // Buscar plan BASIC por defecto (todos los usuarios empiezan con 7 días trial)
+    const plan = await Plan.findOne({ where: { planId: 'basic', isActive: true } });
+    if (!plan) {
+      console.log('❌ Plan BASIC no encontrado en la base de datos');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Plan básico no disponible' 
+      });
+    }
+
+    console.log('✅ Plan encontrado:', plan.planId, plan.name, `(${plan.trialDays} días trial)`);
+
+    // Generar CUIT temporal
+    const tempCuit = `99-${Math.floor(10000000 + Math.random() * 90000000)}-9`;
+
+    // Determinar el status inicial (TRIAL si el plan lo tiene)
+    const tenantStatus = plan.trialDays > 0 ? 'TRIAL' : 'ACTIVE';
+
+    // Crear el tenant con datos mínimos
+    const newTenant = await Tenant.create({
+      businessName: tempCompanyName,
+      email,
+      cuit: tempCuit,
+      subdomain: finalSubdomain,
+      status: 'TRIAL', // Siempre empieza en trial (7 días)
+      plan: 'BASIC',
+      maxAgents: plan.maxUsers || 2,
+      maxProperties: plan.maxProperties || 50,
+      features: plan.features || {},
+      trialEndsAt: new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
+    });
+
+    console.log('✅ Tenant creado:', newTenant.tenantId, newTenant.businessName);
+
+    // Hash de la contraseña para el admin
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear el usuario admin del tenant
+    const newAdmin = await Admin.create({
+      username: email, // Usar email como username
+      password: hashedPassword,
+      fullName,
+      email,
+      role: 'SUPER_ADMIN', // Rol de dueño de la inmobiliaria
+      tenantId: newTenant.tenantId
+    });
+
+    console.log('✅ Admin creado:', newAdmin.adminId, newAdmin.username);
+
+    // Crear suscripción gratuita por defecto
+    const trialStart = new Date();
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + (plan.trialDays || 30));
+
+    const subscription = await Subscription.create({
+      tenantId: newTenant.tenantId,
+      planId: plan.planId,
+      status: plan.trialDays > 0 ? 'trialing' : 'active',
+      paymentProvider: 'manual',
+      trialStart: plan.trialDays > 0 ? trialStart : null,
+      trialEnd: plan.trialDays > 0 ? trialEnd : null,
+      currentPeriodStart: trialStart,
+      currentPeriodEnd: trialEnd,
+      billingCycle: 'monthly',
+      amount: 0,
+      currency: 'ARS'
+    });
+
+    console.log('✅ Suscripción creada:', subscription.subscriptionId);
+
+    // Generar token JWT
+    const token = jwt.sign(
+      { 
+        id: newAdmin.adminId, 
+        role: newAdmin.role,
+        tenantId: newAdmin.tenantId
+      },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: '24h' }
+    );
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Cuenta creada exitosamente',
+      token,
+      user: {
+        adminId: newAdmin.adminId,
+        username: newAdmin.username,
+        fullName: newAdmin.fullName,
+        email: newAdmin.email,
+        role: newAdmin.role,
+        tenantId: newAdmin.tenantId
+      },
+      tenant: {
+        tenantId: newTenant.tenantId,
+        businessName: newTenant.businessName,
+        subdomain: newTenant.subdomain,
+        plan: newTenant.plan
+      },
+      subscription: subscription ? {
+        subscriptionId: subscription.subscriptionId,
+        status: subscription.status,
+        trialEnd: subscription.trialEnd
+      } : null,
+      needsProfileCompletion: true // Indica que debe ir a CompanySettings
+    });
+  } catch (error) {
+    console.error('❌ Error en registro de tenant:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      error: 'Error al crear la cuenta',
+      details: error.message 
+    });
+  }
+};
 
 // Registrar un Platform Admin (sin tenantId)
 exports.registerPlatformAdmin = async (req, res) => {

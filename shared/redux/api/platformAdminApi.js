@@ -133,6 +133,73 @@ export const platformAdminApi = baseApi.injectEndpoints({
           : [{ type: 'Subscriptions', id: 'LIST' }],
     }),
 
+    // ============================================
+    // 📋 GESTIÓN DE PLANES
+    // ============================================
+    
+    listPlans: builder.query({
+      query: () => '/platform-admin/plans',
+      providesTags: (result) =>
+        result?.plans
+          ? [
+              ...result.plans.map(({ planId }) => ({ type: 'Plans', id: planId })),
+              { type: 'Plans', id: 'LIST' },
+            ]
+          : [{ type: 'Plans', id: 'LIST' }],
+    }),
+
+    getPlan: builder.query({
+      query: (planId) => `/platform-admin/plans/${planId}`,
+      providesTags: (result, error, planId) => [{ type: 'Plans', id: planId }],
+    }),
+
+    createPlan: builder.mutation({
+      query: (data) => ({
+        url: '/platform-admin/plans',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: [
+        { type: 'Plans', id: 'LIST' },
+        'Dashboard',
+      ],
+    }),
+
+    updatePlan: builder.mutation({
+      query: ({ planId, ...data }) => ({
+        url: `/platform-admin/plans/${planId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { planId }) => [
+        { type: 'Plans', id: planId },
+        { type: 'Plans', id: 'LIST' },
+      ],
+    }),
+
+    deletePlan: builder.mutation({
+      query: (planId) => ({
+        url: `/platform-admin/plans/${planId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, planId) => [
+        { type: 'Plans', id: planId },
+        { type: 'Plans', id: 'LIST' },
+        'Dashboard',
+      ],
+    }),
+
+    togglePlanStatus: builder.mutation({
+      query: (planId) => ({
+        url: `/platform-admin/plans/${planId}/toggle-status`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: (result, error, planId) => [
+        { type: 'Plans', id: planId },
+        { type: 'Plans', id: 'LIST' },
+      ],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -155,6 +222,14 @@ export const {
   
   // Subscriptions
   useListSubscriptionsQuery,
+  
+  // Plans
+  useListPlansQuery,
+  useGetPlanQuery,
+  useCreatePlanMutation,
+  useUpdatePlanMutation,
+  useDeletePlanMutation,
+  useTogglePlanStatusMutation,
 } = platformAdminApi;
 
 export default platformAdminApi;

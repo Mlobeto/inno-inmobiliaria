@@ -46,6 +46,24 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Auth'],
     }),
+
+    // ==================== REGISTER TENANT (with plan) ====================
+    registerTenant: builder.mutation({
+      query: (data) => ({
+        url: '/auth/register-tenant',
+        method: 'POST',
+        body: data, // { companyName, fullName, email, password, planId }
+      }),
+      invalidatesTags: ['Auth'],
+      transformResponse: (response) => {
+        const { user } = response;
+        return {
+          ...response,
+          isPlatformAdmin: user.tenantId === null,
+          redirectTo: user.tenantId === null ? '/platform-admin/dashboard' : '/dashboard'
+        };
+      },
+    }),
     
     // ==================== VERIFY TOKEN ====================
     verifyToken: builder.query({
@@ -113,6 +131,7 @@ export const authApi = baseApi.injectEndpoints({
 export const {
   useLoginMutation,
   useRegisterMutation,
+  useRegisterTenantMutation,
   useVerifyTokenQuery,
   useLazyVerifyTokenQuery, // Para verificar token manualmente
   useForgotPasswordMutation,

@@ -66,6 +66,13 @@ async function syncPlans() {
       try {
         console.log(`\n🔹 Procesando plan: ${plan.name} (${plan.planId})`);
 
+        // Saltar planes gratuitos (MercadoPago no permite suscripciones con precio 0)
+        if (parseFloat(plan.priceMonthly) === 0) {
+          console.log(`   ⏭️  Plan gratuito, no requiere sincronización con MercadoPago`);
+          console.log(`   ℹ️  Los usuarios pueden activar este plan directamente con startTrial()`);
+          continue;
+        }
+
         // Si ya tiene mpPlanId, verificar si existe en MercadoPago
         if (plan.mpPlanId) {
           console.log(`   ℹ️  Plan ya tiene ID de MercadoPago: ${plan.mpPlanId}`);
@@ -123,17 +130,28 @@ async function syncPlans() {
     console.log('\n\n✅ Sincronización completada!\n');
     console.log('📝 Resumen:');
     
+    // Contar planes con precio > 0 que tienen mpPlanId
     const plansWithMpId = await Plan.count({ 
       where: { 
         isActive: true,
-        mpPlanId: { [Sequelize.Op.ne]: null }
+        mpPlanId: { [Sequelize.Op.ne]: null },
+        priceMonthly: { [Sequelize.Op.gt]: 0 }
       } 
     });
     
-    console.log(`   - Planes sincronizados: ${plansWithMpId}/${plans.length}`);
+    // Contar total de planes de pago (precio > 0)
+    const paidPlans = await Plan.count({
+      where: {
+        isActive: true,
+        priceMonthly: { [Sequelize.Op.gt]: 0 }
+      }
+    });
     
-    if (plansWithMpId < plans.length) {
-      console.log(`   ⚠️  Algunos planes no pudieron sincronizarse`);
+    console.log(`   - Planes de pago sincronizados: ${plansWithMpId}/${paidPlans}`);
+    console.log(`   - Planes gratuitos (no requieren MercadoPago): ${plans.length - paidPlans}`);
+    
+    if (plansWithMpId < paidPlans) {
+      console.log(`   ⚠️  Algunos planes de pago no pudieron sincronizarse`);
     }
 
   } catch (error) {

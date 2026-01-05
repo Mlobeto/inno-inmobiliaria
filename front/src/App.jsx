@@ -13,9 +13,14 @@ import FiltroPropiedades from "./Components/Propiedades/FiltroPropiedades"
 import LoginAdmin from "./Admin/Login/Login"; // 🔄 ACTUALIZADO: Nueva ruta
 import ForgotPassword from "./Admin/Login/ForgotPassword"; // 🆕 NUEVO
 import ResetPassword from "./Admin/Login/ResetPassword"; // 🆕 NUEVO
+import Register from "./Components/Register"; // 🆕 NUEVO - Registro con plan
 import PlatformAdminDashboard from "./Admin/PlatformAdmin/Dashboard"; // 🆕 NUEVO
 import TenantList from "./Admin/PlatformAdmin/TenantList"; // 🆕 NUEVO
 import TenantDetail from "./Admin/PlatformAdmin/TenantDetail"; // 🆕 NUEVO
+// 🆕 NUEVO - Componentes de Suscripción
+import PlanSelector from "./Components/PlanSelector";
+import SubscriptionDashboard from "./Components/SubscriptionDashboard";
+import SubscriptionSuccess from "./Components/SubscriptionSuccess";
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
@@ -226,9 +231,14 @@ function App() {
         path="/company-settings" 
         element={<CompanySettings />} 
       />
+      <Route 
+        path="/admin/company-settings" 
+        element={<CompanySettings />} 
+      />
 
       {/* Autenticación */}
       <Route path="/login" element={<LoginAdmin />} />
+      <Route path="/register" element={<Register />} /> {/* 🆕 NUEVO - Registro con plan */}
       <Route path="/forgot-password" element={<ForgotPassword />} /> {/* 🆕 NUEVO */}
       <Route path="/reset-password/:token" element={<ResetPassword />} /> {/* 🆕 NUEVO */}
       
@@ -236,6 +246,11 @@ function App() {
       <Route path="/platform-admin/dashboard" element={<PlatformAdminDashboard />} /> {/* 🆕 NUEVO */}
       <Route path="/platform-admin/tenants" element={<TenantList />} /> {/* 🆕 NUEVO */}
       <Route path="/platform-admin/tenants/:tenantId" element={<TenantDetail />} /> {/* 🆕 NUEVO */}
+
+      {/* 🆕 NUEVO - Suscripciones y Planes */}
+      <Route path="/plans" element={<PlanSelector />} /> {/* Selector de planes (público/autenticado) */}
+      <Route path="/subscription" element={<SubscriptionDashboard />} /> {/* Dashboard de suscripción (autenticado) */}
+      <Route path="/subscription/success" element={<SubscriptionSuccess />} /> {/* Callback de MercadoPago */}
     </Routes>
     </>
   );

@@ -16,10 +16,10 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 const getBaseUrl = () => {
   // Para web
   if (typeof window !== 'undefined') {
-    return import.meta.env?.VITE_API_URL || 'http://localhost:3001';
+    return import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
   }
   // Para React Native
-  return process.env.REACT_APP_API_URL || 'http://localhost:3001';
+  return process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 };
 
 export const baseApi = createApi({
@@ -27,8 +27,13 @@ export const baseApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: getBaseUrl(),
     prepareHeaders: (headers, { getState }) => {
-      // Obtener token del estado de auth
-      const token = getState().auth?.token;
+      // Intentar obtener token del estado de Redux primero
+      let token = getState().auth?.token;
+      
+      // Si no está en Redux, intentar obtenerlo de localStorage
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('token');
+      }
       
       if (token) {
         headers.set('Authorization', `Bearer ${token}`);

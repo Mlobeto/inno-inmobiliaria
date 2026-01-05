@@ -330,6 +330,118 @@
       "description": "Lista global de todas las suscripciones con información del tenant"
     },
     {
+      "_id": "folder_plans",
+      "_type": "request_group",
+      "name": "📋 Planes",
+      "parentId": "wrk_platform_admin"
+    },
+    {
+      "_id": "req_list_plans",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Listar Planes",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/plans",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Lista todos los planes de suscripción disponibles"
+    },
+    {
+      "_id": "req_get_plan",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Detalle de Plan",
+      "method": "GET",
+      "url": "{{ _.base_url }}/platform-admin/plans/free",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Obtiene el detalle de un plan específico"
+    },
+    {
+      "_id": "req_create_plan",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Crear Plan",
+      "method": "POST",
+      "url": "{{ _.base_url }}/platform-admin/plans",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"planId\": \"trial\",\n  \"name\": \"Trial Gratuito\",\n  \"description\": \"Prueba gratuita por 7 días con acceso completo a todas las funcionalidades\",\n  \"priceMonthly\": 0,\n  \"priceYearly\": 0,\n  \"currency\": \"ARS\",\n  \"features\": {\n    \"maxProperties\": 10,\n    \"maxClients\": 20,\n    \"maxUsers\": 1,\n    \"maxStorageGB\": 1,\n    \"pdfTemplates\": true,\n    \"customTemplates\": true,\n    \"whatsappIntegration\": true,\n    \"estadisticas\": false,\n    \"exportData\": false,\n    \"apiAccess\": false,\n    \"customDomain\": false,\n    \"prioritySupport\": false\n  },\n  \"trialDays\": 7,\n  \"isActive\": true,\n  \"isPopular\": false,\n  \"sortOrder\": 1\n}"
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Crea un nuevo plan de suscripción"
+    },
+    {
+      "_id": "req_update_plan",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Actualizar Plan",
+      "method": "PUT",
+      "url": "{{ _.base_url }}/platform-admin/plans/premium",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"priceMonthly\": 45000,\n  \"priceYearly\": 450000,\n  \"isPopular\": false\n}"
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "description": "Actualiza un plan existente"
+    },
+    {
+      "_id": "req_delete_plan",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Eliminar Plan",
+      "method": "DELETE",
+      "url": "{{ _.base_url }}/platform-admin/plans/premium",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Elimina un plan o lo marca como inactivo si tiene suscripciones activas"
+    },
+    {
+      "_id": "req_toggle_plan_status",
+      "_type": "request",
+      "parentId": "folder_plans",
+      "name": "Activar/Desactivar Plan",
+      "method": "PATCH",
+      "url": "{{ _.base_url }}/platform-admin/plans/premium/toggle-status",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "description": "Activa o desactiva un plan"
+    },
+    {
       "_id": "folder_tenant_routes",
       "_type": "request_group",
       "name": "🔒 Rutas de Tenant (Requieren tenantId)",

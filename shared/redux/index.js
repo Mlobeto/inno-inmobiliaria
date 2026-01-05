@@ -14,11 +14,18 @@
 // ==================== BASE API ====================
 export { baseApi } from './api/baseApi';
 
+// ==================== PUBLIC API ====================
+export {
+  publicApi,
+  useGetPublicPlansQuery,
+} from './api/publicApi';
+
 // ==================== AUTH API ====================
 export {
   authApi,
   useLoginMutation,
   useRegisterMutation,
+  useRegisterTenantMutation,
   useVerifyTokenQuery,
   useLazyVerifyTokenQuery,
   useForgotPasswordMutation,
@@ -42,6 +49,12 @@ export {
   useSuspendTenantMutation,
   useActivateTenantMutation,
   useListSubscriptionsQuery,
+  useListPlansQuery,
+  useGetPlanQuery,
+  useCreatePlanMutation,
+  useUpdatePlanMutation,
+  useDeletePlanMutation,
+  useTogglePlanStatusMutation,
 } from './api/platformAdminApi';
 
 // ==================== SUBSCRIPTION API ====================
@@ -49,6 +62,10 @@ export {
   subscriptionApi,
   useGetCurrentSubscriptionQuery,
   useGetPlansQuery,
+  useCreateSubscriptionMutation,
+  useCancelSubscriptionMutation,
+  useChangePlanMutation,
+  useStartTrialMutation,
 } from './api/subscriptionApi';
 
 // ==================== CLIENT API ====================

@@ -1,23 +1,16 @@
 
-import Navbar from "../Components/Navbar";
-
-import Section1 from "./Section1";
-
-
-
+import LandingHero from "./LandingHero";
+import LandingFeatures from "./LandingFeatures";
+import LandingPlans from "./LandingPlans";
+import LandingFooter from "./LandingFooter";
 
 const Landing = () => {
   return (
     <div className="landing-container">
-       <Navbar/>
-       <Section1/>
-     
-       
-       
-      
-       
-
-
+       <LandingHero />
+       <LandingFeatures />
+       <LandingPlans />
+       <LandingFooter />
     </div>
   );
 };

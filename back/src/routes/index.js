@@ -18,6 +18,7 @@ try {
 // Rutas públicas (sin requireTenantScope)
 router.use("/auth", require("./auth"));
 router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
+router.use("/public", require("./publicRoutes")); // Rutas públicas (planes, etc.)
 
 // Rutas de administrador de plataforma (solo PLATFORM_ADMIN)
 router.use("/platform-admin", require("./platformAdmin"));

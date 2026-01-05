@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetDashboardQuery } from '../../redux/platformAdmin';
 import CreateManualTenantForm from './CreateManualTenantForm';
+import PlanManagement from './PlanManagement';
 
 function PlatformAdminDashboard() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useGetDashboardQuery();
   const [showCreateTenant, setShowCreateTenant] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, plans
 
   if (isLoading) {
     return (
@@ -43,8 +45,37 @@ function PlatformAdminDashboard() {
           <p className="text-gray-600 mt-2">Panel de administración de la plataforma</p>
         </div>
 
-        {/* Métricas Principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Tabs de Navegación */}
+        <div className="mb-6 border-b border-gray-200">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('dashboard')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'dashboard'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📊 Dashboard
+            </button>
+            <button
+              onClick={() => setActiveTab('plans')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'plans'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              📋 Planes
+            </button>
+          </nav>
+        </div>
+
+        {/* Contenido según Tab Activo */}
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Métricas Principales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Tenants */}
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-sm font-medium text-gray-600">Total Tenants</div>
@@ -100,8 +131,11 @@ function PlatformAdminDashboard() {
             >
               Ver Tenants
             </button>
-            <button className="px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition">
-              Ver Métricas
+            <button 
+              onClick={() => setActiveTab('plans')}
+              className="px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition"
+            >
+              Gestionar Planes
             </button>
             <button className="px-4 py-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
               Configuración
@@ -125,6 +159,13 @@ function PlatformAdminDashboard() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {/* Tab de Planes */}
+        {activeTab === 'plans' && (
+          <PlanManagement />
+        )}
       </div>
 
       {/* Modal para Crear Tenant */}

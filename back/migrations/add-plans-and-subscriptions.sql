@@ -127,26 +127,34 @@ FOR EACH ROW
 EXECUTE FUNCTION update_subscriptions_timestamp();
 
 -- ============================================
--- Insertar planes por defecto
+-- Insertar planes por defecto (todos con 7 días de prueba)
 -- ============================================
 INSERT INTO plans ("planId", "name", "description", "priceMonthly", "priceYearly", "features", "trialDays", "isActive", "isPopular", "sortOrder")
 VALUES
-  ('free', 'Plan Gratuito', 'Ideal para comenzar y probar la plataforma', 0, 0, 
-   '{"maxProperties": 10, "maxClients": 20, "maxUsers": 1, "maxStorageGB": 1, "pdfTemplates": true, "customTemplates": false, "whatsappIntegration": false, "estadisticas": false, "exportData": true, "apiAccess": false, "customDomain": false, "prioritySupport": false}'::jsonb,
-   14, true, false, 1),
+  ('basic', 'Plan Básico', 'Perfecto para empezar - 1 usuario', 9900, 99000,
+   '{"maxProperties": 50, "maxClients": 100, "maxUsers": 1, "maxStorageGB": 5, "pdfTemplates": true, "customTemplates": false, "whatsappIntegration": false, "estadisticas": true, "exportData": true, "apiAccess": false, "customDomain": false, "prioritySupport": false, "landingPage": false, "mercadoLibreIntegration": false, "agentRole": false}'::jsonb,
+   7, true, false, 1),
    
-  ('basic', 'Plan Básico', 'Para inmobiliarias pequeñas', 9900, 99000,
-   '{"maxProperties": 50, "maxClients": 100, "maxUsers": 2, "maxStorageGB": 5, "pdfTemplates": true, "customTemplates": false, "whatsappIntegration": false, "estadisticas": true, "exportData": true, "apiAccess": false, "customDomain": false, "prioritySupport": false}'::jsonb,
-   14, true, false, 2),
-   
-  ('professional', 'Plan Profesional', 'Para inmobiliarias en crecimiento', 29900, 299000,
-   '{"maxProperties": 200, "maxClients": 500, "maxUsers": 5, "maxStorageGB": 20, "pdfTemplates": true, "customTemplates": true, "whatsappIntegration": true, "estadisticas": true, "exportData": true, "apiAccess": true, "customDomain": false, "prioritySupport": false}'::jsonb,
-   14, true, true, 3),
+  ('professional', 'Plan Profesional', 'Para equipos de trabajo', 29900, 299000,
+   '{"maxProperties": 200, "maxClients": 500, "maxUsers": 5, "maxStorageGB": 20, "pdfTemplates": true, "customTemplates": true, "whatsappIntegration": true, "estadisticas": true, "exportData": true, "apiAccess": true, "customDomain": false, "prioritySupport": true, "landingPage": true, "mercadoLibreIntegration": true, "agentRole": true}'::jsonb,
+   7, true, true, 2),
    
   ('enterprise', 'Plan Empresarial', 'Para grandes inmobiliarias', 69900, 699000,
-   '{"maxProperties": -1, "maxClients": -1, "maxUsers": 20, "maxStorageGB": 100, "pdfTemplates": true, "customTemplates": true, "whatsappIntegration": true, "estadisticas": true, "exportData": true, "apiAccess": true, "customDomain": true, "prioritySupport": true}'::jsonb,
-   14, true, false, 4)
-ON CONFLICT ("planId") DO NOTHING;
+   '{"maxProperties": -1, "maxClients": -1, "maxUsers": 20, "maxStorageGB": 100, "pdfTemplates": true, "customTemplates": true, "whatsappIntegration": true, "estadisticas": true, "exportData": true, "apiAccess": true, "customDomain": true, "prioritySupport": true, "landingPage": true, "mercadoLibreIntegration": true, "agentRole": true}'::jsonb,
+   7, true, false, 3)
+ON CONFLICT ("planId") DO UPDATE SET
+  "name" = EXCLUDED."name",
+  "description" = EXCLUDED."description",
+  "priceMonthly" = EXCLUDED."priceMonthly",
+  "priceYearly" = EXCLUDED."priceYearly",
+  "features" = EXCLUDED."features",
+  "trialDays" = EXCLUDED."trialDays",
+  "isActive" = EXCLUDED."isActive",
+  "isPopular" = EXCLUDED."isPopular",
+  "sortOrder" = EXCLUDED."sortOrder";
+
+-- Desactivar plan gratuito si existe
+UPDATE plans SET "isActive" = false WHERE "planId" = 'free';
 
 COMMIT;
 
@@ -156,7 +164,7 @@ COMMIT;
 \echo '✅ Migración completada: Sistema de Planes y Suscripciones'
 \echo ''
 \echo 'Tablas creadas:'
-\echo '  - plans (4 planes por defecto)'
+\echo '  - plans (3 planes: Basic, Professional, Enterprise - todos con 7 días trial)'
 \echo '  - subscriptions'
 \echo ''
 \echo 'Planes disponibles:'
