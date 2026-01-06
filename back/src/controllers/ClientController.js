@@ -1,19 +1,48 @@
-const { Client, Lease, Property } = require('../data');
+const { Client, Lease, Property, ClientDocument, sequelize } = require('../data');
 
-// POST: Crear un cliente
+// POST: Crear un cliente (con dual-write a client_documents)
 exports.createClient = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    
     try {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         console.log("POST /client - Datos recibidos:", req.body);
         console.log("POST /client - TenantId:", tenantId);
         
+        const { cuil, ...clientData } = req.body;
+        
+        // 1. Crear el cliente (con cuil para compatibilidad)
         const newClient = await Client.create({
-            ...req.body,
-            tenantId // Inyectar tenantId
-        });
+            ...clientData,
+            cuil, // Mantener campo legacy
+            tenantId,
+            migrated_to_documents: true // Marcar como migrado desde el inicio
+        }, { transaction });
+        
         console.log("POST /client - Cliente creado:", newClient?.idClient);
+        
+        // 2. Si hay CUIL, crear documento en client_documents (dual-write)
+        if (cuil) {
+            await ClientDocument.create({
+                clientId: newClient.idClient,
+                tenantId,
+                documentType: 'TAX',
+                country: 'AR',
+                documentCode: 'CUIL',
+                number: cuil,
+                isPrimary: true,
+                isVerified: false
+            }, { transaction });
+            
+            console.log("POST /client - Documento CUIL creado en client_documents");
+        }
+        
+        await transaction.commit();
+        
         res.status(201).json(newClient);
     } catch (error) {
+        await transaction.rollback();
+        
         console.error("POST /client - Error al crear cliente:", error);
         if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
             const validationErrors = error.errors.map(err => err.message);

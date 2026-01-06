@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useState, useEffect } from 'react';
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -12,6 +13,38 @@ if (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
 }
 
 const ContratoAlquiler = ({ lease, autoGenerate = false }) => {
+  const [companySettings, setCompanySettings] = useState(null);
+
+  // Cargar configuración de la empresa
+  useEffect(() => {
+    const loadCompanySettings = async () => {
+      try {
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/admin/settings`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCompanySettings(data);
+          console.log("Company settings cargados para PDF:", data);
+        }
+      } catch (error) {
+        console.error("Error al cargar settings de la empresa:", error);
+        // Usar valores por defecto si falla
+        setCompanySettings({
+          company_name: "Inmobiliaria",
+          company_address: "",
+          company_phone: "",
+          company_email: ""
+        });
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
   
   // Función para convertir números a letras
   const numeroALetras = (num) => {
@@ -57,13 +90,14 @@ const ContratoAlquiler = ({ lease, autoGenerate = false }) => {
   };
 
   const generatePdf = () => {
-    if (!lease || !lease.Property || !lease.Tenant || !lease.Landlord) {
+    if (!lease || !lease.Property || !lease.Renter || !lease.Landlord) {
       alert('Faltan datos del contrato');
+      console.error('Datos del lease:', lease);
       return;
     }
 
     const property = lease.Property;
-    const tenant = lease.Tenant;
+    const tenant = lease.Renter; // Cambio: Renter en lugar de Tenant
     const landlord = lease.Landlord;
     const guarantors = lease.Garantors || [];
 
@@ -157,7 +191,7 @@ const ContratoAlquiler = ({ lease, autoGenerate = false }) => {
       },
       {
         title: "CUARTA: Precio:",
-        text: `El precio del alquiler se fija de comun acuerdo entre las partes por la suma de ${formatearMonto(lease.rentAmount)} para el ${lease.updateFrequency === "semestral" ? "primer semestre" : lease.updateFrequency === "anual" ? "primer ano" : "primer cuatrimestre"} de locacion. Para los ${lease.updateFrequency === "semestral" ? "siguientes semestres" : lease.updateFrequency === "anual" ? "siguientes anos" : "siguientes cuatrimestres"} el precio sera actualizado conforme al Indice de precios al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadisticas y Censos (INDEC). Si por una disposicion legal y futura, los alquileres se vieren grabados con el pago del impuesto al valor agregado (IVA), EL LOCATARIO debera adicionar al monto mensual a pagar en concepto de canon locativo, el porcentual correspondiente al IVA. El LOCATARIO abonara el alquiler en efectivo en moneda de curso legal, y por adelantado del 1° al 10° del mes en el local comercial de Q+L Servicios Inmobiliarios sito en Av. Gobernador Cubas N° 50 de la ciudad de Belen, o bien en el domicilio que en un futuro designe el LOCADOR. Por el presente acto el LOCADOR comunica al LOCATARIO que constituye a Q+L Servicios inmobiliarios, en adelante EL ADMINISTRADOR como su representante, quedando este facultado para actuar en su nombre en cualquier cuestion que emane del presente, percibir los alquileres mensuales y extender los correspondientes recibos de pago, tambien para conservar y archivar los comprobantes de pago de todos los impuestos, y servicios a cargo del LOCATARIO, quien tendra por constancia de pago el asiento de los mismos en los recibos de pago del alquiler. La falta de pago producira un interes equivalente al 1% diario contado a partir del primer dia del mes en mora.`
+        text: `El precio del alquiler se fija de comun acuerdo entre las partes por la suma de ${formatearMonto(lease.rentAmount)} para el ${lease.updateFrequency === "semestral" ? "primer semestre" : lease.updateFrequency === "anual" ? "primer ano" : "primer cuatrimestre"} de locacion. Para los ${lease.updateFrequency === "semestral" ? "siguientes semestres" : lease.updateFrequency === "anual" ? "siguientes anos" : "siguientes cuatrimestres"} el precio sera actualizado conforme al Indice de precios al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadisticas y Censos (INDEC). Si por una disposicion legal y futura, los alquileres se vieren grabados con el pago del impuesto al valor agregado (IVA), EL LOCATARIO debera adicionar al monto mensual a pagar en concepto de canon locativo, el porcentual correspondiente al IVA. El LOCATARIO abonara el alquiler en efectivo en moneda de curso legal, y por adelantado del 1° al 10° del mes${companySettings?.company_address ? ` en el local comercial de ${companySettings.company_name} sito en ${companySettings.company_address}` : ''}, o bien en el domicilio que en un futuro designe el LOCADOR. Por el presente acto el LOCADOR comunica al LOCATARIO que constituye a ${companySettings?.company_name || 'la empresa administradora'}, en adelante EL ADMINISTRADOR como su representante, quedando este facultado para actuar en su nombre en cualquier cuestion que emane del presente, percibir los alquileres mensuales y extender los correspondientes recibos de pago, tambien para conservar y archivar los comprobantes de pago de todos los impuestos, y servicios a cargo del LOCATARIO, quien tendra por constancia de pago el asiento de los mismos en los recibos de pago del alquiler. La falta de pago producira un interes equivalente al 1% diario contado a partir del primer dia del mes en mora.`
       },
       {
         title: "QUINTA: Modificaciones:",
@@ -211,7 +245,7 @@ const ContratoAlquiler = ({ lease, autoGenerate = false }) => {
       },
       {
         title: "DECIMA SEXTA: FIRMA Y EJEMPLARES:",
-        text: `Se pacta expresamente que el impuesto de sello provincial sera abonado integramente por el LOCATARIO. Leido, las partes, declaran su conformidad y firman tres (3) ejemplares de un mismo tenor y a un solo efecto, en la Ciudad de Belen ${formatearFecha(new Date())}.`
+        text: `Se pacta expresamente que el impuesto de sello provincial sera abonado integramente por el LOCATARIO. Leido, las partes, declaran su conformidad y firman tres (3) ejemplares de un mismo tenor y a un solo efecto, en la Ciudad de ${landlord.ciudad || companySettings?.company_city || 'Belen'} ${formatearFecha(new Date())}.`
       }
     ];
 
@@ -331,9 +365,11 @@ const ContratoAlquiler = ({ lease, autoGenerate = false }) => {
     <div className="mt-4">
       <button
         onClick={generatePdf}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        disabled={!companySettings}
+        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        title={!companySettings ? "Cargando configuración de la empresa..." : ""}
       >
-        Generar Contrato PDF
+        {!companySettings ? "Cargando..." : "Generar Contrato PDF"}
       </button>
     </div>
   );

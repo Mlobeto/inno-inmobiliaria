@@ -1,7 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { getAllClients } from '../../redux/Actions/actions';
+import { useGetAllClientsQuery } from '@shared/redux';
 import * as XLSX from 'xlsx';
 import { 
   IoLogOutOutline, 
@@ -16,18 +15,9 @@ import {
 
 const PanelClientes = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  // Obtener clientes desde Redux
-  const { clients = [], loading } = useSelector((state) => ({
-    clients: state.clients || [],
-    loading: state.loading
-  }));
-
-  // Cargar clientes al montar el componente
-  useEffect(() => {
-    dispatch(getAllClients());
-  }, [dispatch]);
+  // RTK Query para obtener clientes
+  const { data: clients = [], isLoading } = useGetAllClientsQuery();
 
   // Calcular estadísticas
   const stats = useMemo(() => {
@@ -228,7 +218,7 @@ const PanelClientes = () => {
             {/* Botón de descarga Excel */}
             <button
               onClick={handleExportExcel}
-              disabled={loading || clients.length === 0}
+              disabled={isLoading || clients.length === 0}
               className="flex items-center space-x-2 px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg border border-emerald-400/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Descargar lista completa en Excel"
             >
@@ -238,7 +228,7 @@ const PanelClientes = () => {
             </button>
           </div>
           
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
               <p className="text-slate-300 mt-4">Cargando estadísticas...</p>

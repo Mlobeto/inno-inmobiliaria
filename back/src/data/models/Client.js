@@ -97,6 +97,11 @@ module.exports = (sequelize) => {
         type: DataTypes.STRING,
         allowNull: true
       },
+      codigoPostal: {
+        type: DataTypes.STRING(10),
+        allowNull: true,
+        field: 'codigo_postal'
+      },
       
       mobilePhone: {
         type: DataTypes.STRING,

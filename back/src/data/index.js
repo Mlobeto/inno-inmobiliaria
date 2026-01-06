@@ -62,7 +62,8 @@ sequelize.models = Object.fromEntries(capsEntries);
 const { 
   Tenant,
   Admin, 
-  Client, 
+  Client,
+  ClientDocument, // NUEVO: Modelo para múltiples documentos por cliente
   Garantor, 
   Property, 
   Lease, 
@@ -74,7 +75,8 @@ const {
   PdfTemplate,
   Plan,
   Subscription,
-  PasswordResetToken
+  PasswordResetToken,
+  AdminSettings
 } = sequelize.models;
 
 // 1. Relaciones entre Client y Property a través de ClientProperty (many-to-many)
@@ -230,6 +232,28 @@ Tenant.hasMany(Client, {
   sourceKey: 'tenantId'
 });
 Client.belongsTo(Tenant, {
+  foreignKey: 'tenantId',
+  targetKey: 'tenantId'
+});
+
+// NUEVO: Relaciones Client - ClientDocument (uno a muchos)
+// Un cliente puede tener múltiples documentos
+Client.hasMany(ClientDocument, {
+  as: 'documents',
+  foreignKey: 'clientId',
+  sourceKey: 'idClient'
+});
+ClientDocument.belongsTo(Client, {
+  foreignKey: 'clientId',
+  targetKey: 'idClient'
+});
+
+// ClientDocument también pertenece a un Tenant (para aislamiento multitenant)
+Tenant.hasMany(ClientDocument, {
+  foreignKey: 'tenantId',
+  sourceKey: 'tenantId'
+});
+ClientDocument.belongsTo(Tenant, {
   foreignKey: 'tenantId',
   targetKey: 'tenantId'
 });

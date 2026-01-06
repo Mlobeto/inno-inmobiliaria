@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useGetAllClientsQuery } from "@shared/redux";
 import {
   createLease,
   getPropertiesById,
   addPropertyToClientWithRole,
-  getAllClients,
   createGarantorsForLease,
+  getLeaseById,
 } from "../../redux/Actions/actions";
 import Listado from "../Propiedades/Listado";
 import Swal from "sweetalert2";
@@ -27,7 +28,10 @@ const CreateLeaseForm = () => {
   const dispatch = useDispatch();
   const property = useSelector((state) => state.property);
   const [isLoading, setIsLoading] = useState(false);
-  const clients = useSelector((state) => state.clients);
+  
+  // Usar RTK Query para obtener clientes
+  const { data: clients = [], isLoading: isLoadingClients } = useGetAllClientsQuery();
+  
   const [leaseCreated, setLeaseCreated] = useState(null);
   const [filteredClients, setFilteredClients] = useState([]);
   const [showClientList, setShowClientList] = useState(false);
@@ -64,10 +68,9 @@ const CreateLeaseForm = () => {
     guarantor2CertificationEntity: "",
   });
 
-  useEffect(() => {
-    dispatch(getAllClients());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Ya no necesitamos este useEffect porque RTK Query carga los datos automáticamente
+  console.log("Clientes desde RTK Query:", clients);
+  console.log("¿Está cargando clientes?", isLoadingClients);
 
   const filteredActiveLeases = (leases) => {
     return leases.filter((lease) => {
@@ -84,10 +87,15 @@ const CreateLeaseForm = () => {
         ...prevData,
         [name]: value,
       }));
-      const filtered = clients.filter((client) =>
-        client.name.toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredClients(filtered);
+      // Verificar que clients existe y es un array antes de filtrar
+      if (clients && Array.isArray(clients)) {
+        const filtered = clients.filter((client) =>
+          client.name.toLowerCase().includes(value.toLowerCase())
+        );
+        setFilteredClients(filtered);
+      } else {
+        setFilteredClients([]);
+      }
       setShowClientList(value.length > 0);
     } else {
       setFormData((prevData) => ({
@@ -132,7 +140,7 @@ const CreateLeaseForm = () => {
       const leaseData = {
         propertyId: formData.propertyId,
         landlordId: formData.landlordId,
-        tenantId: formData.locatarioId,
+        renterId: formData.locatarioId, // Backend espera renterId, no tenantId
         startDate: formData.startDate,
         rentAmount: parseFloat(formData.rentAmount),
         updateFrequency: formData.updateFrequency,
@@ -195,8 +203,13 @@ const CreateLeaseForm = () => {
           })
         );
 
-        setLeaseCreated(createdLease);
-        setPdfData(createdLease);
+        // Cargar el lease completo con todas las relaciones (Property, Tenant, Landlord, Garantors)
+        console.log("Cargando lease completo con ID:", createdLease.leaseId);
+        const leaseCompleto = await dispatch(getLeaseById(createdLease.leaseId));
+        console.log("Lease completo cargado:", leaseCompleto);
+
+        setLeaseCreated(leaseCompleto);
+        setPdfData(leaseCompleto);
 
         Swal.fire({
           icon: "success",

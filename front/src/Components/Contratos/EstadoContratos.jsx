@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import PropTypes from 'prop-types';
-import { getAllLeases, updateLease } from "../../redux/Actions/actions";
+import { useGetAllLeasesQuery } from "@shared/redux";
+import { updateLease } from "../../redux/Actions/actions";
 import CreateLeaseForm from "./CreateLeaseForm";
 import CompraVenta from "./CompraVenta";
 import ContratoAlquiler from "../PdfTemplates/ContratoAlquiler";
@@ -30,10 +31,11 @@ import {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  // Selectores optimizados
-  const leases = useSelector((state) => state.leases);
-  const loading = useSelector((state) => state.loading);
-  const error = useSelector((state) => state.error);
+  
+  // Usar RTK Query para obtener leases
+  const { data: leases = [], isLoading: loading, error: queryError, refetch } = useGetAllLeasesQuery();
+  const error = queryError?.data?.message || queryError?.message;
+  
   const [editingLeaseId, setEditingLeaseId] = useState(null);
   const [editedLease, setEditedLease] = useState({});
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -46,12 +48,18 @@ import {
   const isSaleContext = location.pathname === '/sale';
 
   useEffect(() => {
+    console.log("=== ESTADO CONTRATOS DEBUG ===");
     console.log("Leases en componente:", leases);
-  }, [leases]);
+    console.log("Cantidad de leases:", leases?.length);
+    console.log("Loading:", loading);
+    console.log("Error:", error);
+    console.log("==============================");
+  }, [leases, loading, error]);
 
-  useEffect(() => {
-    dispatch(getAllLeases());
-  }, [dispatch]);
+  // Ya no necesitamos este useEffect porque RTK Query carga automáticamente
+  // useEffect(() => {
+  //   dispatch(getAllLeases());
+  // }, [dispatch]);
 
   const handleEditClick = (lease) => {
     setEditingLeaseId(lease.leaseId || lease.id);
@@ -65,7 +73,7 @@ import {
   const handleCloseEditor = () => {
     setEditorLease(null);
     // Recargar los leases para obtener el contenido actualizado
-    dispatch(getAllLeases());
+    refetch(); // RTK Query refetch en lugar de dispatch
   };
 
   const handleInputChange = (e) => {
@@ -296,7 +304,7 @@ import {
                           Inquilino
                         </label>
                         <div className="text-white font-medium">
-                          {lease.Tenant ? lease.Tenant.name : lease.tenantId}
+                          {lease.Renter ? lease.Renter.name : lease.renterId}
                         </div>
                       </div>
 
@@ -494,7 +502,7 @@ import {
                 isModal={true}
                 onClose={() => {
                   setShowCreateModal(false);
-                  dispatch(getAllLeases()); // Refrescar la lista
+                  refetch(); // RTK Query refetch en lugar de dispatch
                 }}
               />
             </div>
@@ -523,7 +531,7 @@ import {
                 isModal={true}
                 onClose={() => {
                   setShowSaleModal(false);
-                  dispatch(getAllLeases()); // Refrescar la lista
+                  refetch(); // RTK Query refetch en lugar de dispatch
                 }}
               />
             </div>

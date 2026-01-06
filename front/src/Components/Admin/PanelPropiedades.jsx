@@ -1,7 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
-import { getAllProperties } from '../../redux/Actions/actions';
+import { useGetAllPropertiesQuery } from '@shared/redux';
 import * as XLSX from 'xlsx';
 import { 
   IoLogOutOutline, 
@@ -19,20 +18,10 @@ import {
 
 const PanelPropiedades = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
 
-  // Obtener propiedades desde Redux
-  const { properties = [], loading } = useSelector((state) => ({
-    properties: state.allProperties || [],
-    loading: state.loading
-  }));
+  // RTK Query para obtener propiedades
+  const { data: properties = [], isLoading } = useGetAllPropertiesQuery();
 
-  // Cargar propiedades al montar el componente
-  useEffect(() => {
-    dispatch(getAllProperties());
-  }, [dispatch]);
-
-  
   const stats = useMemo(() => {
     const totalPropiedades = properties.length;
     
@@ -249,7 +238,7 @@ const PanelPropiedades = () => {
             {/* Botón de descarga Excel */}
             <button
               onClick={handleExportExcel}
-              disabled={loading || properties.length === 0}
+              disabled={isLoading || properties.length === 0}
               className="flex items-center space-x-2 px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg border border-emerald-400/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Descargar lista completa en Excel"
             >
@@ -259,7 +248,7 @@ const PanelPropiedades = () => {
             </button>
           </div>
           
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-400 mx-auto"></div>
               <p className="text-slate-300 mt-4">Cargando estadísticas...</p>

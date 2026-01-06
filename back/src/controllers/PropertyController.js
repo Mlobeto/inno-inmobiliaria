@@ -1,4 +1,4 @@
-const { Client, Property, ClientProperty } = require("../data");
+const { Client, Property, ClientProperty, AdminSettings } = require("../data");
 
 // POST: Crear una propiedad
 exports.createProperty = async (req, res) => {
@@ -99,6 +99,7 @@ exports.createProperty = async (req, res) => {
         console.log(`Creando relación: Cliente ${req.body.idClient} como ${req.body.role} de propiedad ${newProperty.propertyId}`);
         
         await ClientProperty.create({
+          tenantId, // Agregar tenantId requerido por el modelo
           clientId: req.body.idClient,
           propertyId: newProperty.propertyId,
           role: req.body.role
@@ -395,6 +396,7 @@ exports.getPropertyById = async (req, res) => {
 exports.getWhatsAppText = async (req, res) => {
   try {
     const { id } = req.params;
+    const tenantId = req.user.tenantId;
 
     const property = await Property.findByPk(id);
 
@@ -402,19 +404,22 @@ exports.getWhatsAppText = async (req, res) => {
       return res.status(404).json({ error: 'Propiedad no encontrada' });
     }
 
+    // Obtener la plantilla de WhatsApp de las configuraciones del tenant
+    const settings = await AdminSettings.findOne({ where: { tenantId } });
+
     // Plantilla por defecto si no existe una personalizada
-    const defaultTemplate = `Gracias por ponerte en contacto con Quintero Lobeto Propiedades! Estamos encantados de poder ayudar. 
+    const defaultTemplate = `Gracias por ponerte en contacto con nosotros! Estamos encantados de poder ayudar. 
 
 {descripcion}
 
 Te comento que estamos en lanzamiento de ofertas y este es el primero!
 
-Precio: AR$ {precio}
+Precio: {precio}
 Ubicación: {direccion}
 
 Estamos a tu entera disposición por dudas, precio o consultas.`;
 
-    const template = property.whatsappTemplate || defaultTemplate;
+    const template = settings?.whatsapp_template || property.whatsappTemplate || defaultTemplate;
 
     // Formatear precio con separadores de miles
     const formattedPrice = new Intl.NumberFormat('es-AR', {

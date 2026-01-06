@@ -44,6 +44,8 @@ exports.updateSettings = async (req, res) => {
       company_cuit,
       company_logo_url,
       contract_footer_text,
+      whatsapp_template,
+      requisitos_template,
       additional_config,
     } = req.body;
 
@@ -61,6 +63,8 @@ exports.updateSettings = async (req, res) => {
         company_cuit: company_cuit || settings.company_cuit,
         company_logo_url: company_logo_url || settings.company_logo_url,
         contract_footer_text: contract_footer_text || settings.contract_footer_text,
+        whatsapp_template: whatsapp_template !== undefined ? whatsapp_template : settings.whatsapp_template,
+        requisitos_template: requisitos_template !== undefined ? requisitos_template : settings.requisitos_template,
         additional_config: additional_config || settings.additional_config,
       });
     } else {
@@ -75,6 +79,8 @@ exports.updateSettings = async (req, res) => {
         company_cuit,
         company_logo_url,
         contract_footer_text,
+        whatsapp_template,
+        requisitos_template,
         additional_config: additional_config || {},
       });
     }

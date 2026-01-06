@@ -1533,7 +1533,7 @@ exports.updateLease = async (req, res) => {
       include: [
         { model: Property },
         { model: Garantor, required: false },
-        { model: Client, as: 'Tenant', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
+        { model: Client, as: 'Renter', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
         { model: Client, as: 'Landlord', attributes: ['name', 'cuil', 'direccion', 'ciudad', 'provincia', 'email', 'mobilePhone'] },
       ],
     });

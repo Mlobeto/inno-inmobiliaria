@@ -1,8 +1,8 @@
-import  { useState, useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import  { useState, useMemo } from 'react';
+import { useGetAllPropertiesQuery, useUpdatePropertyMutation, useDeletePropertyMutation } from '@shared/redux';
 import { useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
-import { getAllProperties, updateProperty, deleteProperty } from "../../redux/Actions/actions";
+import { toast } from 'react-toastify';
 import PropiedadesPDF from "../PdfTemplates/PropiedadesPdf";
 import CreateLeaseForm from "../Contratos/CreateLeaseForm";
 import CompraVenta from "../Contratos/CompraVenta";
@@ -30,13 +30,12 @@ import {
 } from 'react-icons/io5';
 
 const Listado = ({ mode = "default", onSelectProperty }) => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  // Selectores optimizados
-  const allProperties = useSelector((state) => state.allProperties);
-  const loading = useSelector((state) => state.loading);
-  const error = useSelector((state) => state.error);
+  // RTK Query hooks
+  const { data: allProperties = [], isLoading, error } = useGetAllPropertiesQuery();
+  const [updateProperty] = useUpdatePropertyMutation();
+  const [deleteProperty] = useDeletePropertyMutation();
 
   // Función para formatear precio como moneda
   const formatCurrency = (value) => {
@@ -73,12 +72,6 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     }
     return allProperties;
   }, [allProperties, mode]);
-
-  useEffect(() => {
-    // Solo cargar propiedades la primera vez que se monta el componente
-    dispatch(getAllProperties());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Filtrar y ordenar propiedades (optimizado)
   const filteredProperties = useMemo(() => {
@@ -150,7 +143,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   };
 
   // eslint-disable-next-line no-unused-vars
-  const handleSave = () => {
+  const handleSave = async () => {
     const validationErrors = Object.keys(formData).reduce((acc, field) => {
       const error = validateField(field, formData[field]);
       if (error) acc[field] = error;
@@ -161,24 +154,33 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       return;
     }
 
-    // Corregir: pasar propertyId y propertyData como parámetros separados
-    const { propertyId, ...propertyData } = formData;
-    dispatch(updateProperty(propertyId, propertyData)).then(() => {
-      // Recargar propiedades después de actualizar
-      dispatch(getAllProperties());
-    });
-    setEditingId(null);
+    try {
+      const { propertyId, ...propertyData } = formData;
+      await updateProperty({ propertyId, ...propertyData }).unwrap();
+      toast.success('Propiedad actualizada correctamente');
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error al actualizar propiedad:', error);
+      toast.error(error?.data?.details || 'Error al actualizar la propiedad');
+    }
   };
 
-  const handleDelete = (propertyId) => {
-    dispatch(deleteProperty(propertyId)).then(() => {
-      // Recargar propiedades después de eliminar
-      dispatch(getAllProperties());
-    });
+  const handleDelete = async (propertyId) => {
+    if (!window.confirm('¿Estás seguro de que deseas eliminar esta propiedad?')) {
+      return;
+    }
+    
+    try {
+      await deleteProperty(propertyId).unwrap();
+      toast.success('Propiedad eliminada correctamente');
+    } catch (error) {
+      console.error('Error al eliminar propiedad:', error);
+      toast.error(error?.data?.details || 'Error al eliminar la propiedad');
+    }
   };
 
   // Solo mostrar loading si no hay propiedades cargadas aún
-  if (loading && (!allProperties || allProperties.length === 0)) {
+  if (isLoading && (!allProperties || allProperties.length === 0)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
         <div className="text-white text-xl">Cargando propiedades...</div>
@@ -558,7 +560,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 onClose={() => {
                   setShowCreateModal(false);
                   setSelectedProperty(null);
-                  dispatch(getAllProperties()); // Refrescar la lista
+                  // RTK Query se actualiza automáticamente
                 }}
               />
             </div>
@@ -592,7 +594,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 onClose={() => {
                   setShowSaleModal(false);
                   setSelectedProperty(null);
-                  dispatch(getAllProperties()); // Refrescar la lista
+                  // RTK Query se actualiza automáticamente
                 }}
               />
             </div>

@@ -35,6 +35,7 @@ import ReciboPreview from "./Components/PdfTemplates/ReciboPreview";
 import ContratoPreview from "./Components/PdfTemplates/ContratoPreview";
 import SignatureManager from "./Components/Admin/SignatureManager";
 import CompanySettings from "./Components/Admin/CompanySettings"; // 🆕 NUEVO
+import PdfTemplateManager from "./Components/Admin/PdfTemplateManager"; // 🆕 NUEVO - Gestión de plantillas PDF
 import InstallPWA from "./Components/InstallPWA";
 
 function App() {
@@ -234,6 +235,16 @@ function App() {
       <Route 
         path="/admin/company-settings" 
         element={<CompanySettings />} 
+      />
+
+      {/* 🆕 NUEVA RUTA - Gestión de plantillas PDF */}
+      <Route 
+        path="/pdf-templates" 
+        element={<PdfTemplateManager />} 
+      />
+      <Route 
+        path="/admin/pdf-templates" 
+        element={<PdfTemplateManager />} 
       />
 
       {/* Autenticación */}

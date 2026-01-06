@@ -7,6 +7,8 @@ import { store } from "./redux/Store/store";
 import { Provider } from "react-redux";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import 'react-quill/dist/quill.snow.css';
+import 'driver.js/dist/driver.css';
 import { restoreSession } from '@shared/redux';
 
 axios.defaults.baseURL = "http://localhost:3001/api";

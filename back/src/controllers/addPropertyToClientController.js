@@ -54,7 +54,8 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         await ClientProperty.create({
             clientId: client.idClient,
             propertyId: property.propertyId,
-            role: role
+            role: role,
+            tenantId: tenantId // Agregar tenantId obligatorio
         });
 
         // Responder con éxito

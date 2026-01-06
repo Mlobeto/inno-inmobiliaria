@@ -170,3 +170,16 @@ export {
   selectActiveView,
   selectSidebarOpen,
 } from './slices/platformAdminSlice';
+
+// ==================== PDF TEMPLATE API ====================
+export {
+  pdfTemplateApi,
+  useGetTemplateTypesQuery,
+  useGetAllPdfTemplatesQuery,
+  useGetPdfTemplateByIdQuery,
+  useCreatePdfTemplateMutation,
+  useUpdatePdfTemplateMutation,
+  useDeletePdfTemplateMutation,
+  useDuplicatePdfTemplateMutation,
+  useSetTemplateAsDefaultMutation,
+} from './api/pdfTemplateApi';

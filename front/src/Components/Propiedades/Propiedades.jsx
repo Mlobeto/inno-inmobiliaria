@@ -1,10 +1,7 @@
-import { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  createProperty,
-  getAllClients,
-  addPropertyToClientWithRole,
-} from "../../redux/Actions/actions";
+import { useState, useEffect, useMemo } from "react";
+import { useGetAllClientsQuery, useCreatePropertyMutation } from '@shared/redux';
+import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
+import { toast } from 'react-toastify';
 import {
   loadCloudinaryScript,
   openCloudinaryWidget,
@@ -28,10 +25,18 @@ import AutorizacionVentaPdf from "../PdfTemplates/AutorizacionVentaPdf";
 
 const CreateProperty = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  
+  // RTK Query hooks
+  const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useGetAllClientsQuery();
+  const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
+  
   const [formData, setFormData] = useState({
     address: "",
     neighborhood: "",
+    pais: "AR", // País por defecto
+    provincia: "",
+    ciudad: "",
+    codigo_postal: "",
     city: "",
     type: "",
     typeProperty: "",
@@ -61,21 +66,18 @@ const CreateProperty = () => {
     requisito: "",
   });
   const [showPdfButton, setShowPdfButton] = useState(false);
+  const [selectedProvincia, setSelectedProvincia] = useState("");
+  const [availableCiudades, setAvailableCiudades] = useState([]);
 
-  const {
-    error: propertyError,
-    success,
-    loading: isSubmitting,
-  } = useSelector((state) => state.propertyCreate);
-
-  // Estado de los clientes - selectores optimizados
-  const clients = useSelector((state) => state.clients);
-  const clientsLoading = useSelector((state) => state.loading);
-  const clientsError = useSelector((state) => state.error);
-
-  useEffect(() => {
-    dispatch(getAllClients()); // Cargar clientes cuando el componente se monte
-  }, [dispatch]);
+  // Ciudades disponibles basadas en la provincia seleccionada
+  useMemo(() => {
+    if (formData.provincia) {
+      const ciudades = getCiudadesByProvincia(formData.provincia);
+      setAvailableCiudades(ciudades);
+    } else {
+      setAvailableCiudades([]);
+    }
+  }, [formData.provincia]);
 
   const handleWidget = async () => {
     try {
@@ -94,6 +96,17 @@ const CreateProperty = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     const processedValue = name === "comision" ? Number(value) : value;
+    
+    // Manejar cambio de provincia
+    if (name === "provincia") {
+      setFormData({
+        ...formData,
+        provincia: value,
+        ciudad: "", // Resetear ciudad cuando cambia provincia
+        [name]: processedValue,
+      });
+      return;
+    }
     
     // Si cambia el tipo a "alquiler" y el campo requisito está vacío, cargar la plantilla
     if (name === "type" && value === "alquiler" && !formData.requisito) {
@@ -151,66 +164,72 @@ Correo electrónico:
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Datos enviados:", formData);
 
-    // 1. Crear la propiedad con la acción createProperty
-    dispatch(createProperty(formData))
-      .then((propertyCreated) => {
-        console.log("propertyCreated:", propertyCreated);
-
-        if (!propertyCreated || !propertyCreated.propertyId) {
-          throw new Error("propertyId no está presente en la respuesta");
-        }
-
-        // Crear objeto con la estructura correcta para asignar rol
-        const roleData = {
-          idClient: parseInt(formData.idClient),
-          propertyId: parseInt(propertyCreated.propertyId),
-          role: formData.role
-        };
-
-        console.log("Enviando datos de rol:", roleData);
-
-        // 2. Asignar el rol al cliente
-        return dispatch(addPropertyToClientWithRole(roleData));
-      })
-      .then((roleResponse) => {
-        console.log("Rol asignado exitosamente:", roleResponse);
-        // Aquí puedes agregar un mensaje de éxito
-      })
-      .catch((error) => {
-        console.error("Error en el proceso:", error);
-        // Aquí puedes mostrar un mensaje de error
-      });
-};
-  useEffect(() => {
-    if (success) {
+    try {
+      // Preparar datos para el backend (mapear campos nuevos a campos legacy)
+      const dataToSend = {
+        ...formData,
+        city: formData.ciudad, // Mapear ciudad a city (campo legacy requerido por backend)
+        neighborhood: formData.neighborhood || "Sin especificar", // Asegurar que no esté vacío
+      };
+      
+      console.log("Datos mapeados para backend:", dataToSend);
+      
+      // Crear la propiedad con RTK Query
+      const result = await createProperty(dataToSend).unwrap();
+      
+      console.log("Propiedad creada exitosamente:", result);
+      toast.success('Propiedad creada correctamente');
+      
+      // Resetear formulario
       setFormData({
         address: "",
         neighborhood: "",
+        pais: "AR",
+        provincia: "",
+        ciudad: "",
+        codigo_postal: "",
         city: "",
         type: "",
         typeProperty: "",
         price: "",
+        precioReferencia: "",
         rooms: "",
         bathrooms: "",
         comision: "",
         isAvailable: true,
         description: "",
         escritura: "",
+        matriculaOPadron: "",
+        frente: "",
+        profundidad: "",
+        linkInstagram: "",
+        linkMaps: "",
         images: [],
+        plantType: "",
         plantQuantity: "",
         highlights: "",
+        idClient: "",
+        role: "",
         socio: "",
         Inventory: "",
         superficieTotal: "",
         superficieCubierta: "",
+        requisito: "",
       });
+      
+      // Navegar al panel de propiedades
+      setTimeout(() => navigate('/panelPropiedades'), 1500);
+      
+    } catch (error) {
+      console.error("Error al crear propiedad:", error);
+      toast.error(error?.data?.details || 'Error al crear la propiedad');
     }
-  }, [success]);
-
+  };
+  
   useEffect(() => {
     if (formData.type === "venta") {
       setShowPdfButton(true); // Muestra el botón si es una propiedad de venta
@@ -273,18 +292,6 @@ Correo electrónico:
             Complete los datos de la propiedad para agregarla al sistema
           </p>
         </div>
-
-        {/* Messages */}
-        {success && (
-          <div className="mb-6 p-4 bg-emerald-500/20 border border-emerald-400/30 rounded-xl text-emerald-300 text-center backdrop-blur-sm">
-            ¡Propiedad creada con éxito!
-          </div>
-        )}
-        {propertyError && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-xl text-red-300 text-center backdrop-blur-sm">
-            Error: {propertyError}
-          </div>
-        )}
 
         {/* Form Container */}
         <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-white/10 shadow-2xl">
@@ -373,34 +380,77 @@ Correo electrónico:
                 </div>
 
                 <div>
-                  <label htmlFor="neighborhood" className="block text-slate-300 font-medium mb-2">
-                    Barrio *
+                  <label htmlFor="barrio" className="block text-slate-300 font-medium mb-2">
+                    Barrio
                   </label>
                   <input
                     type="text"
-                    id="neighborhood"
+                    id="barrio"
                     name="neighborhood"
                     value={formData.neighborhood}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
                     placeholder="Ingrese el barrio"
-                    required
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="city" className="block text-slate-300 font-medium mb-2">
+                  <label htmlFor="provincia" className="block text-slate-300 font-medium mb-2">
+                    Provincia *
+                  </label>
+                  <select
+                    id="provincia"
+                    name="provincia"
+                    value={formData.provincia}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                    required
+                  >
+                    <option value="" className="bg-slate-800">Seleccione una provincia</option>
+                    {PROVINCIAS_ARGENTINA.map((prov) => (
+                      <option key={prov.id} value={prov.id} className="bg-slate-800">
+                        {prov.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="ciudad" className="block text-slate-300 font-medium mb-2">
                     Ciudad *
+                  </label>
+                  <select
+                    id="ciudad"
+                    name="ciudad"
+                    value={formData.ciudad}
+                    onChange={handleChange}
+                    disabled={!formData.provincia}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    required
+                  >
+                    <option value="" className="bg-slate-800">
+                      {formData.provincia ? 'Seleccione una ciudad' : 'Primero seleccione provincia'}
+                    </option>
+                    {availableCiudades.map((ciudad, index) => (
+                      <option key={index} value={ciudad} className="bg-slate-800">
+                        {ciudad}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="codigo_postal" className="block text-slate-300 font-medium mb-2">
+                    Código Postal
                   </label>
                   <input
                     type="text"
-                    id="city"
-                    name="city"
-                    value={formData.city}
+                    id="codigo_postal"
+                    name="codigo_postal"
+                    value={formData.codigo_postal}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
-                    placeholder="Ingrese la ciudad"
-                    required
+                    placeholder="Ej: 6070"
                   />
                 </div>
               </div>

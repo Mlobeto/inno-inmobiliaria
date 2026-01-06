@@ -1,7 +1,7 @@
 // Utilidad para generar el HTML del contrato desde los datos del lease
-export const generarHTMLContrato = (lease) => {
+export const generarHTMLContrato = (lease, companySettings = {}) => {
   const property = lease.Property || {};
-  const tenant = lease.Tenant || {};
+  const tenant = lease.Tenant || lease.Renter || {};
   const landlord = lease.Landlord || {};
   const guarantors = lease.Garantors || [];
 
@@ -172,7 +172,7 @@ export const generarHTMLContrato = (lease) => {
 <body>
   <h1>${getTituloContrato(property.typeProperty)}</h1>
   
-  <p class="fecha">En Belen, Provincia de Buenos Aires, a los ${formatearFecha(lease.startDate)}</p>
+  <p class="fecha">En ${landlord.ciudad || 'Belén'}, Provincia de ${landlord.provincia || 'Catamarca'}, a los ${formatearFecha(lease.startDate)}</p>
   
   <p>
     ${property.socio 
@@ -194,7 +194,7 @@ export const generarHTMLContrato = (lease) => {
   </div>
 
   <div class="clausula">
-    <p><span class="titulo-clausula">CUARTA: Precio:</span> El precio del alquiler se fija de común acuerdo entre las partes por la suma de ${formatearMonto(lease.rentAmount)} para el ${lease.updateFrequency === "semestral" ? "primer semestre" : lease.updateFrequency === "anual" ? "primer año" : "primer cuatrimestre"} de locación. Para los ${lease.updateFrequency === "semestral" ? "siguientes semestres" : lease.updateFrequency === "anual" ? "siguientes años" : "siguientes cuatrimestres"} el precio será actualizado conforme al Índice de precios al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC). Si por una disposición legal y futura, los alquileres se vieren grabados con el pago del impuesto al valor agregado (IVA), EL LOCATARIO deberá adicionar al monto mensual a pagar en concepto de canon locativo, el porcentual correspondiente al IVA. El LOCATARIO abonará el alquiler en efectivo en moneda de curso legal, y por adelantado del 1° al 10° del mes en el local comercial de Q+L Servicios Inmobiliarios sito en Av. Gobernador Cubas N° 50 de la ciudad de Belen, o bien en el domicilio que en un futuro designe el LOCADOR. Por el presente acto el LOCADOR comunica al LOCATARIO que constituye a Q+L Servicios inmobiliarios, en adelante EL ADMINISTRADOR como su representante, quedando este facultado para actuar en su nombre en cualquier cuestión que emane del presente, percibir los alquileres mensuales y extender los correspondientes recibos de pago, también para conservar y archivar los comprobantes de pago de todos los impuestos, y servicios a cargo del LOCATARIO, quien tendrá por constancia de pago el asiento de los mismos en los recibos de pago del alquiler. La falta de pago producirá un interés equivalente al 1% diario contado a partir del primer día del mes en mora.</p>
+    <p><span class="titulo-clausula">CUARTA: Precio:</span> El precio del alquiler se fija de común acuerdo entre las partes por la suma de ${formatearMonto(lease.rentAmount)} para el ${lease.updateFrequency === "semestral" ? "primer semestre" : lease.updateFrequency === "anual" ? "primer año" : "primer cuatrimestre"} de locación. Para los ${lease.updateFrequency === "semestral" ? "siguientes semestres" : lease.updateFrequency === "anual" ? "siguientes años" : "siguientes cuatrimestres"} el precio será actualizado conforme al Índice de precios al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC). Si por una disposición legal y futura, los alquileres se vieren grabados con el pago del impuesto al valor agregado (IVA), EL LOCATARIO deberá adicionar al monto mensual a pagar en concepto de canon locativo, el porcentual correspondiente al IVA. El LOCATARIO abonará el alquiler en efectivo en moneda de curso legal, y por adelantado del 1° al 10° del mes en el local comercial de ${companySettings?.company_name || 'la Inmobiliaria'} sito en ${companySettings?.company_address || 'el domicilio de la inmobiliaria'} de la ciudad de ${landlord.ciudad || 'Belén'}, o bien en el domicilio que en un futuro designe el LOCADOR. Por el presente acto el LOCADOR comunica al LOCATARIO que constituye a ${companySettings?.company_name || 'la Inmobiliaria'}, en adelante EL ADMINISTRADOR como su representante, quedando este facultado para actuar en su nombre en cualquier cuestión que emane del presente, percibir los alquileres mensuales y extender los correspondientes recibos de pago, también para conservar y archivar los comprobantes de pago de todos los impuestos, y servicios a cargo del LOCATARIO, quien tendrá por constancia de pago el asiento de los mismos en los recibos de pago del alquiler. La falta de pago producirá un interés equivalente al 1% diario contado a partir del primer día del mes en mora.</p>
   </div>
 
   <div class="clausula">
@@ -245,11 +245,11 @@ export const generarHTMLContrato = (lease) => {
   </div>
 
   <div class="clausula">
-    <p><span class="titulo-clausula">DECIMA QUINTA: COMPETENCIA - Domicilios - Jurisdicción y Competencia:</span> Las partes que suscriben este contrato renuncian al fuero federal o a cualquier otro que pudiera corresponder y se someten a la jurisdicción de la justicia ordinaria de la ciudad de Belen para cualquier cuestión que se suscite entre las mismas, constituyendo domicilio para todos los efectos: el LOCADOR fija domicilio en el constituido como domicilio de pago en la cláusula sexta del presente, el FIADOR y el COMERCIANTE lo hacen en la propiedad por el presente locada, renunciando expresamente todos ellos al Fuero Federal, en caso de corresponderles, sometiéndose para cualquier cuestión derivada del presente a la jurisdicción de los Tribunales ordinarios de la provincia de Catamarca.</p>
+    <p><span class="titulo-clausula">DECIMA QUINTA: COMPETENCIA - Domicilios - Jurisdicción y Competencia:</span> Las partes que suscriben este contrato renuncian al fuero federal o a cualquier otro que pudiera corresponder y se someten a la jurisdicción de la justicia ordinaria de la ciudad de ${landlord.ciudad || 'Belén'} para cualquier cuestión que se suscite entre las mismas, constituyendo domicilio para todos los efectos: el LOCADOR fija domicilio en el constituido como domicilio de pago en la cláusula sexta del presente, el FIADOR y el COMERCIANTE lo hacen en la propiedad por el presente locada, renunciando expresamente todos ellos al Fuero Federal, en caso de corresponderles, sometiéndose para cualquier cuestión derivada del presente a la jurisdicción de los Tribunales ordinarios de la provincia de ${landlord.provincia || 'Catamarca'}.</p>
   </div>
 
   <div class="clausula">
-    <p><span class="titulo-clausula">DECIMA SEXTA: FIRMA Y EJEMPLARES:</span> Se pacta expresamente que el impuesto de sello provincial será abonado íntegramente por el LOCATARIO. Leído, las partes, declaran su conformidad y firman tres (3) ejemplares de un mismo tenor y a un solo efecto, en la Ciudad de Belen ${formatearFecha(new Date())}.</p>
+    <p><span class="titulo-clausula">DECIMA SEXTA: FIRMA Y EJEMPLARES:</span> Se pacta expresamente que el impuesto de sello provincial será abonado íntegramente por el LOCATARIO. Leído, las partes, declaran su conformidad y firman tres (3) ejemplares de un mismo tenor y a un solo efecto, en la Ciudad de ${landlord.ciudad || 'Belén'} ${formatearFecha(new Date())}.</p>
   </div>
 
   <div class="firmas">

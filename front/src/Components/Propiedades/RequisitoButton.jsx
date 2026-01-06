@@ -1,17 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import {  IoCheckmarkCircleOutline, IoCopyOutline } from 'react-icons/io5';
+import { IoCheckmarkCircleOutline, IoCopyOutline } from 'react-icons/io5';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const RequisitoButton = ({ property }) => {
   const [copied, setCopied] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [template, setTemplate] = useState('');
+
+  // Cargar plantilla de requisitos de las configuraciones
+  useEffect(() => {
+    const loadTemplate = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/admin/settings`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (response.data?.requisitos_template) {
+          setTemplate(response.data.requisitos_template);
+        } else {
+          setTemplate(getDefaultRequisito());
+        }
+      } catch (error) {
+        console.error('Error al cargar plantilla de requisitos:', error);
+        setTemplate(getDefaultRequisito());
+      }
+    };
+
+    loadTemplate();
+  }, []);
 
   const handleCopyRequisito = async () => {
     try {
       setIsLoading(true);
       
-      // Obtener el texto de requisito (plantilla por defecto o personalizado)
-      let requisitoText = property.requisito || getDefaultRequisito();
+      // Usar la plantilla cargada o la por defecto
+      let requisitoText = property.requisito || template;
       
       // Reemplazar variables dinámicas
       requisitoText = requisitoText

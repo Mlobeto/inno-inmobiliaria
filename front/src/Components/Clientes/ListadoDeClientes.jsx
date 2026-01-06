@@ -1,26 +1,30 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { getAllClients, updateClient, deleteClient } from "../../redux/Actions/actions";
+import { useState, useMemo } from "react";
 import { useNavigate } from 'react-router-dom';
+import { useGetAllClientsQuery, useUpdateClientMutation, useDeleteClientMutation } from '@shared/redux';
+import { getCountryConfig } from '@shared/constants/countryConfigs';
+import { toast } from 'react-toastify';
 import { 
   IoArrowBackOutline, 
   IoSearchOutline, 
-  IoPencilOutline, 
   IoTrashOutline, 
   IoSaveOutline,
   IoPeopleOutline,
-  IoHomeOutline
+  IoHomeOutline,
+  IoLocationOutline,
+  IoCloseOutline,
+  IoCreateOutline
 } from 'react-icons/io5';
 const ListadoDeClientes = () => {
-  
-  
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   
-  // Selectores optimizados con igualdad por referencia
-  const clients = useSelector((state) => state.clients, (prev, next) => prev === next);
-  const loading = useSelector((state) => state.loading);
-  const error = useSelector((state) => state.error);
+  // RTK Query hooks
+  const { data: clients = [], isLoading, error } = useGetAllClientsQuery();
+  const [updateClient, { isLoading: isUpdating }] = useUpdateClientMutation();
+  const [deleteClient, { isLoading: isDeleting }] = useDeleteClientMutation();
+
+  // País del tenant (por ahora hardcodeado AR, después se obtiene del tenant en Redux)
+  const [tenantCountry] = useState('AR');
+  const countryConfig = getCountryConfig(tenantCountry);
 
   // Estados locales
   const [editingClientId, setEditingClientId] = useState(null);
@@ -28,7 +32,7 @@ const ListadoDeClientes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   // Filtrar clientes según el término de búsqueda (optimizado)
   const filteredClients = useMemo(() => 
@@ -47,22 +51,29 @@ const ListadoDeClientes = () => {
 
   const { currentClients, totalPages } = paginationData;
 
-  // Obtener clientes al montar el componente
-  useEffect(() => {
-    dispatch(getAllClients());
-  }, [dispatch]);
-
   // Manejar edición de cliente
   const handleEditClick = (client) => {
     setEditingClientId(client.idClient);
     setEditedClient(client);
   };
 
-  // Guardar cambios de cliente
-  const handleSaveClick = (idClient) => {
-    dispatch(updateClient(idClient, editedClient));
+  // Cancelar edición
+  const handleCancelEdit = () => {
     setEditingClientId(null);
-    alert("Cliente actualizado correctamente");
+    setEditedClient({});
+  };
+
+  // Guardar cambios de cliente
+  const handleSaveClick = async (idClient) => {
+    try {
+      await updateClient({ clientId: idClient, ...editedClient }).unwrap();
+      setEditingClientId(null);
+      setEditedClient({});
+      toast.success('Cliente actualizado correctamente');
+    } catch (error) {
+      console.error('Error al actualizar cliente:', error);
+      toast.error(error?.data?.details || 'Error al actualizar el cliente');
+    }
   };
 
   // Manejar cambios en inputs
@@ -72,10 +83,15 @@ const ListadoDeClientes = () => {
   };
 
   // Eliminar cliente
-  const handleDelete = (idClient) => {
+  const handleDelete = async (idClient) => {
     if (window.confirm("¿Estás seguro de que deseas eliminar este cliente?")) {
-      dispatch(deleteClient(idClient));
-      alert("Cliente eliminado correctamente");
+      try {
+        await deleteClient(idClient).unwrap();
+        toast.success('Cliente eliminado correctamente');
+      } catch (error) {
+        console.error('Error al eliminar cliente:', error);
+        toast.error(error?.data?.details || 'Error al eliminar el cliente');
+      }
     }
   };
 
@@ -126,8 +142,8 @@ const ListadoDeClientes = () => {
           </p>
         </div>
 
-        {loading && <p className="text-center text-slate-300">Cargando clientes...</p>}
-        {error && <p className="text-center text-red-400">Error: {error}</p>}
+        {isLoading && <p className="text-center text-slate-300">Cargando clientes...</p>}
+        {error && <p className="text-center text-red-400">Error: {error?.data?.message || 'Error desconocido'}</p>}
 
         {/* Barra de búsqueda mejorada */}
         <div className="mb-6 flex justify-center">
@@ -144,17 +160,18 @@ const ListadoDeClientes = () => {
         </div>
 
       {/* Tabla de clientes moderna */}
-      {!loading && !error && filteredClients.length > 0 && (
+      {!isLoading && !error && filteredClients.length > 0 && (
         <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-white/10">
                 <tr>
                   <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">ID</th>
-                  <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">CUIL</th>
+                  <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">{countryConfig.documentTypes.person.tax.label}</th>
                   <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Nombre</th>
                   <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Email</th>
-                  <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider hidden md:table-cell">Dirección</th>
+                  <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider hidden md:table-cell">Ubicación</th>
+                  <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider hidden lg:table-cell">Dirección</th>
                   <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider hidden lg:table-cell">Teléfono</th>
                   <th className="py-4 px-6 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">Acciones</th>
                 </tr>
@@ -170,6 +187,7 @@ const ListadoDeClientes = () => {
                           value={editedClient.cuil || ""}
                           onChange={handleInputChange}
                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          placeholder={countryConfig.documentTypes.person.tax.format}
                         />
                       ) : (
                         client.cuil
@@ -193,6 +211,7 @@ const ListadoDeClientes = () => {
                           name="email"
                           value={editedClient.email || ""}
                           onChange={handleInputChange}
+                          type="email"
                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                         />
                       ) : (
@@ -201,6 +220,46 @@ const ListadoDeClientes = () => {
                     </td>
                     <td className="py-4 px-6 text-sm text-white hidden md:table-cell">
                       {editingClientId === client.idClient ? (
+                        <div className="space-y-1">
+                          <input
+                            name="provincia"
+                            value={editedClient.provincia || ""}
+                            onChange={handleInputChange}
+                            placeholder="Provincia"
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-xs"
+                          />
+                          <input
+                            name="ciudad"
+                            value={editedClient.ciudad || ""}
+                            onChange={handleInputChange}
+                            placeholder="Ciudad"
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-xs"
+                          />
+                          <input
+                            name="codigo_postal"
+                            value={editedClient.codigo_postal || ""}
+                            onChange={handleInputChange}
+                            placeholder="CP"
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-xs"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-xs">
+                          <div className="flex items-center space-x-1">
+                            <IoLocationOutline className="w-3 h-3" />
+                            <span>{client.ciudad || 'N/A'}</span>
+                          </div>
+                          <div className="text-slate-400">
+                            {client.provincia || 'N/A'}
+                          </div>
+                          <div className="text-slate-400">
+                            CP: {client.codigo_postal || 'N/A'}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-sm text-white hidden lg:table-cell">
+                      {editingClientId === client.idClient ? (
                         <input
                           name="direccion"
                           value={editedClient.direccion || ""}
@@ -208,7 +267,7 @@ const ListadoDeClientes = () => {
                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                         />
                       ) : (
-                        client.direccion
+                        client.direccion || 'N/A'
                       )}
                     </td>
                     <td className="py-4 px-6 text-sm text-white hidden lg:table-cell">
@@ -220,32 +279,44 @@ const ListadoDeClientes = () => {
                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                         />
                       ) : (
-                        client.mobilePhone
+                        client.mobilePhone || 'N/A'
                       )}
                     </td>
                     <td className="py-4 px-6 text-sm">
                       <div className="flex items-center space-x-2">
                         {editingClientId === client.idClient ? (
-                          <button
-                            onClick={() => handleSaveClick(client.idClient)}
-                            className="inline-flex items-center px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg border border-emerald-500/30 transition-all duration-200 hover:scale-105"
-                          >
-                            <IoSaveOutline className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleSaveClick(client.idClient)}
+                              disabled={isUpdating}
+                              className="inline-flex items-center px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg border border-emerald-500/30 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                            >
+                              <IoSaveOutline className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="inline-flex items-center px-3 py-2 bg-slate-500/20 hover:bg-slate-500/30 text-slate-400 rounded-lg border border-slate-500/30 transition-all duration-200 hover:scale-105"
+                            >
+                              <IoCloseOutline className="w-4 h-4" />
+                            </button>
+                          </>
                         ) : (
-                          <button
-                            onClick={() => handleEditClick(client)}
-                            className="inline-flex items-center px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg border border-amber-500/30 transition-all duration-200 hover:scale-105"
-                          >
-                            <IoPencilOutline className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleEditClick(client)}
+                              className="inline-flex items-center px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg border border-blue-500/30 transition-all duration-200 hover:scale-105"
+                            >
+                              <IoCreateOutline className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(client.idClient)}
+                              disabled={isDeleting}
+                              className="inline-flex items-center px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/30 transition-all duration-200 hover:scale-105 disabled:opacity-50"
+                            >
+                              <IoTrashOutline className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
-                        <button
-                          onClick={() => handleDelete(client.idClient)}
-                          className="inline-flex items-center px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/30 transition-all duration-200 hover:scale-105"
-                        >
-                          <IoTrashOutline className="w-4 h-4" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -257,7 +328,7 @@ const ListadoDeClientes = () => {
       )}
 
       {/* Mensaje si no hay clientes */}
-      {!loading && filteredClients.length === 0 && (
+      {!isLoading && filteredClients.length === 0 && (
         <div className="text-center py-12">
           <div className="p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 max-w-md mx-auto">
             <IoPeopleOutline className="w-16 h-16 text-slate-400 mx-auto mb-4" />

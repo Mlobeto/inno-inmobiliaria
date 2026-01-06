@@ -5,15 +5,43 @@
 export { store } from './store';
 export type { RootState, AppDispatch } from './store';
 
-// Slices - Exportar reducers y actions
+// Slices - Exportar reducers
 export { default as authReducer } from './store/slices/authSlice';
 export { default as clientsReducer } from './store/slices/clientsSlice';
 export { default as propertiesReducer } from './store/slices/propertiesSlice';
 
-// Exportar todas las actions y thunks
-export * from './store/slices/authSlice';
-export * from './store/slices/clientsSlice';
-export * from './store/slices/propertiesSlice';
+// Exportar thunks (async actions)
+export {
+  login,
+  register,
+  logout,
+} from './store/slices/authSlice';
+
+export {
+  fetchClients,
+  fetchClientById,
+  createClient,
+  updateClient,
+  deleteClient,
+} from './store/slices/clientsSlice';
+
+export {
+  fetchProperties,
+  fetchPropertyById,
+  createProperty,
+  updateProperty,
+  deleteProperty,
+} from './store/slices/propertiesSlice';
+
+// Exportar types
+export type { User, AuthState } from './store/slices/authSlice';
+export type { Client, ClientsState } from './store/slices/clientsSlice';
+export type { Property, PropertiesState } from './store/slices/propertiesSlice';
+
+// Exportar actions como namespaces para evitar conflictos
+export * as authActions from './store/slices/authSlice';
+export * as clientActions from './store/slices/clientsSlice';
+export * as propertyActions from './store/slices/propertiesSlice';
 
 // API Services
 export * as authService from './api/services/authService';
@@ -30,3 +58,6 @@ export { showToast } from './utils/toastHelper';
 
 // Hooks
 export { useAppDispatch, useAppSelector } from './hooks';
+
+// Constants - Configuraciones de países y ubicaciones
+export * from './constants';

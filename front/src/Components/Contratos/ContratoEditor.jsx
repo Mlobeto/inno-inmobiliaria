@@ -11,12 +11,45 @@ const ContratoEditor = ({ lease, onClose }) => {
   const dispatch = useDispatch();
   const [contenido, setContenido] = useState('');
   const [loading, setLoading] = useState(false);
+  const [companySettings, setCompanySettings] = useState(null);
+
+  // Cargar configuración de la empresa
+  useEffect(() => {
+    const loadCompanySettings = async () => {
+      try {
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/admin/settings`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCompanySettings(data);
+        }
+      } catch (error) {
+        console.error("Error al cargar settings de la empresa:", error);
+        setCompanySettings({
+          company_name: "Inmobiliaria",
+          company_address: "",
+          company_phone: "",
+          company_email: ""
+        });
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
 
   useEffect(() => {
-    // Si ya tiene contenido personalizado, usarlo; si no, generar uno nuevo
-    const htmlInicial = lease.customContent || generarHTMLContrato(lease);
-    setContenido(htmlInicial);
-  }, [lease]);
+    // Esperar a que se carguen los settings antes de generar el HTML
+    if (companySettings) {
+      // Si ya tiene contenido personalizado, usarlo; si no, generar uno nuevo
+      const htmlInicial = lease.customContent || generarHTMLContrato(lease, companySettings);
+      setContenido(htmlInicial);
+    }
+  }, [lease, companySettings]);
 
   const handleSave = async () => {
     if (editorRef.current) {
@@ -61,7 +94,7 @@ const ContratoEditor = ({ lease, onClose }) => {
       cancelButtonText: 'Cancelar'
     }).then((result) => {
       if (result.isConfirmed) {
-        const htmlOriginal = generarHTMLContrato(lease);
+        const htmlOriginal = generarHTMLContrato(lease, companySettings);
         setContenido(htmlOriginal);
       }
     });

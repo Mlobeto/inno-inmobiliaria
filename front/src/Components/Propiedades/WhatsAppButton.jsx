@@ -193,7 +193,7 @@ WhatsAppButton.propTypes = {
   propertyId: PropTypes.number.isRequired,
   property: PropTypes.shape({
     address: PropTypes.string,
-    price: PropTypes.number,
+    price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     whatsappTemplate: PropTypes.string,
   }),
 };

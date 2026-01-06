@@ -26,12 +26,14 @@ router.use("/platform-admin", require("./platformAdmin"));
 // Rutas de tenants (requieren tenantId - no accesibles por PLATFORM_ADMIN)
 router.use("/admin", require("./admin")); // Maneja auth + tenancy internamente
 router.use("/client", authMiddleware, requireTenantScope, require("./client"));
+router.use("/client", authMiddleware, requireTenantScope, require("./clientDocumentRoutes")); // NUEVO: Rutas de documentos de clientes
 router.use("/lease", authMiddleware, requireTenantScope, require("./lease"));
 router.use("/payment", authMiddleware, requireTenantScope, require("./payment"));
 router.use("/property", authMiddleware, requireTenantScope, require("./property"));
 router.use("/garantor", authMiddleware, requireTenantScope, require("./garantor"));
 router.use("/import", authMiddleware, requireTenantScope, require("./import"));
 router.use("/pdf", authMiddleware, requireTenantScope, require("./pdf")); // PDF generation and templates
+router.use("/pdf-templates", authMiddleware, requireTenantScope, require("./pdfTemplates")); // PDF template management
 router.use("/tenant", authMiddleware, requireTenantScope, require("./tenant")); // Tenant management and signature
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

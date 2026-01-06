@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { getAllProperties } from "../../redux/Actions/actions";
+import { useState } from "react";
+import { useGetAllPropertiesQuery } from "@shared/redux";
 import { useNavigate } from "react-router-dom";
 import { IoSearchOutline, IoFilterOutline, IoGridOutline, IoLocationOutline, IoPricetagOutline, IoHomeOutline, IoDocumentTextOutline, IoCheckmarkCircleOutline, IoCloseCircleOutline, IoArrowBackOutline } from "react-icons/io5";
 
 const Filtro = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  // Selectores optimizados
-  const allProperties = useSelector((state) => state.allProperties);
-  const loading = useSelector((state) => state.loading);
-  const error = useSelector((state) => state.error);
+  
+  // RTK Query hook
+  const { data: allProperties = [], isLoading: loading, error } = useGetAllPropertiesQuery();
+  
   const [showFilters, setShowFilters] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -22,10 +20,6 @@ const Filtro = () => {
     escritura: "",
     isAvailable: "", // Puede ser: "" (todos), "true" o "false"
   });
-
-  useEffect(() => {
-    dispatch(getAllProperties());
-  }, [dispatch]);
 
   const handleFilterChange = (e) => {
     setFilters({
@@ -323,7 +317,7 @@ const Filtro = () => {
             <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
               <IoCloseCircleOutline className="w-12 h-12 text-red-400 mx-auto mb-3" />
               <p className="text-red-400 text-lg font-medium">Error al cargar las propiedades</p>
-              <p className="text-red-300 text-sm mt-2">{error}</p>
+              <p className="text-red-300 text-sm mt-2">{error?.data?.message || error?.error || 'Error desconocido'}</p>
             </div>
           ) : filteredProperties.length === 0 ? (
             <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-12 text-center">

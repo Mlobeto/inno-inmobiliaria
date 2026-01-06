@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { toast } from 'react-toastify';
 
 /**
  * Base API configuration para RTK Query
@@ -11,6 +12,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
  * - Token JWT inyectado en headers
  * - baseURL desde variable de entorno
  * - Tag types para cache invalidation
+ * - Manejo automático de 401 (sesión expirada)
  */
 
 const getBaseUrl = () => {
@@ -22,9 +24,9 @@ const getBaseUrl = () => {
   return process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 };
 
-export const baseApi = createApi({
-  reducerPath: 'api',
-  baseQuery: fetchBaseQuery({
+// BaseQuery con manejo de errores 401
+const baseQueryWithReauth = async (args, api, extraOptions) => {
+  const baseQuery = fetchBaseQuery({
     baseUrl: getBaseUrl(),
     prepareHeaders: (headers, { getState }) => {
       // Intentar obtener token del estado de Redux primero
@@ -41,7 +43,37 @@ export const baseApi = createApi({
       
       return headers;
     },
-  }),
+  });
+
+  const result = await baseQuery(args, api, extraOptions);
+
+  // Si hay un error 401 (Unauthorized)
+  if (result.error && result.error.status === 401) {
+    // Solo en entorno web
+    if (typeof window !== 'undefined') {
+      // Limpiar localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Mostrar notificación
+      toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', {
+        position: 'top-center',
+        autoClose: 5000,
+      });
+      
+      // Redirigir al login después de un breve delay
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+    }
+  }
+
+  return result;
+};
+
+export const baseApi = createApi({
+  reducerPath: 'api',
+  baseQuery: baseQueryWithReauth,
   tagTypes: [
     // Auth
     'Auth',
@@ -61,6 +93,10 @@ export const baseApi = createApi({
     'Leases',
     'Payments',
     'Guarantors',
+    
+    // PDF Templates
+    'PdfTemplates',
+    'PdfTemplateTypes',
   ],
   endpoints: () => ({}), // Los endpoints se agregan en archivos separados
 });
