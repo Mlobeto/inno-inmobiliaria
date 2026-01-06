@@ -25,9 +25,74 @@ async function initDatabase() {
     // Sincronizar modelos (crear tablas)
     console.log('🏗️  Creando tablas...');
     
-    // alter: true modificará las tablas existentes
-    // force: true eliminaría y recrearía (no usar en producción con datos)
-    await sequelize.sync({ alter: false, force: false });
+    // Importar todos los modelos para asegurar el orden correcto
+    const {
+      Tenant,
+      Admin,
+      AdminSettings,
+      Plan,
+      Subscription,
+      Client,
+      ClientDocument,
+      Property,
+      Lease,
+      PaymentReceipt,
+      SaleContract,
+      Garantor,
+      PdfTemplate,
+      MessageTemplate,
+      Commission,
+      RentUpdate
+    } = require('../src/data');
+
+    // Crear tablas en orden de dependencias
+    console.log('   1. Creando Tenants...');
+    await Tenant.sync({ alter: false });
+    
+    console.log('   2. Creando Plans...');
+    await Plan.sync({ alter: false });
+    
+    console.log('   3. Creando Admins...');
+    await Admin.sync({ alter: false });
+    
+    console.log('   4. Creando AdminSettings...');
+    await AdminSettings.sync({ alter: false });
+    
+    console.log('   5. Creando Subscriptions...');
+    await Subscription.sync({ alter: false });
+    
+    console.log('   6. Creando Clients...');
+    await Client.sync({ alter: false });
+    
+    console.log('   7. Creando ClientDocuments...');
+    await ClientDocument.sync({ alter: false });
+    
+    console.log('   8. Creando Properties...');
+    await Property.sync({ alter: false });
+    
+    console.log('   9. Creando Leases...');
+    await Lease.sync({ alter: false });
+    
+    console.log('   10. Creando PaymentReceipts...');
+    await PaymentReceipt.sync({ alter: false });
+    
+    console.log('   11. Creando SaleContracts...');
+    await SaleContract.sync({ alter: false });
+    
+    console.log('   12. Creando Garantors...');
+    await Garantor.sync({ alter: false });
+    
+    console.log('   13. Creando PdfTemplates...');
+    await PdfTemplate.sync({ alter: false });
+    
+    console.log('   14. Creando MessageTemplates...');
+    await MessageTemplate.sync({ alter: false });
+    
+    console.log('   15. Creando Commissions...');
+    await Commission.sync({ alter: false });
+    
+    console.log('   16. Creando RentUpdates...');
+    await RentUpdate.sync({ alter: false });
     
     console.log('✅ Tablas creadas correctamente');
     console.log('');
