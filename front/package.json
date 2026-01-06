@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "cd ../shared && npm install && cd ../front && vite build",
+    "build": "cd ../shared && npm install --legacy-peer-deps && cd ../front && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
