@@ -58,6 +58,7 @@ router.use("/pdf", authMiddleware, requireTenantScope, require("./pdf")); // PDF
 router.use("/pdf-templates", authMiddleware, requireTenantScope, require("./pdfTemplates")); // PDF template management
 router.use("/tenant", authMiddleware, requireTenantScope, require("./tenant")); // Tenant management and signature
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
+router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
 
 module.exports = router;

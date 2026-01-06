@@ -21,20 +21,22 @@ import {
   IoHomeOutline,
   IoCardOutline,
   IoLogOutOutline,
-  IoLogoWhatsapp
+  IoLogoWhatsapp,
+  IoExtensionPuzzleOutline
 } from 'react-icons/io5';
 import {
   loadCloudinaryScript,
   openCloudinaryWidgetForLogo,
 } from '../../cloudinaryConfig';
 import PdfTemplateManager from './PdfTemplateManager';
+import MercadoLibreIntegration from './MercadoLibreIntegration';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('general'); // 'general' o 'templates'
+  const [activeTab, setActiveTab] = useState('general'); // 'general', 'messages', 'templates', 'integrations'
   const isIncomplete = searchParams.get('incomplete') === 'true';
   const [settings, setSettings] = useState({
     company_name: '',
@@ -80,11 +82,34 @@ const CompanySettings = () => {
   // Cargar configuración actual
   useEffect(() => {
     loadSettings();
+    
     // Verificar si viene del registro
     if (searchParams.get('welcome') === 'true') {
       setShowWelcome(true);
     }
-  }, [searchParams]);
+    
+    // Verificar tab en URL
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['general', 'messages', 'templates', 'integrations'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    
+    // Verificar mensajes de MercadoLibre
+    if (searchParams.get('ml_success') === 'true') {
+      toast.success('¡Cuenta de MercadoLibre conectada exitosamente!');
+      // Limpiar parámetros de la URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('ml_success');
+      navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });
+    }
+    
+    if (searchParams.get('ml_error')) {
+      toast.error('Error al conectar con MercadoLibre. Por favor, intenta nuevamente.');
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('ml_error');
+      navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -571,6 +596,19 @@ const CompanySettings = () => {
                 <div className="flex items-center space-x-2">
                   <IoDocumentTextOutline className="w-5 h-5" />
                   <span>Plantillas PDF</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('integrations')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'integrations'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <IoExtensionPuzzleOutline className="w-5 h-5" />
+                  <span>Integraciones</span>
                 </div>
               </button>
             </nav>
@@ -1158,6 +1196,11 @@ const CompanySettings = () => {
           // Pestaña de Plantillas PDF
           <div>
             <PdfTemplateManager embedded={true} />
+          </div>
+        ) : activeTab === 'integrations' ? (
+          // Pestaña de Integraciones
+          <div>
+            <MercadoLibreIntegration />
           </div>
         ) : null}
 
