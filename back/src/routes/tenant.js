@@ -43,4 +43,20 @@ router.get("/info", TenantController.getTenantInfo);
  */
 router.put("/info", TenantController.updateTenantInfo);
 
+/**
+ * @route POST /api/tenant/check-subdomain
+ * @desc Verifica si un subdominio está disponible
+ * @body {String} subdomain - Subdominio a verificar
+ * @access Private
+ */
+router.post("/check-subdomain", TenantController.checkSubdomainAvailability);
+
+/**
+ * @route PUT /api/tenant/subdomain
+ * @desc Actualiza el subdominio del tenant (solo si tiene plan con landing)
+ * @body {String} subdomain - Nuevo subdominio
+ * @access Private (SUPER_ADMIN)
+ */
+router.put("/subdomain", TenantController.updateSubdomain);
+
 module.exports = router;

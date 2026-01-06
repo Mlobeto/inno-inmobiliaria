@@ -19,6 +19,16 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'Dirección de la inmobiliaria',
     },
+    company_city: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Ciudad de la inmobiliaria',
+    },
+    company_province: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Provincia de la inmobiliaria',
+    },
     company_phone: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -39,10 +49,42 @@ module.exports = (sequelize) => {
       allowNull: true,
       comment: 'CUIT de la inmobiliaria',
     },
+    company_ingresos_brutos: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Número de Ingresos Brutos',
+    },
+    company_condicion_iva: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'RESPONSABLE MONOTRIBUTO',
+      comment: 'Condición ante IVA (ej: RESPONSABLE MONOTRIBUTO, RESPONSABLE INSCRIPTO)',
+    },
+    company_inicio_actividad: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Fecha de inicio de actividades (formato: DD-MM-YYYY)',
+    },
+    professional_title: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Título profesional (ej: ARQUITECTA, MARTILLERO PÚBLICO)',
+    },
     company_logo_url: {
       type: DataTypes.STRING,
       allowNull: true,
       comment: 'URL del logo en Cloudinary',
+    },
+    receipt_prefix: {
+      type: DataTypes.STRING(1),
+      allowNull: true,
+      defaultValue: 'X',
+      comment: 'Prefijo del recibo: A, B, C o X',
+    },
+    receipt_footer_text: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: 'Texto adicional para pie de recibos',
     },
     
     // Configuración de contratos

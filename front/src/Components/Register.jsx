@@ -60,7 +60,8 @@ const Register = () => {
       const result = await registerTenant({
         fullName: formData.fullName,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        planId: planId || 'basic' // Enviar el planId seleccionado o 'basic' por defecto
       }).unwrap();
 
       console.log('Resultado del registro:', result);

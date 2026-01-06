@@ -39,12 +39,12 @@ exports.register = async (req, res) => {
 /**
  * Registrar un nuevo tenant - Registro simple
  * POST /auth/register-tenant
- * Body: { fullName, email, password }
+ * Body: { fullName, email, password, planId }
  */
 exports.registerTenant = async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const { fullName, email, password, planId } = req.body;
   
-  console.log('POST /auth/register-tenant - Datos recibidos:', { fullName, email, hasPassword: !!password });
+  console.log('POST /auth/register-tenant - Datos recibidos:', { fullName, email, hasPassword: !!password, planId });
 
   try {
     // Validaciones
@@ -85,13 +85,14 @@ exports.registerTenant = async (req, res) => {
       counter++;
     }
 
-    // Buscar plan BASIC por defecto (todos los usuarios empiezan con 7 días trial)
-    const plan = await Plan.findOne({ where: { planId: 'basic', isActive: true } });
+    // Buscar plan por planId (si no se envía, usar 'basic' por defecto)
+    const selectedPlanId = planId || 'basic';
+    const plan = await Plan.findOne({ where: { planId: selectedPlanId, isActive: true } });
     if (!plan) {
-      console.log('❌ Plan BASIC no encontrado en la base de datos');
-      return res.status(500).json({ 
+      console.log('❌ Plan no encontrado:', selectedPlanId);
+      return res.status(400).json({ 
         success: false,
-        error: 'Plan básico no disponible' 
+        error: `Plan "${selectedPlanId}" no disponible` 
       });
     }
 
@@ -103,21 +104,21 @@ exports.registerTenant = async (req, res) => {
     // Determinar el status inicial (TRIAL si el plan lo tiene)
     const tenantStatus = plan.trialDays > 0 ? 'TRIAL' : 'ACTIVE';
 
-    // Crear el tenant con datos mínimos
+    // Crear el tenant con datos del plan seleccionado
     const newTenant = await Tenant.create({
       businessName: tempCompanyName,
       email,
       cuit: tempCuit,
       subdomain: finalSubdomain,
-      status: 'TRIAL', // Siempre empieza en trial (7 días)
-      plan: 'BASIC',
+      status: tenantStatus,
+      plan: plan.planId.toUpperCase(), // 'BASIC', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE'
       maxAgents: plan.maxUsers || 2,
       maxProperties: plan.maxProperties || 50,
       features: plan.features || {},
-      trialEndsAt: new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
+      trialEndsAt: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null
     });
 
-    console.log('✅ Tenant creado:', newTenant.tenantId, newTenant.businessName);
+    console.log('✅ Tenant creado:', newTenant.tenantId, newTenant.businessName, `Plan: ${newTenant.plan}`);
 
     // Hash de la contraseña para el admin
     const hashedPassword = await bcrypt.hash(password, 10);

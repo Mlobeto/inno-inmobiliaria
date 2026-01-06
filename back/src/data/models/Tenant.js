@@ -78,7 +78,7 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 10,
       validate: {
-        min: 1,
+        min: -1, // -1 significa ilimitado
       }
     },
     features: {

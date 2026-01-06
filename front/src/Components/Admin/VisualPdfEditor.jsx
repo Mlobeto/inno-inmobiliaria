@@ -6,7 +6,7 @@ import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { IoHelpCircleOutline } from 'react-icons/io5';
 
-const VisualPdfEditor = ({ value, onChange, templateType, onInsertVariable }) => {
+const VisualPdfEditor = ({ value, onChange, templateType }) => {
   const quillRef = useRef(null);
 
   // Iniciar tour solo la primera vez

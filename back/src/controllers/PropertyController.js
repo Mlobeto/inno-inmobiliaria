@@ -248,6 +248,64 @@ exports.deleteProperty = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/property/:propertyId/publish-landing
+ * Publicar/despublicar propiedad en landing page
+ */
+exports.togglePublishLanding = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { propertyId } = req.params;
+    const { isPublishedInLanding } = req.body;
+
+    // Verificar que el tenant tenga acceso a landing pages
+    const { Tenant } = require('../data/models');
+    const tenant = await Tenant.findByPk(tenantId);
+    
+    if (!tenant?.features?.landingPage) {
+      return res.status(403).json({ 
+        error: 'Landing no disponible',
+        message: 'Tu plan actual no incluye landing pages. Actualiza a Plan Profesional o Empresarial.'
+      });
+    }
+
+    // Actualizar propiedad
+    const [updated] = await Property.update(
+      { isPublishedInLanding: !!isPublishedInLanding },
+      { where: { propertyId, tenantId } }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ 
+        error: 'Propiedad no encontrada' 
+      });
+    }
+
+    const property = await Property.findOne({ 
+      where: { propertyId, tenantId },
+      attributes: ['propertyId', 'title', 'isPublishedInLanding']
+    });
+
+    res.json({
+      message: isPublishedInLanding 
+        ? 'Propiedad publicada en landing' 
+        : 'Propiedad oculta de landing',
+      property: {
+        id: property.propertyId,
+        title: property.title,
+        isPublishedInLanding: property.isPublishedInLanding
+      }
+    });
+
+  } catch (error) {
+    console.error('Error en togglePublishLanding:', error);
+    res.status(500).json({
+      error: 'Error al actualizar publicación',
+      details: error.message
+    });
+  }
+};
+
 exports.getFilteredProperties = async (req, res) => {
   try {
     const {
@@ -333,7 +391,7 @@ exports.getAllProperties = async (req, res) => {
           through: {
             attributes: ['role'], // Incluir solo el campo de rol desde la tabla intermedia
           },
-          attributes: ['idClient', 'name', 'email', 'mobilePhone'], // Campos del cliente
+          attributes: ['idClient', 'name', 'email', 'mobilePhone', 'cuil', 'provincia', 'direccion', 'ciudad'], // Campos del cliente
         },
       ],
     });

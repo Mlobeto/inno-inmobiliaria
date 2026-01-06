@@ -68,6 +68,19 @@ export const propertyApi = baseApi.injectEndpoints({
       invalidatesTags: ['Property', 'Client'],
     }),
     
+    // Toggle publicar en landing
+    togglePublishLanding: builder.mutation({
+      query: ({ propertyId, isPublishedInLanding }) => ({
+        url: `/property/${propertyId}/publish-landing`,
+        method: 'PUT',
+        body: { isPublishedInLanding },
+      }),
+      invalidatesTags: (result, error, { propertyId }) => [
+        { type: 'Property', id: propertyId },
+        'Property',
+      ],
+    }),
+    
   }),
   overrideExisting: false,
 });
@@ -83,6 +96,7 @@ export const {
   useCreatePropertyMutation,
   useUpdatePropertyMutation,
   useDeletePropertyMutation,
+  useTogglePublishLandingMutation,
 } = propertyApi;
 
 export default propertyApi;

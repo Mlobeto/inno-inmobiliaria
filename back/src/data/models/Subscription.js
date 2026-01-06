@@ -5,7 +5,7 @@ const { DataTypes } = require('sequelize');
  * Gestiona las suscripciones activas de cada tenant
  */
 module.exports = (sequelize) => {
-  return sequelize.define('Subscription', {
+  const Subscription = sequelize.define('Subscription', {
   subscriptionId: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
@@ -189,4 +189,19 @@ module.exports = (sequelize) => {
     }
   ]
   });
+  
+  // Asociaciones
+  Subscription.associate = (models) => {
+    Subscription.belongsTo(models.Plan, {
+      foreignKey: 'planId',
+      as: 'Plan'
+    });
+    
+    Subscription.belongsTo(models.Tenant, {
+      foreignKey: 'tenantId',
+      as: 'Tenant'
+    });
+  };
+  
+  return Subscription;
 };

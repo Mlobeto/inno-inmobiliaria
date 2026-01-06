@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const { Plan } = require('../data');
+const publicController = require('../controllers/publicController');
 
 const router = Router();
 
@@ -54,5 +55,17 @@ router.get('/plans', async (req, res) => {
     });
   }
 });
+
+/**
+ * GET /api/public/:subdomain
+ * Landing page del tenant con propiedades publicadas
+ */
+router.get('/:subdomain', publicController.getTenantLanding);
+
+/**
+ * GET /api/public/:subdomain/property/:propertyId
+ * Detalle de una propiedad publicada
+ */
+router.get('/:subdomain/property/:propertyId', publicController.getPropertyDetail);
 
 module.exports = router;

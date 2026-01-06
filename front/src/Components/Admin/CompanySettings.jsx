@@ -1,3 +1,4 @@
+/* eslint-disable react/no-unescaped-entities */
 import  { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -16,7 +17,11 @@ import {
   IoInformationCircleOutline,
   IoWarningOutline,
   IoCloudUploadOutline,
-  IoTrashOutline
+  IoTrashOutline,
+  IoHomeOutline,
+  IoCardOutline,
+  IoLogOutOutline,
+  IoLogoWhatsapp
 } from 'react-icons/io5';
 import {
   loadCloudinaryScript,
@@ -30,14 +35,24 @@ const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('general'); // 'general' o 'templates'
+  const isIncomplete = searchParams.get('incomplete') === 'true';
   const [settings, setSettings] = useState({
     company_name: '',
     company_address: '',
+    company_city: '',
+    company_province: '',
     company_phone: '',
     company_email: '',
+    company_whatsapp: '',
     company_registration: '',
     company_cuit: '',
+    company_ingresos_brutos: '',
+    company_condicion_iva: 'RESPONSABLE MONOTRIBUTO',
+    company_inicio_actividad: '',
+    professional_title: '',
     company_logo_url: '',
+    receipt_prefix: 'X',
+    receipt_footer_text: '',
     contract_footer_text: '',
     whatsapp_template: '',
     requisitos_template: '',
@@ -50,8 +65,11 @@ const CompanySettings = () => {
   const [tenantInfo, setTenantInfo] = useState({
     subdomain: '',
     plan: 'basic',
-    status: 'TRIAL'
+    status: 'TRIAL',
+    hasLanding: false
   });
+  const [subdomainAvailable, setSubdomainAvailable] = useState(null);
+  const [checkingSubdomain, setCheckingSubdomain] = useState(false);
 
   // Función para validar CUIT
   const validateCUIT = (cuit) => {
@@ -86,10 +104,14 @@ const CompanySettings = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         
+        // El backend devuelve response.data.data
+        const tenantData = tenantResponse.data.data || tenantResponse.data;
+        
         setTenantInfo({
-          subdomain: tenantResponse.data.subdomain || '',
-          plan: tenantResponse.data.plan || 'basic',
-          status: tenantResponse.data.status || 'TRIAL'
+          subdomain: tenantData.subdomain || '',
+          plan: tenantData.plan || 'basic',
+          status: tenantData.status || 'TRIAL',
+          hasLanding: tenantData.features?.hasLanding || false
         });
       } catch (tenantError) {
         console.error('Error al cargar info del tenant:', tenantError);
@@ -104,7 +126,44 @@ const CompanySettings = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setSettings(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'subdomain') {
+      // Sanitizar subdomain: convertir a minúsculas y remover caracteres no válidos
+      const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+      setTenantInfo(prev => ({ ...prev, subdomain: sanitized }));
+      setSubdomainAvailable(null); // Reset validation
+    } else {
+      setSettings(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const checkSubdomainAvailability = async (subdomain) => {
+    if (!subdomain || subdomain.length < 3) {
+      setSubdomainAvailable(null);
+      return;
+    }
+
+    setCheckingSubdomain(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/tenant/check-subdomain`,
+        { subdomain },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSubdomainAvailable(response.data.available);
+    } catch (error) {
+      console.error('Error al verificar subdominio:', error);
+      setSubdomainAvailable(false);
+    } finally {
+      setCheckingSubdomain(false);
+    }
+  };
+
+  const handleSubdomainBlur = () => {
+    if (tenantInfo.hasLanding && tenantInfo.subdomain) {
+      checkSubdomainAvailability(tenantInfo.subdomain);
+    }
   };
 
   const handleBlur = (e) => {
@@ -179,12 +238,42 @@ const CompanySettings = () => {
       return;
     }
 
+    // Validar subdominio si está habilitado
+    if (tenantInfo.hasLanding && tenantInfo.subdomain) {
+      if (subdomainAvailable === false) {
+        toast.error('El subdominio no está disponible');
+        return;
+      }
+      if (tenantInfo.subdomain.length < 3) {
+        toast.error('El subdominio debe tener al menos 3 caracteres');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Guardar configuración de empresa
       await axios.put(`${API_URL}/admin/settings`, settings, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Si el tenant tiene landing y cambió el subdominio, actualizarlo
+      if (tenantInfo.hasLanding && tenantInfo.subdomain) {
+        try {
+          await axios.put(
+            `${API_URL}/tenant/subdomain`,
+            { subdomain: tenantInfo.subdomain },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+        } catch (subdomainError) {
+          console.error('Error al actualizar subdominio:', subdomainError);
+          toast.error('Configuración guardada, pero hubo un error al actualizar el subdominio');
+          setIsSaving(false);
+          return;
+        }
+      }
       
       toast.success('✅ Configuración guardada exitosamente');
       
@@ -210,9 +299,95 @@ const CompanySettings = () => {
     );
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Navbar */}
+      <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h1 className="text-xl font-bold text-gray-800">
+                {settings.company_name || 'InnoInmobiliaria'}
+              </h1>
+              {isIncomplete && (
+                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                  Configuración incompleta
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              {!isIncomplete && (
+                <>
+                  <button
+                    onClick={() => navigate('/panel')}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    <IoHomeOutline className="text-lg" />
+                    <span>Panel Principal</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/subscription')}
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  >
+                    <IoCardOutline className="text-lg" />
+                    <span>Mi Plan</span>
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200"
+              >
+                <IoLogOutOutline className="text-lg" />
+                <span>Salir</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="max-w-4xl mx-auto p-6">
+        
+        {/* Alerta de configuración incompleta */}
+        {isIncomplete && (
+          <div className="bg-gradient-to-r from-red-500 to-red-600 border-2 border-red-700 rounded-xl shadow-2xl p-6 mb-6 text-white animate-pulse">
+            <div className="flex items-start space-x-4">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                <IoWarningOutline className="text-white text-3xl flex-shrink-0" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold mb-2 flex items-center">
+                  🚫 Acceso Bloqueado al Panel
+                </h3>
+                <p className="text-red-50 text-base mb-3">
+                  No podrás navegar al panel ni acceder a las funciones del sistema hasta completar todos los <strong>Datos Generales</strong> de tu inmobiliaria.
+                </p>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                  <p className="text-sm text-white font-medium mb-2">
+                    📋 Campos Obligatorios:
+                  </p>
+                  <ul className="text-sm text-red-50 space-y-1 ml-4">
+                    <li>• Nombre de la inmobiliaria</li>
+                    <li>• CUIT</li>
+                    <li>• Matrícula profesional</li>
+                    <li>• Dirección</li>
+                    <li>• Teléfono</li>
+                    <li>• Email</li>
+                  </ul>
+                </div>
+                <p className="text-sm text-red-100 mt-3">
+                  💡 Una vez completados, podrás acceder a todas las funcionalidades del sistema.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         
         {/* Onboarding Welcome Banner */}
         {showWelcome && (
@@ -466,8 +641,43 @@ const CompanySettings = () => {
               value={settings.company_address}
               onChange={handleChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Calle 123, Ciudad, Provincia"
+              placeholder="Av. Principal 123"
             />
+          </div>
+
+          {/* Ciudad y Provincia */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Ciudad */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoLocationOutline className="mr-2" />
+                Ciudad
+              </label>
+              <input
+                type="text"
+                name="company_city"
+                value={settings.company_city}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Ej: Buenos Aires"
+              />
+            </div>
+
+            {/* Provincia */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoLocationOutline className="mr-2" />
+                Provincia
+              </label>
+              <input
+                type="text"
+                name="company_province"
+                value={settings.company_province}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Ej: Buenos Aires"
+              />
+            </div>
           </div>
 
           {/* Subdominio */}
@@ -475,10 +685,19 @@ const CompanySettings = () => {
             <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
               <IoBusinessOutline className="mr-2" />
               Subdominio
-              {tenantInfo.plan === 'basic' && (
+              {!tenantInfo.hasLanding && (
                 <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">
-                  Requiere Plan Professional
+                  Requiere Plan con Landing
                 </span>
+              )}
+              {checkingSubdomain && (
+                <span className="ml-2 text-xs text-gray-500">Verificando...</span>
+              )}
+              {subdomainAvailable === true && (
+                <span className="ml-2 text-xs text-green-600">✓ Disponible</span>
+              )}
+              {subdomainAvailable === false && (
+                <span className="ml-2 text-xs text-red-600">✗ No disponible</span>
               )}
             </label>
             <div className="relative">
@@ -486,22 +705,43 @@ const CompanySettings = () => {
                 type="text"
                 name="subdomain"
                 value={tenantInfo.subdomain}
-                disabled={true}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                onChange={handleChange}
+                onBlur={handleSubdomainBlur}
+                disabled={!tenantInfo.hasLanding}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg transition ${
+                  tenantInfo.hasLanding 
+                    ? 'focus:ring-2 focus:ring-blue-500 focus:border-transparent' 
+                    : 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                }`}
                 placeholder="mi-inmobiliaria"
               />
               <div className="absolute right-3 top-3 text-gray-400 text-sm">
                 .innoinmobiliaria.com
               </div>
             </div>
-            <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-800">
-                <strong>ℹ️ Dominio personalizado:</strong> Con el Plan Professional o superior, podrás personalizar tu subdominio para publicar tus propiedades en una URL única como <strong>{tenantInfo.subdomain || 'tu-nombre'}.innoinmobiliaria.com</strong>
-              </p>
-              {tenantInfo.plan === 'basic' && (
-                <p className="text-xs text-blue-700 mt-2">
-                  💡 Actualiza a Plan Professional para desbloquear esta función y obtener un dominio personalizado para tu inmobiliaria.
-                </p>
+            <div className={`mt-2 border rounded-lg p-3 ${
+              tenantInfo.hasLanding 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-blue-50 border-blue-200'
+            }`}>
+              {tenantInfo.hasLanding ? (
+                <>
+                  <p className="text-sm text-green-800">
+                    <strong>✓ Landing activado:</strong> Tu subdominio será <strong>{tenantInfo.subdomain || 'tu-nombre'}.innoinmobiliaria.com</strong>
+                  </p>
+                  <p className="text-xs text-green-700 mt-2">
+                    💡 Cambia tu subdominio aquí y guarda para actualizar tu URL personalizada.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-blue-800">
+                    <strong>ℹ️ Dominio personalizado:</strong> Con un plan que incluya Landing, podrás personalizar tu subdominio para publicar tus propiedades en una URL única.
+                  </p>
+                  <p className="text-xs text-blue-700 mt-2">
+                    💡 Actualiza tu plan desde "Mi Plan" en el menú para desbloquear esta función.
+                  </p>
+                </>
               )}
             </div>
           </div>
@@ -563,20 +803,166 @@ const CompanySettings = () => {
             </div>
           </div>
 
-          {/* Matrícula */}
+          {/* WhatsApp para Landing Page */}
           <div>
             <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-              <IoDocumentTextOutline className="mr-2" />
-              Matrícula o Número de Registro
+              <IoLogoWhatsapp className="mr-2 text-green-600" />
+              WhatsApp de Contacto
+              {tenantInfo.hasLanding && (
+                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                  Se mostrará en tu Landing
+                </span>
+              )}
             </label>
             <input
               type="text"
-              name="company_registration"
-              value={settings.company_registration}
+              name="company_whatsapp"
+              value={settings.company_whatsapp}
               onChange={handleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Matrícula profesional"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+              placeholder="+5491112345678 (con código de país)"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              💡 Los visitantes de tu landing podrán contactarte por WhatsApp. Incluye código de país (ej: +549).
+            </p>
+          </div>
+
+          {/* Matrícula y Título Profesional */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Matrícula */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoDocumentTextOutline className="mr-2" />
+                Matrícula o Número de Registro
+              </label>
+              <input
+                type="text"
+                name="company_registration"
+                value={settings.company_registration}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Ej: M.P. Nº 275"
+              />
+            </div>
+
+            {/* Título Profesional */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoDocumentTextOutline className="mr-2" />
+                Título Profesional
+              </label>
+              <input
+                type="text"
+                name="professional_title"
+                value={settings.professional_title}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Ej: ARQUITECTA, MARTILLERO PÚBLICO"
+              />
+            </div>
+          </div>
+
+          {/* Datos Impositivos */}
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Datos Impositivos</h3>
+            
+            <div className="grid md:grid-cols-2 gap-6 mb-4">
+              {/* Ingresos Brutos */}
+              <div>
+                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <IoDocumentTextOutline className="mr-2" />
+                  Ingresos Brutos
+                </label>
+                <input
+                  type="text"
+                  name="company_ingresos_brutos"
+                  value={settings.company_ingresos_brutos}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="XX-XXXXXXXX-X"
+                />
+              </div>
+
+              {/* Inicio de Actividad */}
+              <div>
+                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <IoDocumentTextOutline className="mr-2" />
+                  Inicio de Actividad
+                </label>
+                <input
+                  type="text"
+                  name="company_inicio_actividad"
+                  value={settings.company_inicio_actividad}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  placeholder="DD-MM-YYYY"
+                />
+              </div>
+            </div>
+
+            {/* Condición IVA */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoDocumentTextOutline className="mr-2" />
+                Condición ante IVA
+              </label>
+              <select
+                name="company_condicion_iva"
+                value={settings.company_condicion_iva}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              >
+                <option value="RESPONSABLE MONOTRIBUTO">RESPONSABLE MONOTRIBUTO</option>
+                <option value="RESPONSABLE INSCRIPTO">RESPONSABLE INSCRIPTO</option>
+                <option value="IVA EXENTO">IVA EXENTO</option>
+                <option value="CONSUMIDOR FINAL">CONSUMIDOR FINAL</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Configuración de Recibos */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Configuración de Recibos</h3>
+            
+            <div className="grid md:grid-cols-2 gap-6 mb-4">
+              {/* Prefijo de Recibo */}
+              <div>
+                <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                  <IoDocumentTextOutline className="mr-2" />
+                  Tipo de Comprobante
+                </label>
+                <select
+                  name="receipt_prefix"
+                  value={settings.receipt_prefix}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                >
+                  <option value="X">X - No válido como factura</option>
+                  <option value="A">A - Responsable Inscripto</option>
+                  <option value="B">B - Consumidor Final</option>
+                  <option value="C">C - IVA Exento</option>
+                </select>
+                <p className="text-xs text-gray-600 mt-1">
+                  Esta letra aparecerá en tus recibos de pago
+                </p>
+              </div>
+            </div>
+
+            {/* Texto de pie de recibo */}
+            <div>
+              <label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
+                <IoDocumentTextOutline className="mr-2" />
+                Texto de Pie de Recibo (Opcional)
+              </label>
+              <textarea
+                name="receipt_footer_text"
+                value={settings.receipt_footer_text}
+                onChange={handleChange}
+                rows="2"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Ej: Gracias por su pago"
+              />
+            </div>
           </div>
 
           {/* Logo URL */}

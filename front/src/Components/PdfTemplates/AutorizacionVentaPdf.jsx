@@ -1,32 +1,84 @@
 /* eslint-disable react/prop-types */
+import { useState, useEffect } from "react";
 import { jsPDF } from "jspdf";
 
 const AutorizacionVentaPdf = ({ client, property }) => {
+  const [companySettings, setCompanySettings] = useState(null);
+
+  // Cargar configuración de la empresa
+  useEffect(() => {
+    const loadCompanySettings = async () => {
+      try {
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/admin/settings`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCompanySettings(data);
+        }
+      } catch (error) {
+        console.error("Error al cargar settings de la empresa:", error);
+        setCompanySettings({
+          company_name: "Inmobiliaria",
+          company_address: "",
+          company_phone: "",
+          company_email: ""
+        });
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
+
   const generatePdf = () => {
     const doc = new jsPDF();
     const maxWidth = 170; // Ancho máximo para el texto
     let currentY = 15; // Posición inicial vertical
-    console.log(client, property)
+    console.log("Client data:", client);
+    console.log("Property data:", property);
+    console.log("Company settings:", companySettings);
+    
+    // Usar company_city directamente de settings, con fallback a extraer de address
+    const companyCity = companySettings?.company_city || 
+                        (companySettings?.company_address?.includes(',') ? 
+                          companySettings.company_address.split(',').pop()?.trim() : 
+                          companySettings?.company_address) || 
+                        'N/A';
+    
+    const companyProvince = companySettings?.company_province || 'Buenos Aires';
+    
+    console.log("Ciudad del tenant:", companyCity);
+    console.log("Provincia del tenant:", companyProvince);
+    console.log("Dirección completa:", companySettings?.company_address);
+    
     // Título
     doc.setFontSize(15);
     doc.text(`Autorización de Venta`, 15, currentY);
     currentY += 10; // Espaciado después del título
 
-    // PRIMERO
+    // PRIMERO - Ahora con datos dinámicos corregidos
     doc.setFontSize(12);
-    const firstText = `En la ciudad de Belén, provincia de Catamarca, entre el Sr. ${client.name} CUIL/CUIT ${client.cuil} ${property.socio} ,  denominado el/los PROPIETARIOS, por una parte, y QUINTERO LOBETO PROPIEDADES, Tel celular 3835-503166 con domicilio en Av. Cubas Nº50 de la ciudad de Belén, en adelante denominado LA INMOBILIARIA han llegado a un acuerdo para la autorización de venta del inmueble bajo las siguientes condiciones.`;
+    console.log("CUIL del vendedor (client.cuil):", client.cuil);
+    console.log("Nombre del vendedor (client.name):", client.name);
+    console.log("Provincia del vendedor (client.provincia):", client.provincia);
+    
+    const firstText = `En la ciudad de ${companyCity}, provincia de ${companyProvince}, entre el Sr./Sra. ${client.name} CUIL/CUIT ${client.cuil || 'N/A'}${property.socio ? `, junto con ${property.socio}` : ''}, denominado el/los PROPIETARIOS, por una parte, y ${companySettings?.company_name || 'LA INMOBILIARIA'}, Tel celular ${companySettings?.company_phone || 'N/A'} con domicilio en ${companySettings?.company_address || 'N/A'}, ciudad de ${companyCity}, en adelante denominado LA INMOBILIARIA han llegado a un acuerdo para la autorización de venta del inmueble bajo las siguientes condiciones.`;
     const firstTextLines = doc.splitTextToSize(firstText, maxWidth);
     doc.text(firstTextLines, 20, currentY);
     currentY += firstTextLines.length * 8; // Incremento dinámico según el texto
 
     // Descripción de la propiedad
-    const propertyDescription = `${property.description},${property.superficieCubierta}, ${property.superficieTotal} sito en la localidad de ${property.city}, prov. Catamarca.`;
+    const propertyDescription = `${property.description || 'Propiedad'}, Superficie cubierta: ${property.superficieCubierta || 'N/A'}, Superficie total: ${property.superficieTotal || 'N/A'}, sito en la localidad de ${property.city || 'N/A'}, provincia de ${property.province || companyProvince}.`;
     const propertyLines = doc.splitTextToSize(propertyDescription, maxWidth);
     doc.text(propertyLines, 20, currentY);
     currentY += propertyLines.length * 8 + 10; // Incremento dinámico + espacio adicional
 
     // SEGUNDA
-    const secondText = `SEGUNDA: El precio pactado es $ ${property.price}.`;
+    const secondText = `SEGUNDA: El precio pactado es ${new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(property.price || 0)}.`;
     const secondLines = doc.splitTextToSize(secondText, maxWidth);
     doc.text(secondLines, 20, currentY);
     currentY += secondLines.length * 8 + 10; // Incremento dinámico + espacio adicional
@@ -44,7 +96,7 @@ const AutorizacionVentaPdf = ({ client, property }) => {
     currentY += fourthLines.length * 8 + 10;
 
     // Lugar y fecha
-    const dateText = `Lugar y fecha. Celebrado en la ciudad de Belén al día ${new Date().toLocaleDateString()}.`;
+    const dateText = `Lugar y fecha. Celebrado en la ciudad de ${companyCity} al día ${new Date().toLocaleDateString('es-AR')}.`;
     const dateLines = doc.splitTextToSize(dateText, maxWidth);
     doc.text(dateLines, 20, currentY);
     currentY += dateLines.length * 8 + 20;
@@ -61,8 +113,12 @@ const AutorizacionVentaPdf = ({ client, property }) => {
 
   return (
     <div className="col-span-full text-center mt-4">
-      <button onClick={generatePdf} className="bg-yellow-500 text-white px-3 py-2  rounded">
-        Generar Autorización de Venta
+      <button 
+        onClick={generatePdf} 
+        disabled={!companySettings}
+        className="bg-yellow-500 text-white px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-yellow-600 transition-colors"
+      >
+        {companySettings ? 'Generar Autorización de Venta' : 'Cargando...'}
       </button>
     </div>
   );

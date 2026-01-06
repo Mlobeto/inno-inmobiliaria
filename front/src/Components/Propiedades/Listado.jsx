@@ -1,8 +1,9 @@
-import  { useState, useMemo } from 'react';
-import { useGetAllPropertiesQuery, useUpdatePropertyMutation, useDeletePropertyMutation } from '@shared/redux';
+import  { useState, useMemo, useEffect } from 'react';
+import { useGetAllPropertiesQuery, useUpdatePropertyMutation, useDeletePropertyMutation, useTogglePublishLandingMutation } from '@shared/redux';
 import { useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import PropiedadesPDF from "../PdfTemplates/PropiedadesPdf";
 import CreateLeaseForm from "../Contratos/CreateLeaseForm";
 import CompraVenta from "../Contratos/CompraVenta";
@@ -10,6 +11,7 @@ import WhatsAppButton from './WhatsAppButton';
 import RequisitoButton from './RequisitoButton';
 import ImageManager from './ImageManager';
 import EditPropertyModal from './EditPropertyModal';
+import AutorizacionVentaPdf from '../PdfTemplates/AutorizacionVentaPdf';
 import { 
   IoArrowBackOutline,
   IoHomeOutline,
@@ -26,7 +28,10 @@ import {
   IoChevronForwardOutline,
   IoFilterOutline,
   IoKeyOutline,
-  IoAddOutline
+  IoAddOutline,
+  IoGlobeOutline,
+  IoCheckmarkCircle,
+  IoCloseCircle
 } from 'react-icons/io5';
 
 const Listado = ({ mode = "default", onSelectProperty }) => {
@@ -36,6 +41,10 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   const { data: allProperties = [], isLoading, error } = useGetAllPropertiesQuery();
   const [updateProperty] = useUpdatePropertyMutation();
   const [deleteProperty] = useDeletePropertyMutation();
+  const [togglePublishLanding] = useTogglePublishLandingMutation();
+  
+  // Estado para tenant info
+  const [tenantHasLanding, setTenantHasLanding] = useState(false);
 
   // Función para formatear precio como moneda
   const formatCurrency = (value) => {
@@ -60,6 +69,24 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [propertyToEdit, setPropertyToEdit] = useState(null);
   const propertiesPerPage = 5;
+
+  // Cargar info del tenant al montar
+  useEffect(() => {
+    const fetchTenantInfo = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/tenant`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const tenant = response.data?.data || response.data;
+        setTenantHasLanding(tenant?.features?.landingPage === true);
+      } catch (error) {
+        console.error('Error al obtener tenant:', error);
+        setTenantHasLanding(false);
+      }
+    };
+    fetchTenantInfo();
+  }, []);
 
   // Filtrar solo propiedades disponibles para alquiler/venta según el modo
   // Función optimizada para obtener propiedades disponibles
@@ -176,6 +203,29 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     } catch (error) {
       console.error('Error al eliminar propiedad:', error);
       toast.error(error?.data?.details || 'Error al eliminar la propiedad');
+    }
+  };
+
+  const handleTogglePublish = async (propertyId, currentStatus) => {
+    if (!tenantHasLanding) {
+      toast.warning('Tu plan actual no incluye landing pages. Actualiza a Plan Profesional o Empresarial.');
+      return;
+    }
+
+    try {
+      await togglePublishLanding({ 
+        propertyId, 
+        isPublishedInLanding: !currentStatus 
+      }).unwrap();
+      
+      toast.success(
+        !currentStatus 
+          ? '✅ Propiedad publicada en landing' 
+          : '🚫 Propiedad oculta de landing'
+      );
+    } catch (error) {
+      console.error('Error al cambiar publicación:', error);
+      toast.error(error?.data?.message || 'Error al cambiar publicación');
     }
   };
 
@@ -400,9 +450,60 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   />
                   <RequisitoButton property={property} />
                   <ImageManager property={property} />
+                  
+                  {/* Botón de Autorización de Venta - solo para propiedades de venta */}
+                  {property.type === 'venta' && property.Clients && property.Clients.length > 0 && (
+                    <AutorizacionVentaPdf 
+                      client={property.Clients.find(c => c.ClientProperty?.role === 'propietario' || c.ClientProperty?.role === 'vendedor') || property.Clients[0]}
+                      property={property}
+                    />
+                  )}
+                  
                   <div className="flex-grow flex justify-end">
                     <PropiedadesPDF property={property} />
                   </div>
+                </div>
+
+                {/* Checkbox Publicar en Landing */}
+                <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                  property.isPublishedInLanding 
+                    ? 'bg-emerald-500/10 border-emerald-500/30' 
+                    : 'bg-slate-500/10 border-slate-500/30'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <IoGlobeOutline className={`w-5 h-5 ${property.isPublishedInLanding ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <div>
+                      <p className={`text-sm font-medium ${property.isPublishedInLanding ? 'text-emerald-300' : 'text-slate-300'}`}>
+                        Landing Page
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {tenantHasLanding 
+                          ? (property.isPublishedInLanding ? 'Visible en tu sitio' : 'Oculta del sitio') 
+                          : 'Plan sin landing pages'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleTogglePublish(property.propertyId, property.isPublishedInLanding)}
+                    disabled={!tenantHasLanding}
+                    className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
+                      property.isPublishedInLanding 
+                        ? 'bg-emerald-500' 
+                        : 'bg-slate-600'
+                    } ${!tenantHasLanding ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                    title={tenantHasLanding ? (property.isPublishedInLanding ? 'Despublicar' : 'Publicar') : 'Actualiza tu plan'}
+                  >
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      property.isPublishedInLanding ? 'translate-x-8' : 'translate-x-1'
+                    }`}>
+                      {property.isPublishedInLanding ? (
+                        <IoCheckmarkCircle className="text-emerald-500 w-5 h-5" />
+                      ) : (
+                        <IoCloseCircle className="text-slate-400 w-5 h-5" />
+                      )}
+                    </span>
+                  </button>
                 </div>
 
                 {/* Botón contextual según el modo */}

@@ -20,6 +20,28 @@ router.use("/auth", require("./auth"));
 router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
 router.use("/public", require("./publicRoutes")); // Rutas públicas (planes, etc.)
 
+// Alias directo para /plans - crea un mini-router inline
+const plansRouter = Router();
+const { Plan } = require("../data");
+plansRouter.get("/", async (req, res) => {
+  try {
+    const plans = await Plan.findAll({
+      where: { isActive: true },
+      order: [['sortOrder', 'ASC'], ['priceMonthly', 'ASC']],
+      attributes: [
+        'planId', 'name', 'description', 'priceMonthly', 'priceYearly',
+        'currency', 'features', 'trialDays', 'isActive', 'isPopular',
+        'sortOrder', 'createdAt', 'updatedAt'
+      ]
+    });
+    return res.status(200).json({ success: true, count: plans.length, plans });
+  } catch (error) {
+    console.error('❌ Error en GET /plans:', error);
+    return res.status(500).json({ success: false, message: "Error al obtener planes" });
+  }
+});
+router.use("/plans", plansRouter);
+
 // Rutas de administrador de plataforma (solo PLATFORM_ADMIN)
 router.use("/platform-admin", require("./platformAdmin"));
 

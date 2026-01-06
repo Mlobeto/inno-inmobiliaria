@@ -216,7 +216,7 @@ function LandingPlans() {
 
                 {/* CTA Button */}
                 <Link
-                  to="/plans"
+                  to={`/register?planId=${plan.planId}`}
                   className={`block w-full py-3 px-6 rounded-lg font-semibold transition text-center ${
                     plan.isPopular
                       ? 'bg-indigo-600 hover:bg-indigo-700 text-white'

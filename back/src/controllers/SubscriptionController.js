@@ -84,6 +84,9 @@ class SubscriptionController {
         });
       }
       
+      console.log('📊 Subscription encontrada:', JSON.stringify(subscription, null, 2));
+      console.log('📊 Plan incluido:', subscription.Plan ? 'SÍ' : 'NO');
+      
       res.json({
         success: true,
         subscription

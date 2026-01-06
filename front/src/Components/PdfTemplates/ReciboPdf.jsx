@@ -9,12 +9,47 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
   const [signatureUrl, setSignatureUrl] = useState(null);
   const [signatureLoaded, setSignatureLoaded] = useState(false);
   const [pdfGenerated, setPdfGenerated] = useState(false);
+  const [companySettings, setCompanySettings] = useState(null);
+
+  // Cargar configuración de la empresa
+  useEffect(() => {
+    const loadCompanySettings = async () => {
+      try {
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/admin/settings`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCompanySettings(data);
+        }
+      } catch (error) {
+        console.error("Error al cargar settings de la empresa:", error);
+        setCompanySettings({
+          company_name: "Inmobiliaria",
+          company_address: "",
+          company_phone: "",
+          company_email: ""
+        });
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
 
   useEffect(() => {
     // Cargar firma al montar el componente
     const fetchSignature = async () => {
       try {
-        const response = await fetch('https://qlinmobiliaria.onrender.com/admin/signature');
+        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiUrl}/admin/signature`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
         const data = await response.json();
         if (data.signatureUrl) {
           setSignatureUrl(data.signatureUrl);
@@ -29,6 +64,11 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
   }, []);
 
   const generatePdf = async () => {
+    if (!companySettings) {
+      console.error('Company settings not loaded yet');
+      return;
+    }
+
     const doc = new jsPDF();
     doc.setFont("Nunito-VariableFont_wght", "normal");
 
@@ -50,38 +90,41 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
     // === HEADER ===
     doc.setFont("Nunito-VariableFont_wght", "normal");
     doc.setFontSize(18);
-    doc.text("QUINTERO + LOBETO", 20, 25);
+    doc.text(companySettings.company_name || "INMOBILIARIA", 20, 25);
 
-    doc.setFontSize(7);
-    doc.setCharSpace(2);
-    doc.text("P R O P I E D A D E S", 20, 30);
-    doc.setCharSpace(0);
+    // Título profesional si existe
+    if (companySettings.professional_title) {
+      doc.setFontSize(7);
+      doc.setCharSpace(2);
+      doc.text(companySettings.professional_title, 20, 30);
+      doc.setCharSpace(0);
+    }
 
-    // Volver a Tahoma para el resto del documento
-    doc.setFont("Nunito-VariableFont_wght", "normal");
-    doc.setFontSize(9);
-    doc.text("de LOBETO MARIANA", 38, 36);
-    doc.text("ARQUITECTA", 44, 40);
+    // Matrícula si existe
+    if (companySettings.company_registration) {
+      doc.setFont("Nunito-VariableFont_wght", "normal");
+      doc.setFontSize(9);
+      doc.text(companySettings.company_registration, 20, 36);
+    }
 
-    doc.setFont("Nunito-VariableFont_wght", "normal");
-    doc.setFontSize(7);
-    doc.text("M.P. Nº 275", 48, 44);
-
+    // Dirección y contacto
     doc.setFontSize(10);
-    doc.text("AVDA. CUBA Nº 50 / Tel. 3835 503166", 20, 50);
-    doc.text("C.P. 4750 - Belen - Catamarca", 28, 54);
-    doc.text("qlinmobiliaria@gmail.com", 29, 58);
+    const yPos = companySettings.company_registration ? 44 : 36;
+    doc.text(`${companySettings.company_address || 'Dirección no configurada'}`, 20, yPos);
+    doc.text(`${companySettings.company_city || ''}, ${companySettings.company_province || ''}`, 20, yPos + 4);
+    doc.text(`Tel: ${companySettings.company_phone || 'N/A'}`, 20, yPos + 8);
+    doc.text(companySettings.company_email || 'email@ejemplo.com', 20, yPos + 12);
 
     doc.setFont("Nunito-VariableFont_wght", "normal");
     doc.setFontSize(11);
-    doc.text("IVA RESPONSABLE MONOTRIBUTO", 20, 66);
+    doc.text(companySettings.company_condicion_iva || "IVA RESPONSABLE MONOTRIBUTO", 20, yPos + 20);
 
     // Recuadro número de recibo
     doc.setLineWidth(0.8);
     doc.rect(130, 15, 60, 35);
 
     doc.setFontSize(40);
-    doc.text("X", 100, 40);
+    doc.text(companySettings.receipt_prefix || "X", 100, 40);
 
     doc.setFontSize(12);
     doc.text(`Nº ${receiptNumber}`, 138, 25);
@@ -99,11 +142,11 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
     doc.rect(130, 52, 60, 20);
     
     doc.setFontSize(8);
-    doc.text("C.U.I.T.:  23-20514549-4", 132, 58);
+    doc.text(`C.U.I.T.: ${companySettings.company_cuit || 'N/A'}`, 132, 58);
     doc.setFontSize(7);
-    doc.text("Ing. Brutos: 23-20514549-4", 132, 62);
+    doc.text(`Ing. Brutos: ${companySettings.company_ingresos_brutos || companySettings.company_cuit || 'N/A'}`, 132, 62);
     doc.setFontSize(8);
-    doc.text("Inicio Activ.: 01-10-1996", 132, 66);
+    doc.text(`Inicio Activ.: ${companySettings.company_inicio_actividad || 'N/A'}`, 132, 66);
 
     doc.setFontSize(7);
     doc.text("DIA", 167, 58);
@@ -240,18 +283,24 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
 
     doc.setFontSize(10);
     doc.text("ORIGINAL", 165, 260);
+    
+    // Footer personalizado si existe
+    if (companySettings.receipt_footer_text) {
+      doc.setFontSize(8);
+      doc.text(companySettings.receipt_footer_text, 20, 270);
+    }
 
     doc.save(`Recibo_${receiptNumber}_${tenant.name || "Cliente"}.pdf`);
     setPdfGenerated(true);
   };
 
-  // Efecto para auto-generar cuando la firma esté cargada
+  // Efecto para auto-generar cuando la firma y settings estén cargados
   useEffect(() => {
-    if (autoGenerate && signatureLoaded && !pdfGenerated) {
+    if (autoGenerate && signatureLoaded && companySettings && !pdfGenerated) {
       generatePdf();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoGenerate, signatureLoaded, pdfGenerated]);
+  }, [autoGenerate, signatureLoaded, companySettings, pdfGenerated]);
 
   if (autoGenerate) {
     return null;
@@ -266,9 +315,11 @@ const ReciboPdf = ({ payment, lease, autoGenerate = false }) => {
     <div className="mt-4">
       <button
         onClick={handleGenerate}
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        disabled={!companySettings}
+        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        title={!companySettings ? "Cargando configuración..." : ""}
       >
-        Generar Recibo PDF
+        {companySettings ? "Generar Recibo PDF" : "Cargando..."}
       </button>
     </div>
   );

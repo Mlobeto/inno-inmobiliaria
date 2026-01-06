@@ -18,7 +18,6 @@ import {
   IoCheckmarkCircleOutline,
   IoCloseCircleOutline,
   IoCreateOutline,
-  IoEyeOutline,
   IoStarOutline,
   IoStar,
   IoSaveOutline,

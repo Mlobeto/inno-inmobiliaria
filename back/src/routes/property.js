@@ -8,7 +8,8 @@ const {
   deleteProperty,
   updateProperty,
   getFilteredProperties,
-  getWhatsAppText
+  getWhatsAppText,
+  togglePublishLanding
 } = require("../controllers");
 const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 
@@ -31,6 +32,9 @@ router.get("/client/:idClient", getPropertiesByIdClient);
 
 // Ruta para obtener texto de WhatsApp (debe ir ANTES de /:propertyId)
 router.get("/:id/whatsapp", getWhatsAppText);
+
+// Ruta para publicar/despublicar en landing (debe ir ANTES de /:propertyId)
+router.put("/:propertyId/publish-landing", togglePublishLanding);
 
 // Agregamos logging específico para la ruta getPropertyById
 router.get("/:propertyId", (req, res, next) => {

@@ -124,6 +124,12 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    
+    // ==================== GET CURRENT TENANT ====================
+    getCurrentTenant: builder.query({
+      query: () => '/admin/tenant',
+      providesTags: ['Tenant'],
+    }),
   }),
 });
 
@@ -139,6 +145,7 @@ export const {
   useGetAllAdminsQuery,
   useEditAdminMutation,
   useDeleteAdminMutation,
+  useGetCurrentTenantQuery,
 } = authApi;
 
 export default authApi;

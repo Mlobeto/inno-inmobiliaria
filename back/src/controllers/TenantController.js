@@ -200,9 +200,19 @@ const getTenantInfo = async (req, res) => {
       });
     }
 
+    // Normalizar hasLanding desde landingPage
+    const tenantData = tenant.toJSON();
+    const normalizedFeatures = {
+      ...tenantData.features,
+      hasLanding: tenantData.features?.landingPage || false
+    };
+
     res.status(200).json({
       success: true,
-      data: tenant,
+      data: {
+        ...tenantData,
+        features: normalizedFeatures
+      },
     });
   } catch (error) {
     console.error("Error obteniendo info del tenant:", error);
@@ -255,10 +265,154 @@ const updateTenantInfo = async (req, res) => {
   }
 };
 
+/**
+ * @route POST /api/tenant/check-subdomain
+ * @desc Verifica si un subdominio está disponible
+ * @access Private
+ */
+const checkSubdomainAvailability = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { subdomain } = req.body;
+
+    if (!subdomain) {
+      return res.status(400).json({
+        success: false,
+        message: "El subdominio es requerido",
+      });
+    }
+
+    // Validar formato del subdominio
+    const subdomainRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+    if (!subdomainRegex.test(subdomain) || subdomain.length < 3 || subdomain.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "El subdominio debe contener solo letras minúsculas, números y guiones (3-50 caracteres)",
+        available: false,
+      });
+    }
+
+    // Verificar si el subdominio ya existe (excluyendo el tenant actual)
+    const existingTenant = await Tenant.findOne({
+      where: {
+        subdomain,
+        tenantId: { [require('sequelize').Op.ne]: tenantId }
+      }
+    });
+
+    const available = !existingTenant;
+
+    res.status(200).json({
+      success: true,
+      available,
+      message: available 
+        ? "Subdominio disponible" 
+        : "Este subdominio ya está en uso",
+    });
+  } catch (error) {
+    console.error("Error verificando subdominio:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al verificar disponibilidad del subdominio",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @route PUT /api/tenant/subdomain
+ * @desc Actualiza el subdominio del tenant (solo si tiene plan con landing)
+ * @access Private (SUPER_ADMIN)
+ */
+const updateSubdomain = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { subdomain } = req.body;
+
+    if (!subdomain) {
+      return res.status(400).json({
+        success: false,
+        message: "El subdominio es requerido",
+      });
+    }
+
+    // Validar formato del subdominio
+    const subdomainRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+    if (!subdomainRegex.test(subdomain) || subdomain.length < 3 || subdomain.length > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "El subdominio debe contener solo letras minúsculas, números y guiones (3-50 caracteres)",
+      });
+    }
+
+    // Obtener tenant
+    const tenant = await Tenant.findByPk(tenantId);
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant no encontrado",
+      });
+    }
+
+    // Verificar si el plan incluye landing
+    // Las features se guardan directamente en tenant.features al registrar
+    const hasLanding = tenant.features?.landingPage || false;
+    
+    console.log('🔍 Verificando landing:', {
+      tenantFeatures: tenant.features,
+      hasLanding
+    });
+    
+    if (!hasLanding) {
+      return res.status(403).json({
+        success: false,
+        message: "Tu plan actual no incluye subdominio personalizado. Actualiza tu plan para desbloquear esta función.",
+      });
+    }
+
+    // Verificar si el subdominio ya existe (excluyendo el tenant actual)
+    const existingTenant = await Tenant.findOne({
+      where: {
+        subdomain,
+        tenantId: { [require('sequelize').Op.ne]: tenantId }
+      }
+    });
+
+    if (existingTenant) {
+      return res.status(409).json({
+        success: false,
+        message: "Este subdominio ya está en uso por otra inmobiliaria",
+      });
+    }
+
+    // Actualizar subdominio
+    await tenant.update({ subdomain });
+
+    res.status(200).json({
+      success: true,
+      message: "Subdominio actualizado exitosamente",
+      data: {
+        subdomain: tenant.subdomain,
+        url: `${subdomain}.innoinmobiliaria.com`
+      },
+    });
+  } catch (error) {
+    console.error("Error actualizando subdominio:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al actualizar el subdominio",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   uploadSignature,
   getSignature,
   deleteSignature,
   getTenantInfo,
   updateTenantInfo,
+  checkSubdomainAvailability,
+  updateSubdomain,
 };

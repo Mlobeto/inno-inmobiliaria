@@ -1,4 +1,4 @@
-import  { useMemo } from 'react';
+import  { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
@@ -9,6 +9,7 @@ import {
   useGetAllPropertiesQuery,
   useGetAllLeasesQuery,
   useGetAllPaymentsQuery,
+  useGetCurrentTenantQuery,
 } from '@shared/redux';
 import { 
   IoLogOutOutline, 
@@ -21,13 +22,18 @@ import {
   IoBusiness,
   IoRocketOutline,
   IoCalendarOutline,
-  IoCheckmarkCircleOutline
+  IoCheckmarkCircleOutline,
+  IoHelpCircleOutline,
+  IoCardOutline,
+  IoGlobeOutline
 } from 'react-icons/io5';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
+import TipsModal from '../TipsModal';
 
 const Panel = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [showTipsModal, setShowTipsModal] = useState(false);
   
   // Obtener usuario actual (incluye tenantId)
   const currentUser = useSelector(selectCurrentUser);
@@ -37,6 +43,26 @@ const Panel = () => {
     undefined,
     { skip: !currentUser?.tenantId } // Solo cargar si hay tenantId
   );
+  
+  // Obtener información del tenant actual (incluye subdomain)
+  const { data: tenantData } = useGetCurrentTenantQuery(
+    undefined,
+    { skip: !currentUser?.tenantId }
+  );
+  
+  // Obtener subdomain y features
+  const tenantSubdomain = tenantData?.data?.subdomain || null;
+  const hasLandingFeature = subscriptionData?.subscription?.Plan?.features?.landingPage === true;
+
+  // Debug: ver valores
+  useEffect(() => {
+    console.log('🔍 Landing Debug:', {
+      tenantSubdomain,
+      hasLandingFeature,
+      tenantData,
+      subscriptionData
+    });
+  }, [tenantSubdomain, hasLandingFeature, tenantData, subscriptionData]);
 
   // Obtener datos usando RTK Query
   const { data: clients = [], isLoading: loadingClients } = useGetAllClientsQuery(
@@ -79,6 +105,26 @@ const Panel = () => {
     localStorage.removeItem('token');
     navigate('/login');
   };
+
+  // Mostrar tips modal automáticamente si no se ha ocultado
+  useEffect(() => {
+    const hideTips = localStorage.getItem('hideTipsModal');
+    if (!hideTips && currentUser) {
+      // Mostrar después de 1 segundo para dar tiempo a que cargue el panel
+      const timer = setTimeout(() => {
+        setShowTipsModal(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser]);
+  
+  const handleOpenTips = () => {
+    setShowTipsModal(true);
+  };
+  
+  const handleCloseTips = () => {
+    setShowTipsModal(false);
+  };
   
   // Helpers para suscripción
   const subscription = subscriptionData?.subscription;
@@ -88,7 +134,12 @@ const Panel = () => {
       free: 'Gratis',
       basic: 'Básico',
       professional: 'Profesional',
-      enterprise: 'Empresarial'
+      enterprise: 'Empresarial',
+      // Soporte para mayúsculas (como viene desde la DB)
+      FREE: 'Gratis',
+      BASIC: 'Básico',
+      PROFESSIONAL: 'Profesional',
+      ENTERPRISE: 'Empresarial'
     };
     return plans[planId] || planId?.toUpperCase();
   };
@@ -98,7 +149,12 @@ const Panel = () => {
       free: 'from-gray-500 to-gray-600',
       basic: 'from-blue-500 to-blue-600',
       professional: 'from-purple-500 to-purple-600',
-      enterprise: 'from-yellow-500 to-yellow-600'
+      enterprise: 'from-yellow-500 to-yellow-600',
+      // Soporte para mayúsculas
+      FREE: 'from-gray-500 to-gray-600',
+      BASIC: 'from-blue-500 to-blue-600',
+      PROFESSIONAL: 'from-purple-500 to-purple-600',
+      ENTERPRISE: 'from-yellow-500 to-yellow-600'
     };
     return colors[planId] || 'from-gray-500 to-gray-600';
   };
@@ -172,6 +228,33 @@ const Panel = () => {
             )}
           </div>
           <div className="flex items-center space-x-3">
+            <button
+              onClick={handleOpenTips}
+              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 transition-all duration-300"
+              title="Ver guía de uso"
+            >
+              <IoHelpCircleOutline className="w-5 h-5" />
+              <span className="hidden sm:inline">Ayuda</span>
+            </button>
+            <Link
+              to="/subscription"
+              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all duration-300"
+              title="Mi Suscripción"
+            >
+              <IoCardOutline className="w-5 h-5" />
+              <span className="hidden sm:inline">Mi Plan</span>
+            </Link>
+            {tenantSubdomain && hasLandingFeature && (
+              <Link
+                to={`/landing/${tenantSubdomain}`}
+                target="_blank"
+                className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all duration-300"
+                title="Ver mi Landing Page pública"
+              >
+                <IoGlobeOutline className="w-5 h-5" />
+                <span className="hidden sm:inline">Mi Landing</span>
+              </Link>
+            )}
             <Link
               to="/company-settings"
               className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 transition-all duration-300"
@@ -374,6 +457,12 @@ const Panel = () => {
           </div>
         </div>
       </div>
+
+      {/* Tips Modal */}
+      <TipsModal 
+        isOpen={showTipsModal} 
+        onClose={handleCloseTips} 
+      />
     </div>
   );
 };

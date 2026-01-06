@@ -21,6 +21,9 @@ import TenantDetail from "./Admin/PlatformAdmin/TenantDetail"; // 🆕 NUEVO
 import PlanSelector from "./Components/PlanSelector";
 import SubscriptionDashboard from "./Components/SubscriptionDashboard";
 import SubscriptionSuccess from "./Components/SubscriptionSuccess";
+// 🆕 NUEVO - Landing Pages Públicas
+import TenantLanding from "./Components/Landing/TenantLanding";
+import PropertyDetail from "./Components/Landing/PropertyDetail";
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
@@ -35,8 +38,10 @@ import ReciboPreview from "./Components/PdfTemplates/ReciboPreview";
 import ContratoPreview from "./Components/PdfTemplates/ContratoPreview";
 import SignatureManager from "./Components/Admin/SignatureManager";
 import CompanySettings from "./Components/Admin/CompanySettings"; // 🆕 NUEVO
+import SubscriptionManager from "./Components/Admin/SubscriptionManager"; // 🆕 NUEVO - Gestión de suscripción
 import PdfTemplateManager from "./Components/Admin/PdfTemplateManager"; // 🆕 NUEVO - Gestión de plantillas PDF
 import InstallPWA from "./Components/InstallPWA";
+import ProtectedRoute from "./Components/Guards/ProtectedRoute"; // 🆕 Guard combinado
 
 function App() {
   return (
@@ -44,188 +49,51 @@ function App() {
       <InstallPWA />
       <Routes>
       <Route path="/" element={<Landing />} />
+      
+      {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
+      <Route path="/landing/:subdomain" element={<TenantLanding />} />
+      <Route path="/landing/:subdomain/property/:propertyId" element={<PropertyDetail />} />
+      
       {/* Ruta protegida: solo los administradores pueden ver el Panel */}
-      <Route
-        path="/panel"
-        element={
-          //  <ProtectedRoutes>
-          <Panel />
-          //  </ProtectedRoutes>
-        }
-      />
-       <Route
-        path="/panelClientes"
-        element={
-          //  <ProtectedRoutes>
-          <PanelClientes />
-          //  </ProtectedRoutes>
-        }
-      />
-      <Route
-        path="/listadoClientes"
-        element={
-          //  <ProtectedRoutes>
-          <ListadoDeClientes />
-          //  </ProtectedRoutes>
-        }
-      />
-      <Route
-        path="/panelContratos"
-        element={
-          //  <ProtectedRoutes>
-          <PanelContratos />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/panel" element={<ProtectedRoute><Panel /></ProtectedRoute>} />
+      <Route path="/panelClientes" element={<ProtectedRoute><PanelClientes /></ProtectedRoute>} />
+      <Route path="/listadoClientes" element={<ProtectedRoute><ListadoDeClientes /></ProtectedRoute>} />
+      <Route path="/panelContratos" element={<ProtectedRoute><PanelContratos /></ProtectedRoute>} />
 
-<Route
-        path="/panelPropiedades"
-        element={
-          //  <ProtectedRoutes>
-          <PanelPropiedades />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/panelPropiedades" element={<ProtectedRoute><PanelPropiedades /></ProtectedRoute>} />
 
-<Route
-        path="/PanelInformes"
-        element={
-          //  <ProtectedRoutes>
-          <PanelInformes />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/PanelInformes" element={<ProtectedRoute><PanelInformes /></ProtectedRoute>} />
 
 
-<Route
-        path="/listadoDePropiedades"
-        element={
-          //  <ProtectedRoutes>
-          <Listado />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/listadoDePropiedades" element={<ProtectedRoute><Listado /></ProtectedRoute>} />
 
-<Route
-        path="/filtro"
-        element={
-          //  <ProtectedRoutes>
-          <FiltroPropiedades />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/filtro" element={<ProtectedRoute><FiltroPropiedades /></ProtectedRoute>} />
 
 
-      <Route
-        path="/cliente"
-        element={
-          //  <ProtectedRoutes>
-          <Clientes />
-          //  </ProtectedRoutes>
-        }
-      />
-      <Route
-        path="/contratoAlquiler"
-        element={
-          //  <ProtectedRoutes>
-          <Listado mode="lease" />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/cliente" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/contratoAlquiler" element={<ProtectedRoute><Listado mode="lease" /></ProtectedRoute>} />
       
-      <Route
-        path="/sale"
-        element={
-          //  <ProtectedRoutes>
-          <Listado mode="sale" />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/sale" element={<ProtectedRoute><Listado mode="sale" /></ProtectedRoute>} />
 
-      <Route
-        path="/cargarPropiedad"
-        element={
-          //  <ProtectedRoutes>
-          <Propiedades />
-          //  </ProtectedRoutes>
-        }
-      />
-      <Route
-        path="/create-payment"
-        element={
-          //  <ProtectedRoutes>
-          <PaymentForm />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/cargarPropiedad" element={<ProtectedRoute><Propiedades /></ProtectedRoute>} />
+      <Route path="/create-payment" element={<ProtectedRoute><PaymentForm /></ProtectedRoute>} />
       
-<Route
-        path="/leaseList"
-        element={
-          //  <ProtectedRoutes>
-          <EstadoContratos />
-          //  </ProtectedRoutes>
-        }
-      />
-      <Route
-        path="/pdf"
-        element={
-          //  <ProtectedRoutes>
-          <ContratoAlquiler />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/leaseList" element={<ProtectedRoute><EstadoContratos /></ProtectedRoute>} />
+      <Route path="/pdf" element={<ProtectedRoute><ContratoAlquiler /></ProtectedRoute>} />
 
-<Route
-        path="/paymentList"
-        element={
-          //  <ProtectedRoutes>
-          <PaymentList />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/paymentList" element={<ProtectedRoute><PaymentList /></ProtectedRoute>} />
 
-<Route
-        path="/reportes"
-        element={
-          //  <ProtectedRoutes>
-          <PaymentReport />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/reportes" element={<ProtectedRoute><PaymentReport /></ProtectedRoute>} />
 
-<Route
-        path="/alertas"
-        element={
-          //  <ProtectedRoutes>
-          <ContractAlerts />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/alertas" element={<ProtectedRoute><ContractAlerts /></ProtectedRoute>} />
 
-      <Route
-        path="/actualizarAlquileres"
-        element={
-          //  <ProtectedRoutes>
-          <ActualizarAlquileres />
-          //  </ProtectedRoutes>
-        }
-      />
+      <Route path="/actualizarAlquileres" element={<ProtectedRoute><ActualizarAlquileres /></ProtectedRoute>} />
 
-      <Route 
-        path="/preview-recibo" 
-        element={<ReciboPreview />} 
-      />
+      <Route path="/preview-recibo" element={<ProtectedRoute><ReciboPreview /></ProtectedRoute>} />
 
-      <Route 
-        path="/preview-contrato" 
-        element={<ContratoPreview />} 
-      />
+      <Route path="/preview-contrato" element={<ProtectedRoute><ContratoPreview /></ProtectedRoute>} />
 
-      <Route 
-        path="/signature-manager" 
-        element={<SignatureManager />} 
-      />
+      <Route path="/signature-manager" element={<ProtectedRoute><SignatureManager /></ProtectedRoute>} />
 
       {/* 🆕 NUEVA RUTA - Configuración de la inmobiliaria */}
       <Route 
@@ -235,6 +103,16 @@ function App() {
       <Route 
         path="/admin/company-settings" 
         element={<CompanySettings />} 
+      />
+
+      {/* 🆕 NUEVA RUTA - Gestión de suscripción */}
+      <Route 
+        path="/subscription" 
+        element={<SubscriptionManager />} 
+      />
+      <Route 
+        path="/admin/subscription" 
+        element={<SubscriptionManager />} 
       />
 
       {/* 🆕 NUEVA RUTA - Gestión de plantillas PDF */}

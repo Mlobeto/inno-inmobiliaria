@@ -216,6 +216,18 @@ Ubicación: {direccion}
 Estamos a tu disposición por dudas, precio o consultas.`,
       },
       
+      // Landing Page
+      isPublishedInLanding: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        comment: 'Si la propiedad está visible en la landing page pública del tenant',
+      },
+      
+      rentedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+        comment: 'Fecha en que se alquiló la propiedad (para auto-ocultar después de 7 días)',
+      },
       
     },
     {
