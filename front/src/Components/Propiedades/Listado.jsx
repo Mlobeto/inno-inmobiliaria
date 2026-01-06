@@ -31,7 +31,8 @@ import {
   IoAddOutline,
   IoGlobeOutline,
   IoCheckmarkCircle,
-  IoCloseCircle
+  IoCloseCircle,
+  IoLogoBuffer
 } from 'react-icons/io5';
 
 const Listado = ({ mode = "default", onSelectProperty }) => {
@@ -45,6 +46,11 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   
   // Estado para tenant info
   const [tenantHasLanding, setTenantHasLanding] = useState(false);
+  
+  // Estado para MercadoLibre
+  const [mlConnection, setMlConnection] = useState({ connected: false, loading: true });
+  const [mlListings, setMlListings] = useState({});
+  const [publishingML, setPublishingML] = useState({});
 
   // Función para formatear precio como moneda
   const formatCurrency = (value) => {
@@ -86,6 +92,35 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       }
     };
     fetchTenantInfo();
+  }, []);
+
+  // Cargar estado de MercadoLibre
+  useEffect(() => {
+    const checkMLConnection = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/mercadolibre/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setMlConnection({ connected: response.data.connected, loading: false });
+        
+        // Si está conectado, cargar listings
+        if (response.data.connected) {
+          const listingsResponse = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/mercadolibre/listings`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const listingsMap = {};
+          listingsResponse.data.listings?.forEach(listing => {
+            listingsMap[listing.propertyId] = listing;
+          });
+          setMlListings(listingsMap);
+        }
+      } catch (error) {
+        console.error('Error al verificar ML:', error);
+        setMlConnection({ connected: false, loading: false });
+      }
+    };
+    checkMLConnection();
   }, []);
 
   // Filtrar solo propiedades disponibles para alquiler/venta según el modo
@@ -226,6 +261,48 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     } catch (error) {
       console.error('Error al cambiar publicación:', error);
       toast.error(error?.data?.message || 'Error al cambiar publicación');
+    }
+  };
+
+  const handlePublishML = async (propertyId) => {
+    if (!mlConnection.connected) {
+      toast.warning('Conecta tu cuenta de MercadoLibre en Configuración → Integraciones');
+      return;
+    }
+
+    setPublishingML(prev => ({ ...prev, [propertyId]: true }));
+    
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/mercadolibre/publish/${propertyId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      toast.success('¡Propiedad publicada en MercadoLibre!');
+      
+      // Actualizar listing local
+      setMlListings(prev => ({
+        ...prev,
+        [propertyId]: {
+          mlListingId: response.data.mlListingId,
+          mlPermalink: response.data.mlPermalink,
+          mlStatus: 'active',
+          mlTitle: response.data.mlTitle
+        }
+      }));
+      
+      // Abrir en nueva pestaña
+      if (response.data.mlPermalink) {
+        window.open(response.data.mlPermalink, '_blank');
+      }
+    } catch (error) {
+      console.error('Error al publicar en ML:', error);
+      const errorMsg = error.response?.data?.details || error.response?.data?.error || 'Error al publicar en MercadoLibre';
+      toast.error(errorMsg);
+    } finally {
+      setPublishingML(prev => ({ ...prev, [propertyId]: false }));
     }
   };
 
@@ -450,6 +527,34 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   />
                   <RequisitoButton property={property} />
                   <ImageManager property={property} />
+                  
+                  {/* Botón de MercadoLibre */}
+                  {!mlConnection.loading && mlConnection.connected && !mlListings[property.propertyId] && (
+                    <button
+                      onClick={() => handlePublishML(property.propertyId)}
+                      disabled={publishingML[property.propertyId]}
+                      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Publicar en MercadoLibre"
+                    >
+                      <IoLogoBuffer className="w-4 h-4" />
+                      {publishingML[property.propertyId] ? 'Publicando...' : 'Publicar en ML'}
+                    </button>
+                  )}
+                  
+                  {/* Badge si ya está publicado en ML */}
+                  {mlListings[property.propertyId] && (
+                    <a
+                      href={mlListings[property.propertyId].mlPermalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-yellow-500/30 transition-colors"
+                      title="Ver en MercadoLibre"
+                    >
+                      <IoLogoBuffer className="w-4 h-4" />
+                      <span>Publicado en ML</span>
+                      <IoCheckmarkCircle className="w-4 h-4" />
+                    </a>
+                  )}
                   
                   {/* Botón de Autorización de Venta - solo para propiedades de venta */}
                   {property.type === 'venta' && property.Clients && property.Clients.length > 0 && (
