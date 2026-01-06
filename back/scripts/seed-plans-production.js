@@ -11,8 +11,7 @@
  */
 
 require('dotenv').config({ path: '.env.production' });
-const { sequelize } = require('../src/data');
-const { Plan } = require('../src/data/models');
+const { sequelize, Plan } = require('../src/data');
 
 const plans = [
   {
@@ -47,7 +46,7 @@ const plans = [
   {
     planId: 'professional',
     name: 'Plan Profesional',
-    description: 'Para equipos de trabajo',
+    description: 'Para equipos - Landing + ML + Agentes',
     priceMonthly: 29900,
     priceYearly: 299000,
     currency: 'ARS',
@@ -76,7 +75,7 @@ const plans = [
   {
     planId: 'enterprise',
     name: 'Plan Empresarial',
-    description: 'Para grandes inmobiliarias',
+    description: 'Todo ilimitado',
     priceMonthly: 69900,
     priceYearly: 699000,
     currency: 'ARS',

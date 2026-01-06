@@ -11,8 +11,7 @@
  */
 
 require('dotenv').config({ path: '.env.production' });
-const { sequelize } = require('../src/data');
-const { Admin } = require('../src/data/models');
+const { sequelize, Admin } = require('../src/data');
 const bcrypt = require('bcrypt');
 
 async function seedPlatformAdmin() {
@@ -96,6 +95,7 @@ async function seedPlatformAdmin() {
         password: hashedPassword,
         email,
         fullName: fullName || 'Platform Admin',
+        role: 'PLATFORM_ADMIN',  // Importante: especificar rol
         tenantId: null  // null = platform admin
       });
 

@@ -29,7 +29,6 @@ async function initDatabase() {
     const {
       Tenant,
       Admin,
-      AdminSettings,
       Plan,
       Subscription,
       Client,
@@ -40,9 +39,9 @@ async function initDatabase() {
       SaleContract,
       Garantor,
       PdfTemplate,
-      MessageTemplate,
       Commission,
-      RentUpdate
+      RentUpdate,
+      ClientProperty
     } = require('../src/data');
 
     // Crear tablas en orden de dependencias
@@ -56,7 +55,37 @@ async function initDatabase() {
     await Admin.sync({ alter: false });
     
     console.log('   4. Creando AdminSettings...');
-    await AdminSettings.sync({ alter: false });
+    // AdminSettings tiene un problema de tipo de dato con tenantId
+    // Lo creamos sin foreign key constraint
+    try {
+      await sequelize.query(`
+        CREATE TABLE IF NOT EXISTS admin_settings (
+          id SERIAL PRIMARY KEY,
+          company_name VARCHAR(255),
+          company_address VARCHAR(255),
+          company_city VARCHAR(255),
+          company_province VARCHAR(255),
+          company_phone VARCHAR(255),
+          company_email VARCHAR(255),
+          company_registration VARCHAR(255),
+          company_cuit VARCHAR(255),
+          company_ingresos_brutos VARCHAR(255),
+          company_condicion_iva VARCHAR(255) DEFAULT 'RESPONSABLE MONOTRIBUTO',
+          company_inicio_actividad VARCHAR(255),
+          professional_title VARCHAR(255),
+          company_logo_url VARCHAR(255),
+          receipt_prefix VARCHAR(1) DEFAULT 'X',
+          receipt_footer_text TEXT,
+          contract_footer_text TEXT,
+          tenant_id INTEGER,
+          additional_config JSONB DEFAULT '{}',
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    } catch (error) {
+      console.log('   ⚠️  AdminSettings ya existe o error:', error.message);
+    }
     
     console.log('   5. Creando Subscriptions...');
     await Subscription.sync({ alter: false });
@@ -85,14 +114,14 @@ async function initDatabase() {
     console.log('   13. Creando PdfTemplates...');
     await PdfTemplate.sync({ alter: false });
     
-    console.log('   14. Creando MessageTemplates...');
-    await MessageTemplate.sync({ alter: false });
-    
-    console.log('   15. Creando Commissions...');
+    console.log('   14. Creando Commissions...');
     await Commission.sync({ alter: false });
     
-    console.log('   16. Creando RentUpdates...');
+    console.log('   15. Creando RentUpdates...');
     await RentUpdate.sync({ alter: false });
+    
+    console.log('   16. Creando ClientProperty...');
+    await ClientProperty.sync({ alter: false });
     
     console.log('✅ Tablas creadas correctamente');
     console.log('');
