@@ -1,13 +1,11 @@
-const { Lease, RentUpdate } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 const createTestUpdates = async () => {
   try {
     console.log('🧪 Creando actualizaciones de prueba...');
     
     // Obtener todos los contratos activos
-    const activeLeases = await Lease.findAll({
-      where: { status: 'active' }
-    });
+    const activeLeases = await prisma.Leases.findMany({ where: { status: 'active' } });
 
     if (activeLeases.length === 0) {
       console.log('No hay contratos activos para actualizar');
@@ -28,15 +26,18 @@ const createTestUpdates = async () => {
             const updateDate = new Date(lease.startDate);
             updateDate.setMonth(updateDate.getMonth() + 6);
             
-            await RentUpdate.create({
-              leaseId: lease.id,
-              updateDate: updateDate,
-              oldRentAmount: currentAmount,
-              newRentAmount: currentAmount * 1.15, // 15% de aumento
-              period: 'Semestre 1',
-              pdfPath: `/pdfs/update_${lease.id}_sem1.pdf`,
-              createdAt: updateDate,
-              updatedAt: updateDate
+            await prisma.RentUpdates.create({
+              data: {
+                leaseId: lease.id,
+                tenantId: lease.tenantId,
+                updateDate,
+                oldRentAmount: currentAmount,
+                newRentAmount: currentAmount * 1.15,
+                period: 'Semestre 1',
+                pdfPath: `/pdfs/update_${lease.id}_sem1.pdf`,
+                createdAt: updateDate,
+                updatedAt: updateDate,
+              },
             });
             
             updatesMade++;
@@ -50,15 +51,18 @@ const createTestUpdates = async () => {
             const updateDate = new Date(lease.startDate);
             updateDate.setMonth(updateDate.getMonth() + 12);
             
-            await RentUpdate.create({
-              leaseId: lease.id,
-              updateDate: updateDate,
-              oldRentAmount: currentAmount,
-              newRentAmount: currentAmount * 1.20, // 20% de aumento
-              period: 'Año 1',
-              pdfPath: `/pdfs/update_${lease.id}_year1.pdf`,
-              createdAt: updateDate,
-              updatedAt: updateDate
+            await prisma.RentUpdates.create({
+              data: {
+                leaseId: lease.id,
+                tenantId: lease.tenantId,
+                updateDate,
+                oldRentAmount: currentAmount,
+                newRentAmount: currentAmount * 1.20,
+                period: 'Año 1',
+                pdfPath: `/pdfs/update_${lease.id}_year1.pdf`,
+                createdAt: updateDate,
+                updatedAt: updateDate,
+              },
             });
             
             updatesMade++;
@@ -72,15 +76,18 @@ const createTestUpdates = async () => {
             const updateDate = new Date(lease.startDate);
             updateDate.setMonth(updateDate.getMonth() + 4);
             
-            await RentUpdate.create({
-              leaseId: lease.id,
-              updateDate: updateDate,
-              oldRentAmount: currentAmount,
-              newRentAmount: currentAmount * 1.10, // 10% de aumento
-              period: 'Cuatrimestre 1',
-              pdfPath: `/pdfs/update_${lease.id}_cuatr1.pdf`,
-              createdAt: updateDate,
-              updatedAt: updateDate
+            await prisma.RentUpdates.create({
+              data: {
+                leaseId: lease.id,
+                tenantId: lease.tenantId,
+                updateDate,
+                oldRentAmount: currentAmount,
+                newRentAmount: currentAmount * 1.10,
+                period: 'Cuatrimestre 1',
+                pdfPath: `/pdfs/update_${lease.id}_cuatr1.pdf`,
+                createdAt: updateDate,
+                updatedAt: updateDate,
+              },
             });
             
             updatesMade++;

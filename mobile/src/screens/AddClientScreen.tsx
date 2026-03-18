@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { createClient, clearError } from '@inno/shared';
+import { createClient, clearClientError } from '@inno/shared';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
-import { queueAction } from '../utils/offlineQueue';
+import { offlineQueue } from '../utils/offlineQueue';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface FormData {
@@ -110,7 +110,7 @@ const AddClientScreen = () => {
             text: 'OK',
             onPress: () => {
               setLocalSuccess(false);
-              dispatch(clearError());
+              dispatch(clearClientError());
               navigation.goBack();
             },
           },
@@ -159,7 +159,7 @@ const AddClientScreen = () => {
     try {
       if (!isConnected || !isInternetReachable) {
         await AsyncStorage.setItem(`@inno:client_${Date.now()}`, JSON.stringify(formData));
-        await queueAction({ type: 'CREATE_CLIENT', data: formData });
+        await offlineQueue.addToQueue({ type: 'CREATE_CLIENT', data: formData });
         setLocalSuccess(true);
       } else {
         await dispatch(createClient(formData)).unwrap();

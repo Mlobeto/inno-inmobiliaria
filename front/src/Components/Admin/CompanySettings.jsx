@@ -338,7 +338,7 @@ const CompanySettings = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <h1 className="text-xl font-bold text-gray-800">
-                {settings.company_name || 'InnoInmobiliaria'}
+                {settings.company_name || 'GestiónProp'}
               </h1>
               {isIncomplete && (
                 <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
@@ -433,7 +433,7 @@ const CompanySettings = () => {
               
               <div className="flex-1">
                 <h2 className="text-2xl font-bold mb-3">
-                  ¡Bienvenido a InnoInmobiliaria! 🎉
+                  ¡Bienvenido a GestiónProp! 🎉
                 </h2>
                 <p className="text-blue-50 mb-4 text-lg">
                   Tu cuenta ha sido creada exitosamente con un período de prueba de <strong>7 días</strong>.
@@ -754,7 +754,7 @@ const CompanySettings = () => {
                 placeholder="mi-inmobiliaria"
               />
               <div className="absolute right-3 top-3 text-gray-400 text-sm">
-                .innoinmobiliaria.com
+                .GestiónProp.com
               </div>
             </div>
             <div className={`mt-2 border rounded-lg p-3 ${
@@ -765,7 +765,7 @@ const CompanySettings = () => {
               {tenantInfo.hasLanding ? (
                 <>
                   <p className="text-sm text-green-800">
-                    <strong>✓ Landing activado:</strong> Tu subdominio será <strong>{tenantInfo.subdomain || 'tu-nombre'}.innoinmobiliaria.com</strong>
+                    <strong>✓ Landing activado:</strong> Tu subdominio será <strong>{tenantInfo.subdomain || 'tu-nombre'}.GestiónProp.com</strong>
                   </p>
                   <p className="text-xs text-green-700 mt-2">
                     💡 Cambia tu subdominio aquí y guarda para actualizar tu URL personalizada.

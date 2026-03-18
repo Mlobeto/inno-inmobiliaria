@@ -1,13 +1,8 @@
 const mercadolibre = require('mercadolibre');
-const { 
-  MercadoLibreConfig, 
-  PropertyMLListings, 
-  MercadoLibreMessages,
-  Property,
-  Subscription,
-  Plan
-} = require('../data');
+const prisma = require('../utils/prismaClient');
 const { getMercadoLibreCategory, getListingType } = require('../utils/mercadoLibreCategoryMapper');
+const logger = require('../utils/logger');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 // Configuración del cliente ML
 const meli = new mercadolibre.Meli(
@@ -17,6 +12,51 @@ const meli = new mercadolibre.Meli(
 );
 
 class MercadoLibreController {
+  encryptTokenValue(token) {
+    if (!token) {
+      return {
+        token: null,
+        iv: null,
+        authTag: null,
+        salt: null,
+      };
+    }
+
+    const encryptedData = encrypt(token);
+    return {
+      token: encryptedData.encrypted,
+      iv: encryptedData.iv,
+      authTag: encryptedData.authTag,
+      salt: encryptedData.salt,
+    };
+  }
+
+  decryptStoredToken(config, tokenField) {
+    const encryptedToken = config?.[tokenField];
+    if (!encryptedToken) {
+      return null;
+    }
+
+    const ivField = `${tokenField}Iv`;
+    const authTagField = `${tokenField}AuthTag`;
+    const saltField = `${tokenField}Salt`;
+
+    const iv = config?.[ivField];
+    const authTag = config?.[authTagField];
+    const salt = config?.[saltField];
+
+    if (!iv || !authTag || !salt) {
+      return encryptedToken;
+    }
+
+    return decrypt({
+      encrypted: encryptedToken,
+      iv,
+      authTag,
+      salt,
+    });
+  }
+
   // ========================================
   // 1. AUTENTICACIÓN OAUTH
   // ========================================
@@ -28,7 +68,7 @@ class MercadoLibreController {
     try {
       const { tenantId } = req.user;
       
-      console.log('🔐 Iniciando OAuth ML para tenant:', tenantId);
+      logger.info('Iniciando OAuth ML', { tenantId });
       
       // Generar URL de autorización
       const authUrl = meli.getAuthURL(
@@ -37,14 +77,14 @@ class MercadoLibreController {
         `tenant_${tenantId}` // State para identificar al tenant en callback
       );
       
-      console.log('✅ URL generada:', authUrl);
+      logger.info('URL OAuth ML generada', { tenantId });
       
       res.json({
         success: true,
         authUrl
       });
     } catch (error) {
-      console.error('❌ Error al iniciar auth ML:', error);
+      logger.error('Error al iniciar auth ML', { tenantId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al iniciar autenticación con MercadoLibre',
@@ -60,11 +100,11 @@ class MercadoLibreController {
     try {
       const { code, state, error: oauthError } = req.query;
       
-      console.log('📥 Callback ML recibido:', { code: !!code, state, error: oauthError });
+      logger.info('Callback ML recibido', { hasCode: !!code, state, oauthError });
       
       // Si el usuario canceló o hubo error
       if (oauthError || !code) {
-        console.log('⚠️ Usuario canceló o error OAuth:', oauthError);
+        logger.warn('Usuario canceló o error OAuth', { oauthError });
         return res.redirect(`${process.env.FRONTEND_URL}/admin/integraciones?ml_error=${oauthError || 'no_code'}`);
       }
       
@@ -72,11 +112,11 @@ class MercadoLibreController {
       const tenantId = parseInt(state.replace('tenant_', ''));
       
       if (!tenantId || isNaN(tenantId)) {
-        console.error('❌ TenantId inválido en state:', state);
+        logger.error('TenantId inválido en state OAuth ML', { state });
         return res.redirect(`${process.env.FRONTEND_URL}/admin/integraciones?ml_error=invalid_state`);
       }
       
-      console.log('🔄 Intercambiando código por tokens...');
+      logger.info('Intercambiando código OAuth por tokens ML', { tenantId });
       
       // Intercambiar código por access token
       const response = await meli.authorize(code, process.env.ML_REDIRECT_URI);
@@ -87,31 +127,62 @@ class MercadoLibreController {
         user_id,
         expires_in
       } = response;
+
+      const encryptedAccessToken = this.encryptTokenValue(access_token);
+      const encryptedRefreshToken = this.encryptTokenValue(refresh_token);
       
-      console.log('✅ Tokens obtenidos para usuario ML:', user_id);
+      logger.info('Tokens ML obtenidos', { mlUserId: user_id });
       
       // Calcular fecha de expiración
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
       
-      // Guardar en DB
-      await MercadoLibreConfig.upsert({
-        tenantId,
-        mlUserId: user_id.toString(),
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        tokenExpiresAt: expiresAt,
-        isActive: true,
-        lastSync: new Date(),
-        updatedAt: new Date()
+      // Guardar en DB usando findOrCreate + update para disparar hooks de cifrado
+      const existingConfig = await prisma.MercadoLibreConfig.findUnique({
+        where: { tenantId },
       });
-      
-      console.log('💾 Configuración guardada en DB');
+
+      const mlConfig = await prisma.MercadoLibreConfig.upsert({
+        where: { tenantId },
+        update: {
+          mlUserId: user_id.toString(),
+          accessToken: encryptedAccessToken.token,
+          accessTokenIv: encryptedAccessToken.iv,
+          accessTokenAuthTag: encryptedAccessToken.authTag,
+          accessTokenSalt: encryptedAccessToken.salt,
+          refreshToken: encryptedRefreshToken.token,
+          refreshTokenIv: encryptedRefreshToken.iv,
+          refreshTokenAuthTag: encryptedRefreshToken.authTag,
+          refreshTokenSalt: encryptedRefreshToken.salt,
+          tokenExpiresAt: expiresAt,
+          isActive: true,
+          lastSync: new Date(),
+        },
+        create: {
+          tenantId,
+          mlUserId: user_id.toString(),
+          accessToken: encryptedAccessToken.token,
+          accessTokenIv: encryptedAccessToken.iv,
+          accessTokenAuthTag: encryptedAccessToken.authTag,
+          accessTokenSalt: encryptedAccessToken.salt,
+          refreshToken: encryptedRefreshToken.token,
+          refreshTokenIv: encryptedRefreshToken.iv,
+          refreshTokenAuthTag: encryptedRefreshToken.authTag,
+          refreshTokenSalt: encryptedRefreshToken.salt,
+          tokenExpiresAt: expiresAt,
+          isActive: true,
+          lastSync: new Date(),
+        },
+      });
+
+      const created = !existingConfig;
+
+      logger.info('Configuración ML guardada en DB', { tenantId, mlUserId: user_id, created });
       
       // Redirigir al frontend con éxito
       res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_success=true`);
     } catch (error) {
-      console.error('❌ Error en callback ML:', error);
+      logger.error('Error en callback ML', { error: error.message });
       res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=callback_failed`);
     }
   }
@@ -123,9 +194,7 @@ class MercadoLibreController {
     try {
       const { tenantId } = req.user;
       
-      const config = await MercadoLibreConfig.findOne({
-        where: { tenantId }
-      });
+      const config = await prisma.MercadoLibreConfig.findUnique({ where: { tenantId } });
       
       if (!config || !config.isActive) {
         return res.json({
@@ -139,20 +208,20 @@ class MercadoLibreController {
       const isExpired = config.tokenExpiresAt < now;
       
       if (isExpired) {
-        console.log('⚠️ Token expirado, intentando refrescar...');
+        logger.warn('Token ML expirado, intentando refrescar', { tenantId });
         
         // Intentar refrescar token
         try {
-          await this.refreshAccessToken(config);
+          const refreshedConfig = await this.refreshAccessToken(config);
           
           return res.json({
             success: true,
             connected: true,
-            mlUserId: config.mlUserId,
-            lastSync: config.lastSync
+            mlUserId: refreshedConfig.mlUserId,
+            lastSync: refreshedConfig.lastSync
           });
         } catch (error) {
-          console.error('❌ Error al refrescar token:', error);
+          logger.error('Error al refrescar token ML', { tenantId, error: error.message });
           return res.json({
             success: true,
             connected: false,
@@ -168,7 +237,7 @@ class MercadoLibreController {
         lastSync: config.lastSync
       });
     } catch (error) {
-      console.error('❌ Error al verificar conexión ML:', error);
+      logger.error('Error al verificar conexión ML', { tenantId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al verificar conexión'
@@ -181,34 +250,54 @@ class MercadoLibreController {
    */
   async refreshAccessToken(config) {
     try {
-      console.log('🔄 Refrescando access token...');
+      logger.info('Refrescando access token ML');
+
+      const refreshToken = this.decryptStoredToken(config, 'refreshToken');
+      if (!refreshToken) {
+        throw new Error('No se encontró refresh token para MercadoLibre');
+      }
       
-      const response = await meli.refreshAccessToken(config.refreshToken);
+      const response = await meli.refreshAccessToken(refreshToken);
       
       const {
         access_token,
         refresh_token,
         expires_in
       } = response;
+
+      const encryptedAccessToken = this.encryptTokenValue(access_token);
+      const encryptedRefreshToken = this.encryptTokenValue(refresh_token);
       
       const expiresAt = new Date();
       expiresAt.setSeconds(expiresAt.getSeconds() + expires_in);
       
-      await config.update({
-        accessToken: access_token,
-        refreshToken: refresh_token,
-        tokenExpiresAt: expiresAt,
-        updatedAt: new Date()
+      const updatedConfig = await prisma.MercadoLibreConfig.update({
+        where: { id: config.id },
+        data: {
+          accessToken: encryptedAccessToken.token,
+          accessTokenIv: encryptedAccessToken.iv,
+          accessTokenAuthTag: encryptedAccessToken.authTag,
+          accessTokenSalt: encryptedAccessToken.salt,
+          refreshToken: encryptedRefreshToken.token,
+          refreshTokenIv: encryptedRefreshToken.iv,
+          refreshTokenAuthTag: encryptedRefreshToken.authTag,
+          refreshTokenSalt: encryptedRefreshToken.salt,
+          tokenExpiresAt: expiresAt,
+          updatedAt: new Date(),
+        }
       });
       
-      console.log('✅ Token refrescado exitosamente');
+      logger.info('Token ML refrescado exitosamente');
       
-      return config;
+      return updatedConfig;
     } catch (error) {
-      console.error('❌ Error al refrescar token:', error);
+      logger.error('Error al refrescar token ML', { error: error.message });
       
       // Si falla el refresh, desactivar conexión
-      await config.update({ isActive: false });
+      await prisma.MercadoLibreConfig.update({
+        where: { id: config.id },
+        data: { isActive: false },
+      });
       throw error;
     }
   }
@@ -220,23 +309,29 @@ class MercadoLibreController {
     try {
       const { tenantId } = req.user;
       
-      await MercadoLibreConfig.update(
-        { 
+      await prisma.MercadoLibreConfig.updateMany({
+        where: { tenantId },
+        data: {
           isActive: false,
           accessToken: null,
-          refreshToken: null
+          accessTokenIv: null,
+          accessTokenAuthTag: null,
+          accessTokenSalt: null,
+          refreshToken: null,
+          refreshTokenIv: null,
+          refreshTokenAuthTag: null,
+          refreshTokenSalt: null,
         },
-        { where: { tenantId } }
-      );
+      });
       
-      console.log('✅ Tenant desconectado de ML:', tenantId);
+      logger.info('Tenant desconectado de ML', { tenantId });
       
       res.json({
         success: true,
         message: 'Desconectado de MercadoLibre'
       });
     } catch (error) {
-      console.error('❌ Error al desconectar:', error);
+      logger.error('Error al desconectar de ML', { tenantId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al desconectar'
@@ -256,12 +351,10 @@ class MercadoLibreController {
       const { tenantId } = req.user;
       const { propertyId } = req.params;
       
-      console.log('📤 Publicando propiedad en ML:', { tenantId, propertyId });
+      logger.info('Publicando propiedad en ML', { tenantId, propertyId });
       
       // 1. Verificar que el tenant tiene ML configurado
-      const mlConfig = await MercadoLibreConfig.findOne({
-        where: { tenantId, isActive: true }
-      });
+      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
       
       if (!mlConfig) {
         return res.status(400).json({
@@ -272,14 +365,14 @@ class MercadoLibreController {
       
       // 2. Verificar si el token está expirado
       const now = new Date();
+      let accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
       if (mlConfig.tokenExpiresAt < now) {
-        await this.refreshAccessToken(mlConfig);
+        const refreshedConfig = await this.refreshAccessToken(mlConfig);
+        accessToken = this.decryptStoredToken(refreshedConfig, 'accessToken');
       }
       
       // 3. Verificar que la propiedad no esté ya publicada
-      const existingListing = await PropertyMLListings.findOne({
-        where: { propertyId, tenantId }
-      });
+      const existingListing = await prisma.PropertyMLListings.findFirst({ where: { propertyId: parseInt(propertyId), tenantId } });
       
       if (existingListing && existingListing.mlStatus === 'active') {
         return res.status(400).json({
@@ -291,9 +384,7 @@ class MercadoLibreController {
       }
       
       // 4. Obtener propiedad
-      const property = await Property.findOne({
-        where: { propertyId, tenantId }
-      });
+      const property = await prisma.Property.findFirst({ where: { propertyId: parseInt(propertyId), tenantId } });
       
       if (!property) {
         return res.status(404).json({
@@ -303,13 +394,17 @@ class MercadoLibreController {
       }
       
       // 5. Obtener plan del tenant para determinar tipo de publicación
-      const subscription = await Subscription.findOne({
-        where: { tenantId },
-        include: [{ model: Plan, as: 'Plan' }]
+      const subscription = await prisma.subscriptions.findFirst({
+        where: {
+          tenantId,
+          status: { in: ['trialing', 'active'] },
+        },
+        include: { plans: true },
+        orderBy: { createdAt: 'desc' },
       });
       
-      const listingType = subscription?.Plan?.planId 
-        ? getListingType(subscription.Plan.planId) 
+      const listingType = subscription?.plans?.planId 
+        ? getListingType(subscription.plans.planId) 
         : 'classified';
       
       // 6. Preparar datos para ML
@@ -342,7 +437,7 @@ class MercadoLibreController {
         }
       }
       
-      console.log('📋 Datos preparados para ML:', {
+      logger.info('Datos preparados para ML', {
         title: mlData.title,
         category: mlData.category_id,
         price: mlData.price,
@@ -350,24 +445,41 @@ class MercadoLibreController {
       });
       
       // 7. Publicar en ML
-      meli.setAccessToken(mlConfig.accessToken);
+      meli.setAccessToken(accessToken);
       
       const response = await meli.post('/items', mlData);
       
       const { id: mlListingId, permalink, status } = response;
       
-      console.log('✅ Publicación creada en ML:', { mlListingId, status });
+      logger.info('Publicación creada en ML', { tenantId, mlListingId, status });
       
       // 8. Guardar en DB
-      await PropertyMLListings.upsert({
-        propertyId,
-        tenantId,
-        mlListingId,
-        mlStatus: status || 'active',
-        mlPermalink: permalink,
-        mlTitle: mlData.title,
-        mlPrice: mlData.price,
-        lastSync: new Date()
+      await prisma.PropertyMLListings.upsert({
+        where: {
+          propertyId_tenantId: {
+            propertyId: parseInt(propertyId),
+            tenantId,
+          },
+        },
+        update: {
+          mlListingId,
+          mlStatus: status || 'active',
+          mlPermalink: permalink,
+          mlTitle: mlData.title,
+          mlPrice: mlData.price,
+          lastSync: new Date(),
+          syncErrors: null,
+        },
+        create: {
+          propertyId: parseInt(propertyId),
+          tenantId,
+          mlListingId,
+          mlStatus: status || 'active',
+          mlPermalink: permalink,
+          mlTitle: mlData.title,
+          mlPrice: mlData.price,
+          lastSync: new Date(),
+        },
       });
       
       res.json({
@@ -378,19 +490,19 @@ class MercadoLibreController {
         status
       });
     } catch (error) {
-      console.error('❌ Error al publicar en ML:', error);
+      logger.error('Error al publicar en ML', { tenantId, propertyId, error: error.message });
       
       // Guardar error en DB si existe la propiedad
       const { propertyId } = req.params;
       const { tenantId } = req.user;
       
-      await PropertyMLListings.update(
-        { 
+      await prisma.PropertyMLListings.updateMany({
+        where: { propertyId: parseInt(propertyId), tenantId },
+        data: {
           syncErrors: error.message,
-          lastSync: new Date()
+          lastSync: new Date(),
         },
-        { where: { propertyId, tenantId } }
-      );
+      });
       
       res.status(500).json({
         success: false,
@@ -546,7 +658,7 @@ class MercadoLibreController {
       const { propertyId } = req.params;
       const { status } = req.body; // 'paused' o 'active'
       
-      console.log('🔄 Actualizando estado ML:', { propertyId, status });
+      logger.info('Actualizando estado ML', { tenantId, propertyId, status });
       
       // Validar status
       if (!['paused', 'active'].includes(status)) {
@@ -557,9 +669,7 @@ class MercadoLibreController {
       }
       
       // Obtener config y listing
-      const mlConfig = await MercadoLibreConfig.findOne({
-        where: { tenantId, isActive: true }
-      });
+      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
       
       if (!mlConfig) {
         return res.status(400).json({
@@ -568,9 +678,7 @@ class MercadoLibreController {
         });
       }
       
-      const listing = await PropertyMLListings.findOne({
-        where: { propertyId, tenantId }
-      });
+      const listing = await prisma.PropertyMLListings.findFirst({ where: { propertyId: parseInt(propertyId), tenantId } });
       
       if (!listing) {
         return res.status(404).json({
@@ -580,19 +688,23 @@ class MercadoLibreController {
       }
       
       // Actualizar en ML
-      meli.setAccessToken(mlConfig.accessToken);
+      const accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
+      meli.setAccessToken(accessToken);
       
       await meli.put(`/items/${listing.mlListingId}`, {
         status
       });
       
       // Actualizar en DB
-      await listing.update({
-        mlStatus: status,
-        lastSync: new Date()
+      await prisma.PropertyMLListings.update({
+        where: { id: listing.id },
+        data: {
+          mlStatus: status,
+          lastSync: new Date(),
+        }
       });
       
-      console.log('✅ Estado actualizado');
+      logger.info('Estado ML actualizado', { tenantId, propertyId, status });
       
       res.json({
         success: true,
@@ -600,7 +712,7 @@ class MercadoLibreController {
         status
       });
     } catch (error) {
-      console.error('❌ Error al actualizar estado:', error);
+      logger.error('Error al actualizar estado ML', { tenantId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al actualizar estado de publicación'
@@ -616,11 +728,9 @@ class MercadoLibreController {
       const { tenantId } = req.user;
       const { propertyId } = req.params;
       
-      console.log('🗑️ Eliminando publicación ML:', propertyId);
+      logger.info('Eliminando publicación ML', { tenantId, propertyId });
       
-      const mlConfig = await MercadoLibreConfig.findOne({
-        where: { tenantId, isActive: true }
-      });
+      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
       
       if (!mlConfig) {
         return res.status(400).json({
@@ -629,9 +739,7 @@ class MercadoLibreController {
         });
       }
       
-      const listing = await PropertyMLListings.findOne({
-        where: { propertyId, tenantId }
-      });
+      const listing = await prisma.PropertyMLListings.findFirst({ where: { propertyId: parseInt(propertyId), tenantId } });
       
       if (!listing) {
         return res.status(404).json({
@@ -641,7 +749,8 @@ class MercadoLibreController {
       }
       
       // Cerrar en ML
-      meli.setAccessToken(mlConfig.accessToken);
+      const accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
+      meli.setAccessToken(accessToken);
       
       await meli.put(`/items/${listing.mlListingId}`, {
         status: 'closed',
@@ -649,16 +758,16 @@ class MercadoLibreController {
       });
       
       // Eliminar de DB
-      await listing.destroy();
+      await prisma.PropertyMLListings.delete({ where: { id: listing.id } });
       
-      console.log('✅ Publicación eliminada');
+      logger.info('Publicación ML eliminada', { tenantId, propertyId });
       
       res.json({
         success: true,
         message: 'Publicación eliminada de MercadoLibre'
       });
     } catch (error) {
-      console.error('❌ Error al eliminar publicación:', error);
+      logger.error('Error al eliminar publicación ML', { tenantId, propertyId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al eliminar publicación'
@@ -673,14 +782,20 @@ class MercadoLibreController {
     try {
       const { tenantId } = req.user;
       
-      const listings = await PropertyMLListings.findAll({
+      const listings = await prisma.PropertyMLListings.findMany({
         where: { tenantId },
-        include: [{
-          model: Property,
-          as: 'Property',
-          attributes: ['propertyId', 'address', 'price', 'typeProperty', 'images']
-        }],
-        order: [['createdAt', 'DESC']]
+        include: {
+          Property: {
+            select: {
+              propertyId: true,
+              address: true,
+              price: true,
+              typeProperty: true,
+              images: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
       });
       
       res.json({
@@ -688,7 +803,7 @@ class MercadoLibreController {
         listings
       });
     } catch (error) {
-      console.error('❌ Error al obtener listings:', error);
+      logger.error('Error al obtener listings ML', { tenantId, error: error.message });
       res.status(500).json({
         success: false,
         message: 'Error al obtener publicaciones'

@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { Admin } = require('../data');
+const prisma = require('../utils/prismaClient');
 require('dotenv').config();
 
 const authMiddleware = async (req, res, next) => {
@@ -13,10 +13,9 @@ const authMiddleware = async (req, res, next) => {
 
   try {
     const verified = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    
+
     // Buscar el admin completo en la base de datos
-    const admin = await Admin.findByPk(verified.id);
-    
+    const admin = await prisma.admins.findUnique({ where: { adminId: verified.id } });
     if (!admin) {
       return res.status(401).json({ message: 'Usuario no encontrado' });
     }

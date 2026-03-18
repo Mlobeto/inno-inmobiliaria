@@ -1,56 +1,61 @@
-const { Client, Lease, Property, ClientDocument, sequelize } = require('../data');
+const prisma = require('../utils/prismaClient');
+const { logAudit } = require('../utils/audit');
 
-// POST: Crear un cliente (con dual-write a client_documents)
 exports.createClient = async (req, res) => {
-    const transaction = await sequelize.transaction();
-    
     try {
-        const { tenantId } = req.user; // Obtener tenantId del token JWT
+        const { tenantId } = req.user;
         console.log("POST /client - Datos recibidos:", req.body);
         console.log("POST /client - TenantId:", tenantId);
         
         const { cuil, ...clientData } = req.body;
         
-        // 1. Crear el cliente (con cuil para compatibilidad)
-        const newClient = await Client.create({
-            ...clientData,
-            cuil, // Mantener campo legacy
-            tenantId,
-            migrated_to_documents: true // Marcar como migrado desde el inicio
-        }, { transaction });
-        
-        console.log("POST /client - Cliente creado:", newClient?.idClient);
-        
-        // 2. Si hay CUIL, crear documento en client_documents (dual-write)
-        if (cuil) {
-            await ClientDocument.create({
-                clientId: newClient.idClient,
-                tenantId,
-                documentType: 'TAX',
-                country: 'AR',
-                documentCode: 'CUIL',
-                number: cuil,
-                isPrimary: true,
-                isVerified: false
-            }, { transaction });
+        const newClient = await prisma.$transaction(async tx => {
+            // 1. Crear el cliente
+            const client = await tx.Clients.create({
+                data: {
+                    ...clientData,
+                    cuil,
+                    tenantId,
+                    migrated_to_documents: true,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                }
+            });
             
-            console.log("POST /client - Documento CUIL creado en client_documents");
-        }
+            console.log("POST /client - Cliente creado:", client?.idClient);
+            
+            // 2. Si hay CUIL, crear documento en client_documents (dual-write)
+            if (cuil) {
+                await tx.client_documents.create({
+                    data: {
+                        client_id: client.idClient,
+                        tenant_id: tenantId,
+                        document_type: 'TAX',
+                        country: 'AR',
+                        document_code: 'CUIL',
+                        number: cuil,
+                        is_primary: true,
+                        is_verified: false,
+                    }
+                });
+                console.log("POST /client - Documento CUIL creado en client_documents");
+            }
+            
+            return client;
+        });
         
-        await transaction.commit();
-        
+        logAudit({
+          tenantId,
+          adminId: req.user.adminId,
+          action: 'CREATE',
+          resource: 'client',
+          resourceId: newClient.idClient,
+          req,
+        });
         res.status(201).json(newClient);
     } catch (error) {
-        await transaction.rollback();
-        
         console.error("POST /client - Error al crear cliente:", error);
-        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
-            const validationErrors = error.errors.map(err => err.message);
-            console.error("POST /client - Errores de validación:", validationErrors);
-            res.status(400).json({ error: 'Error de validación', details: validationErrors });
-        } else {
-            res.status(500).json({ error: 'Error al crear el cliente', details: error.message });
-        }
+        res.status(500).json({ error: 'Error al crear el cliente', details: error.message });
     }
 };
 
@@ -59,8 +64,8 @@ exports.getAllClients = async (req, res) => {
     try {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         
-        const clients = await Client.findAll({
-            where: { tenantId } // Filtrar por tenant
+        const clients = await prisma.Clients.findMany({
+            where: { tenantId }
         });
         res.status(200).json(clients);
     } catch (error) {
@@ -74,24 +79,22 @@ exports.getClientById = async (req, res) => {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
         
-        const client = await Client.findOne({
-            where: { idClient, tenantId }, // Filtrar por tenant
-            include: [
-                {
-                    model: Lease,
-                    as: 'LeasesAsRenter',
-                    include: [{ model: Property }] 
-                },
-                {
-                    model: Lease,
-                    as: 'LeasesAsLandlord',
-                    include: [{ model: Property }]
-                }
-            ]
+        const clientRaw = await prisma.Clients.findFirst({
+            where: { idClient: parseInt(idClient), tenantId },
+            include: {
+                Leases_Leases_renterIdToClients: { include: { Property: true } },
+                Leases_Leases_landlordIdToClients: { include: { Property: true } },
+            }
         });
-        if (!client) {
+        if (!clientRaw) {
             return res.status(404).json({ error: 'Cliente no encontrado' });
         }
+        const { Leases_Leases_renterIdToClients, Leases_Leases_landlordIdToClients, ...rest } = clientRaw;
+        const client = {
+            ...rest,
+            LeasesAsRenter: Leases_Leases_renterIdToClients,
+            LeasesAsLandlord: Leases_Leases_landlordIdToClients,
+        };
         res.status(200).json(client);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener el cliente', details: error.message });
@@ -112,21 +115,26 @@ exports.updateClient = async (req, res) => {
             return res.status(400).json({ error: 'No se envió ningún cambio en teléfono o mail' });
         }
 
-        const updated = await Client.update(dataToUpdate, { 
-            where: { idClient, tenantId } // Filtrar por tenant
+        const result = await prisma.Clients.updateMany({
+            where: { idClient: parseInt(idClient), tenantId },
+            data: dataToUpdate,
         });
 
-        if (!updated[0]) {
+        if (!result.count) {
             return res.status(404).json({ error: 'Cliente no encontrado' });
         }
+        logAudit({
+          tenantId,
+          adminId: req.user.adminId,
+          action: 'UPDATE',
+          resource: 'client',
+          resourceId: idClient,
+          newValues: { fields: Object.keys(dataToUpdate) },
+          req,
+        });
         res.status(200).json({ message: 'Cliente actualizado' });
     } catch (error) {
-        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeUniqueConstraintError') {
-            const validationErrors = error.errors.map(err => err.message);
-            res.status(400).json({ error: 'Error de validación', details: validationErrors });
-        } else {
-            res.status(500).json({ error: 'Error al actualizar el cliente', details: error.message });
-        }
+        res.status(500).json({ error: 'Error al actualizar el cliente', details: error.message });
     }
 };
 
@@ -136,14 +144,22 @@ exports.deleteClient = async (req, res) => {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
         
-        const deleted = await Client.destroy({ 
-            where: { idClient, tenantId } // Filtrar por tenant
+        const result = await prisma.Clients.deleteMany({
+            where: { idClient: parseInt(idClient), tenantId },
         });
 
-        if (!deleted) {
+        if (!result.count) {
             return res.status(404).json({ error: 'Cliente no encontrado' });
         }
 
+        logAudit({
+          tenantId,
+          adminId: req.user.adminId,
+          action: 'DELETE',
+          resource: 'client',
+          resourceId: idClient,
+          req,
+        });
         res.status(200).json({ message: 'Cliente eliminado' });
     } catch (error) {
         res.status(500).json({ error: 'Error al eliminar el cliente', details: error.message });

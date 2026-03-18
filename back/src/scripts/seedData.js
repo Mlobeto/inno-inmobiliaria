@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { conn, Client, Property, ClientProperty } = require('../data');
+const prisma = require('../utils/prismaClient');
 const seedLeases = require('./seedLeases');
 
 async function seedClients() {
@@ -11,7 +11,7 @@ async function seedClients() {
     );
     
     for (const client of clientsData) {
-      await Client.create(client);
+      await prisma.Clients.create({ data: client });
     }
     console.log('✅ Clientes insertados.');
     
@@ -28,7 +28,7 @@ async function seedProperties() {
       fs.readFileSync(path.join(__dirname, 'properties.json'), 'utf8')
     );
 
-    const clients = await Client.findAll();
+    const clients = await prisma.Clients.findMany();
     
     if (clients.length === 0) {
       throw new Error("No hay clientes. Ejecuta primero seedClients.");
@@ -39,13 +39,18 @@ async function seedProperties() {
       const randomClient = clients[Math.floor(Math.random() * clients.length)];
       
       try {
-        const property = await Property.create(propertyData);
+        const property = await prisma.Property.create({ data: propertyData });
         const role = propertyData.type === "alquiler" ? "propietario" : "vendedor";
         
-        await ClientProperty.create({
-          clientId: randomClient.idClient,
-          propertyId: property.propertyId,
-          role: role
+        await prisma.ClientProperties.create({
+          data: {
+            clientId: randomClient.idClient,
+            propertyId: property.propertyId,
+            role,
+            tenantId: property.tenantId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         });
 
         console.log(`✅ Propiedad: ${property.address} - ${role}: ${randomClient.name}`);
@@ -65,7 +70,7 @@ async function seedProperties() {
 
 async function seed() {
   try {
-    await conn.sync({ alter: true });
+    await prisma.$connect();
 
     // Ejecutar seeds en orden
     await seedClients();

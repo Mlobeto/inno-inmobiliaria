@@ -1,4 +1,4 @@
-const { Garantor, Lease } = require("../data");
+const prisma = require('../utils/prismaClient');
 
 exports.createGarantorsForLease = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ exports.createGarantorsForLease = async (req, res) => {
 
     // Validar que el contrato existe
     const { tenantId } = req.user; // Obtener tenantId del token JWT
-    const lease = await Lease.findOne({ where: { id: leaseId, tenantId } });
+    const lease = await prisma.Leases.findFirst({ where: { id: parseInt(leaseId), tenantId } });
     console.log("[createGarantorsForLease] Lease encontrado:", lease);
     if (!lease) {
       console.error("[createGarantorsForLease] No se encontró el contrato de alquiler con ID:", leaseId);
@@ -39,7 +39,7 @@ exports.createGarantorsForLease = async (req, res) => {
     const createdGuarantors = await Promise.all(
       guarantors.map((guarantorData, index) => {
         console.log(`[createGarantorsForLease] Creando garante ${index + 1}:`, guarantorData);
-        return Garantor.create({ ...guarantorData, leaseId });
+        return prisma.Garantors.create({ data: { ...guarantorData, leaseId: parseInt(leaseId) } });
       })
     );
     console.log("[createGarantorsForLease] Garantes creados:", createdGuarantors);
@@ -62,15 +62,15 @@ exports.updateGarantor = async (req, res) => {
   
       // Verificar que el garante existe
       const { tenantId } = req.user; // Obtener tenantId del token JWT
-      const guarantor = await Garantor.findOne({ where: { id: guarantorId, tenantId } });
+      const guarantor = await prisma.Garantors.findFirst({ where: { id: parseInt(guarantorId), tenantId } });
       if (!guarantor) {
         return res.status(404).json({ error: "Garante no encontrado" });
       }
   
       // Actualizar garante
-      await guarantor.update(updatedData);
+      const updated = await prisma.Garantors.update({ where: { id: parseInt(guarantorId) }, data: updatedData });
   
-      res.status(200).json({ message: "Garante actualizado exitosamente", guarantor });
+      res.status(200).json({ message: "Garante actualizado exitosamente", guarantor: updated });
     } catch (error) {
       res.status(500).json({
         error: "Error al actualizar el garante",
@@ -85,9 +85,9 @@ exports.updateGarantor = async (req, res) => {
   
       // Verificar que el contrato existe
       const { tenantId } = req.user; // Obtener tenantId del token JWT
-      const lease = await Lease.findOne({
-        where: { id: leaseId, tenantId },
-        include: { model: Garantor },
+      const lease = await prisma.Leases.findFirst({
+        where: { id: parseInt(leaseId), tenantId },
+        include: { Garantors: true },
       });
       if (!lease) {
         return res.status(404).json({ error: "Contrato de alquiler no encontrado" });

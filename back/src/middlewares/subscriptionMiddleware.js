@@ -1,4 +1,4 @@
-const { Subscription, Plan } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 /**
  * Middleware para verificar que el tenant tenga una suscripción activa
@@ -6,26 +6,24 @@ const { Subscription, Plan } = require('../data');
 async function checkSubscription(req, res, next) {
   try {
     const { tenantId } = req.user;
-    
+
     if (!tenantId) {
       return res.status(401).json({
         success: false,
         error: 'No se pudo verificar el tenant'
       });
     }
-    
+
     // Buscar suscripción activa o en trial
-    const subscription = await Subscription.findOne({
+    const subscription = await prisma.subscriptions.findFirst({
       where: {
         tenantId,
-        status: ['trialing', 'active']
+        status: { in: ['trialing', 'active'] },
       },
-      include: [{
-        model: Plan,
-        as: 'Plan'
-      }]
+      include: { plans: true },
+      orderBy: { createdAt: 'desc' },
     });
-    
+
     if (!subscription) {
       return res.status(403).json({
         success: false,
@@ -33,21 +31,23 @@ async function checkSubscription(req, res, next) {
         code: 'NO_ACTIVE_SUBSCRIPTION'
       });
     }
-    
+
     // Verificar si expiró
     const now = new Date();
     if (subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
-      await subscription.update({ status: 'past_due' });
+      await prisma.subscriptions.update({
+        where: { subscriptionId: subscription.subscriptionId },
+        data: { status: 'past_due' },
+      });
       return res.status(403).json({
         success: false,
         error: 'Tu suscripción ha expirado',
         code: 'SUBSCRIPTION_EXPIRED'
       });
     }
-    
-    // Agregar suscripción al request para uso posterior
+
     req.subscription = subscription;
-    req.plan = subscription.Plan;
+    req.plan = subscription.plans;
     
     next();
   } catch (error) {

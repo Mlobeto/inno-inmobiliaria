@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { fetchAllClients } from '@inno/shared';
-import useNetworkStatus from '../hooks/useNetworkStatus';
+import { fetchClients } from '@inno/shared';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
 const ClientsScreen = () => {
   const navigation = useNavigation();
@@ -24,14 +24,14 @@ const ClientsScreen = () => {
 
   useEffect(() => {
     if (isConnected && isInternetReachable) {
-      dispatch(fetchAllClients());
+      dispatch(fetchClients());
     }
   }, [dispatch, isConnected, isInternetReachable]);
 
   const onRefresh = async () => {
     if (!isConnected || !isInternetReachable) return;
     setRefreshing(true);
-    await dispatch(fetchAllClients());
+    await dispatch(fetchClients());
     setRefreshing(false);
   };
 

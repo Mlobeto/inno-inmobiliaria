@@ -4,19 +4,20 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 const MercadoLibreController = require('../controllers/MercadoLibreController');
 
-// Todas las rutas requieren autenticación y tenancy
-router.use(authMiddleware);
-router.use(tenancyMiddleware);
-
 // ====================================
 // AUTENTICACIÓN
 // ====================================
 
+// Callback OAuth: fuera de authMiddleware porque llega como redirección del navegador
+// desde MercadoLibre (sin JWT Bearer token). El tenantId se extrae del parámetro state.
+router.get('/callback', MercadoLibreController.handleCallback.bind(MercadoLibreController));
+
+// El resto de rutas requieren autenticación y tenancy
+router.use(authMiddleware);
+router.use(tenancyMiddleware);
+
 // Iniciar flujo OAuth
 router.get('/auth/start', MercadoLibreController.startAuth.bind(MercadoLibreController));
-
-// Callback OAuth (no requiere tenancy ya que viene desde ML)
-router.get('/callback', MercadoLibreController.handleCallback.bind(MercadoLibreController));
 
 // Obtener estado de conexión
 router.get('/status', MercadoLibreController.getConnectionStatus.bind(MercadoLibreController));

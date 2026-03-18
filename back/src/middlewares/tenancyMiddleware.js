@@ -1,28 +1,46 @@
-const { Tenant } = require('../data');
+const { getTenantBySubdomain, getTenantById, getTenantByCustomDomain } = require('../utils/tenantCache');
+const prisma = require('../utils/prismaClient');
+const logger = require('../utils/logger');
 
 /**
  * Middleware de Tenancy
- * Extrae el tenantId del request (subdomain, header, o contexto)
+ * Extrae el tenantId del request (subdomain, custom domain, header, o contexto)
  * y lo agrega a req.tenantId para usar en todos los controladores
+ * 
+ * Implementa cache con Redis para mejorar performance
  */
 const tenancyMiddleware = async (req, res, next) => {
   try {
     let tenantId = null;
     let tenant = null;
 
-    // OPCIÓN 1: Subdomain (para producción)
-    // Ejemplo: demo.tuapp.com → subdomain = "demo"
+    // OPCIÓN 1: Subdomain o Custom Domain (para producción)
+    // Ejemplo: demo.innoinmo.com → subdomain = "demo"
+    // O: www.inmobiliaria.com → custom domain
     const host = req.get('host') || '';
-    const subdomain = host.split('.')[0];
+    const fullDomain = host.split(':')[0]; // Remover puerto si existe
     
-    if (subdomain && subdomain !== 'localhost' && subdomain !== 'www') {
-      tenant = await Tenant.findOne({ 
-        where: { subdomain },
-        attributes: ['tenantId', 'businessName', 'status', 'plan', 'features']
-      });
+    // Verificar si es un custom domain verificado
+    if (!fullDomain.includes('innoinmo.com') && fullDomain !== 'localhost') {
+      tenant = await getTenantByCustomDomain(fullDomain);
       
       if (tenant) {
         tenantId = tenant.tenantId;
+        logger.debug('Tenant resolved by custom domain', { domain: fullDomain, tenantId });
+      }
+    }
+    
+    // Si no es custom domain, intentar subdomain
+    if (!tenant) {
+      const subdomain = fullDomain.split('.')[0];
+      
+      if (subdomain && subdomain !== 'localhost' && subdomain !== 'www') {
+        tenant = await getTenantBySubdomain(subdomain);
+        
+        if (tenant) {
+          tenantId = tenant.tenantId;
+          logger.debug('Tenant resolved by subdomain', { subdomain, tenantId });
+        }
       }
     }
 
@@ -31,31 +49,42 @@ const tenancyMiddleware = async (req, res, next) => {
       const headerTenantId = req.get('X-Tenant-Id');
       if (headerTenantId) {
         tenantId = parseInt(headerTenantId);
-        tenant = await Tenant.findByPk(tenantId, {
-          attributes: ['tenantId', 'businessName', 'status', 'plan', 'features']
-        });
+        tenant = await getTenantById(tenantId);
+        
+        if (tenant) {
+          logger.debug('Tenant resolved by header', { tenantId });
+        }
       }
     }
 
     // OPCIÓN 3: JWT token (si el usuario está logueado)
     if (!tenantId && req.user && req.user.tenantId) {
       tenantId = req.user.tenantId;
-      tenant = await Tenant.findByPk(tenantId, {
-        attributes: ['tenantId', 'businessName', 'status', 'plan', 'features']
-      });
+      tenant = await getTenantById(tenantId);
+      
+      if (tenant) {
+        logger.debug('Tenant resolved by JWT', { tenantId });
+      }
     }
 
     // OPCIÓN 4: Default para desarrollo (usar tenant demo)
-    if (!tenantId) {
-      console.warn('⚠️ No tenant detected, using demo tenant (tenantId=1)');
-      tenantId = 1;
-      tenant = await Tenant.findByPk(1, {
-        attributes: ['tenantId', 'businessName', 'status', 'plan', 'features']
+    if (!tenantId && process.env.NODE_ENV === 'development') {
+      logger.warn('No tenant detected, using demo tenant (tenantId=1)', {
+        host,
+        url: req.originalUrl,
       });
+      tenantId = 1;
+      tenant = await getTenantById(1);
     }
 
     // Verificar que el tenant existe
     if (!tenant) {
+      logger.warn('Tenant not found', {
+        host,
+        subdomain: fullDomain.split('.')[0],
+        url: req.originalUrl,
+      });
+      
       return res.status(404).json({
         error: 'Tenant no encontrado',
         message: 'La inmobiliaria especificada no existe o está deshabilitada'
@@ -64,6 +93,11 @@ const tenancyMiddleware = async (req, res, next) => {
 
     // Verificar que el tenant está activo
     if (tenant.status !== 'ACTIVE' && tenant.status !== 'TRIAL') {
+      logger.warn('Tenant not active', {
+        tenantId,
+        status: tenant.status,
+      });
+      
       return res.status(403).json({
         error: 'Tenant suspendido',
         message: `La inmobiliaria está en estado: ${tenant.status}`,
@@ -75,11 +109,21 @@ const tenancyMiddleware = async (req, res, next) => {
     req.tenantId = tenantId;
     req.tenant = tenant;
 
-    console.log(`🏢 Tenant: ${tenant.businessName} (ID: ${tenantId})`);
+    logger.debug('Tenant context set', {
+      tenantId,
+      businessName: tenant.businessName,
+      plan: tenant.plan,
+    });
 
     next();
   } catch (error) {
-    console.error('❌ Error en tenancy middleware:', error);
+    logger.error('Error in tenancy middleware', {
+      error: error.message,
+      stack: error.stack,
+      host: req.get('host'),
+      url: req.originalUrl,
+    });
+    
     return res.status(500).json({
       error: 'Error de tenancy',
       message: error.message
@@ -132,23 +176,19 @@ const checkPlanLimits = async (req, resourceType) => {
   const { tenant, tenantId } = req;
   
   if (resourceType === 'properties') {
-    const { Property } = require('../data');
-    const count = await Property.count({ where: { tenantId } });
-    
+    const count = await prisma.Property.count({ where: { tenantId } });
     if (count >= tenant.maxProperties) {
       throw new Error(`Límite de propiedades alcanzado (${tenant.maxProperties}). Actualiza tu plan.`);
     }
   }
-  
+
   if (resourceType === 'agents') {
-    const { Admin } = require('../data');
-    const count = await Admin.count({ where: { tenantId, role: 'AGENT' } });
-    
+    const count = await prisma.admins.count({ where: { tenantId, role: 'AGENT' } });
     if (count >= tenant.maxAgents) {
       throw new Error(`Límite de agentes alcanzado (${tenant.maxAgents}). Actualiza tu plan.`);
     }
   }
-  
+
   return true;
 };
 

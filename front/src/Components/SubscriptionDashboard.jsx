@@ -91,7 +91,7 @@ const SubscriptionDashboard = () => {
             No tienes una suscripción activa
           </h2>
           <p className="text-gray-600 mb-6">
-            Para utilizar InnoInmo necesitas seleccionar un plan
+            Para utilizar GestiónProp necesitas seleccionar un plan
           </p>
           <a 
             href="/#planes" 

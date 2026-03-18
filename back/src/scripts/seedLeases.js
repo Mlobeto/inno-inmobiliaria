@@ -1,23 +1,22 @@
-const { Client, Property, ClientProperty, Lease } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 const seedLeases = async () => {
   try {
     console.log('🏠 Iniciando seed de contratos de alquiler...');
 
     // Ahora esto debería funcionar con las asociaciones corregidas
-    const propertiesForRent = await Property.findAll({
-      where: { 
+    const propertiesForRent = await prisma.Property.findMany({
+      where: {
         type: 'alquiler',
-        isAvailable: true 
+        isAvailable: true,
       },
-      include: [{
-        model: ClientProperty,
-        where: { role: 'propietario' },
-        include: [{
-          model: Client
-        }]
-      }],
-      limit: 4
+      include: {
+        ClientProperties: {
+          where: { role: 'propietario' },
+          include: { Clients: true },
+        },
+      },
+      take: 4,
     });
 
     if (propertiesForRent.length < 3) {
@@ -25,8 +24,8 @@ const seedLeases = async () => {
     }
 
     // Obtener inquilinos (clientes que no sean propietarios de estas propiedades)
-    const allClients = await Client.findAll();
-    const usedLandlordIds = propertiesForRent.map(p => p.ClientProperties[0].clientId);
+    const allClients = await prisma.Clients.findMany();
+    const usedLandlordIds = propertiesForRent.map((p) => p.ClientProperties[0]?.clientId).filter(Boolean);
     const availableRenters = allClients.filter(c => !usedLandlordIds.includes(c.idClient));
 
     if (availableRenters.length < 3) {
@@ -34,7 +33,7 @@ const seedLeases = async () => {
     }
 
     console.log(`📋 ${propertiesForRent.length} propiedades disponibles para alquiler`);
-    console.log(`👥 ${availableTenants.length} inquilinos disponibles`);
+    console.log(`👥 ${availableRenters.length} inquilinos disponibles`);
 
     // Definir los contratos de prueba
     const leaseTemplates = [
@@ -78,10 +77,10 @@ const seedLeases = async () => {
 
     const createdLeases = [];
 
-    for (let i = 0; i < Math.min(leaseTemplates.length, propertiesForRent.length, availableTenants.length); i++) {
+    for (let i = 0; i < Math.min(leaseTemplates.length, propertiesForRent.length, availableRenters.length); i++) {
       const template = leaseTemplates[i];
       const property = propertiesForRent[i];
-      const landlord = property.ClientProperties[0].Client;
+      const landlord = property.ClientProperties[0].Clients;
       const renter = availableRenters[i];
 
       try {
@@ -92,27 +91,38 @@ const seedLeases = async () => {
         console.log(`   Fecha inicio: ${template.startDate.toLocaleDateString()}`);
 
         // Crear el contrato
-        const lease = await Lease.create({
-          propertyId: property.propertyId,
-          landlordId: landlord.idClient,
-          renterId: renter.idClient,
-          startDate: template.startDate,
-          rentAmount: template.rentAmount,
-          updateFrequency: template.updateFrequency,
-          commission: template.commission,
-          totalMonths: template.totalMonths,
-          inventory: template.inventory,
-          status: 'active'
+        const lease = await prisma.Leases.create({
+          data: {
+            propertyId: property.propertyId,
+            landlordId: landlord.idClient,
+            renterId: renter.idClient,
+            tenantId: property.tenantId,
+            startDate: template.startDate,
+            rentAmount: template.rentAmount,
+            updateFrequency: template.updateFrequency,
+            commission: template.commission,
+            totalMonths: template.totalMonths,
+            inventory: template.inventory,
+            status: 'active',
+          },
         });
 
         // Marcar propiedad como no disponible
-        await property.update({ isAvailable: false });
+        await prisma.Property.update({
+          where: { propertyId: property.propertyId },
+          data: { isAvailable: false },
+        });
 
         // Asignar rol de inquilino
-        await ClientProperty.create({
-          clientId: renter.idClient,
-          propertyId: property.propertyId,
-          role: 'inquilino'
+        await prisma.ClientProperties.create({
+          data: {
+            clientId: renter.idClient,
+            propertyId: property.propertyId,
+            role: 'inquilino',
+            tenantId: property.tenantId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         });
 
         // Calcular fecha de finalización para logs
@@ -160,7 +170,7 @@ const seedLeases = async () => {
     createdLeases.forEach((item, index) => {
       console.log(`\n${index + 1}. Contrato ID: ${item.lease.id}`);
       console.log(`   📍 ${item.property}`);
-      console.log(`   👤 ${item.landlord} → ${item.tenant}`);
+      console.log(`   👤 ${item.landlord} → ${item.renter}`);
       console.log(`   💰 $${item.lease.rentAmount.toLocaleString()}`);
       console.log(`   📅 ${item.lease.updateFrequency}`);
       console.log(`   🔄 Necesita actualización: ${item.needsUpdate ? 'SÍ' : 'NO'}`);

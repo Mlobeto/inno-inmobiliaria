@@ -1,10 +1,5 @@
-const db = require('../data');
+const prisma = require('../utils/prismaClient');
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval, Payment } = require('mercadopago');
-
-// Obtener modelos de forma segura
-const Subscription = db.Subscription;
-const Plan = db.Plan;
-const Tenant = db.Tenant;
 
 // Configurar MercadoPago con la nueva SDK
 const client = new MercadoPagoConfig({ 
@@ -27,9 +22,9 @@ class SubscriptionController {
    */
   async getPlans(req, res) {
     try {
-      const plans = await Plan.findAll({
+      const plans = await prisma.plans.findMany({
         where: { isActive: true },
-        order: [['sortOrder', 'ASC']]
+        orderBy: { sortOrder: 'asc' }
       });
       
       res.json({
@@ -53,16 +48,15 @@ class SubscriptionController {
     try {
       const { tenantId } = req.user;
       
-      const subscription = await Subscription.findOne({
+      const subscription = await prisma.subscriptions.findFirst({
         where: {
           tenantId,
-          status: ['trialing', 'active']
+          status: { in: ['trialing', 'active'] }
         },
-        include: [{
-          model: Plan,
-          as: 'Plan'
-        }],
-        order: [['createdAt', 'DESC']]
+        include: {
+          plans: true,
+        },
+        orderBy: { createdAt: 'desc' }
       });
       
       if (!subscription) {
@@ -76,7 +70,10 @@ class SubscriptionController {
       // Verificar si expiró
       const now = new Date();
       if (subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
-        await subscription.update({ status: 'past_due' });
+        await prisma.subscriptions.update({
+          where: { subscriptionId: subscription.subscriptionId },
+          data: { status: 'past_due' },
+        });
         return res.json({
           success: true,
           subscription: null,
@@ -85,11 +82,14 @@ class SubscriptionController {
       }
       
       console.log('📊 Subscription encontrada:', JSON.stringify(subscription, null, 2));
-      console.log('📊 Plan incluido:', subscription.Plan ? 'SÍ' : 'NO');
+      console.log('📊 Plan incluido:', subscription.plans ? 'SÍ' : 'NO');
       
       res.json({
         success: true,
-        subscription
+        subscription: {
+          ...subscription,
+          Plan: subscription.plans,
+        }
       });
     } catch (error) {
       console.error('Error obteniendo suscripción:', error);
@@ -111,7 +111,7 @@ class SubscriptionController {
       const { tenantId, email } = req.user;
       
       // Validar plan
-      const plan = await Plan.findByPk(planId);
+      const plan = await prisma.plans.findUnique({ where: { planId } });
       if (!plan || !plan.isActive) {
         return res.status(400).json({
           success: false,
@@ -120,10 +120,10 @@ class SubscriptionController {
       }
       
       // Verificar si ya tiene suscripción activa
-      const existingSubscription = await Subscription.findOne({
+      const existingSubscription = await prisma.subscriptions.findFirst({
         where: {
           tenantId,
-          status: ['trialing', 'active']
+          status: { in: ['trialing', 'active'] }
         }
       });
       
@@ -164,17 +164,19 @@ class SubscriptionController {
       const response = await preApprovalClient.create({ body: preapprovalData });
       
       // Crear registro de suscripción en estado pendiente
-      const subscription = await Subscription.create({
-        tenantId,
-        planId,
-        status: plan.trialDays > 0 ? 'trialing' : 'incomplete',
-        paymentProvider: 'mercadopago',
-        mpSubscriptionId: response.id,
-        billingCycle: 'monthly',
-        amount: plan.priceMonthly,
-        currency: plan.currency,
-        trialStart: plan.trialDays > 0 ? new Date() : null,
-        trialEnd: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null
+      const subscription = await prisma.subscriptions.create({
+        data: {
+          tenantId,
+          planId,
+          status: plan.trialDays > 0 ? 'trialing' : 'incomplete',
+          paymentProvider: 'mercadopago',
+          mpSubscriptionId: response.id,
+          billingCycle: 'monthly',
+          amount: plan.priceMonthly,
+          currency: plan.currency,
+          trialStart: plan.trialDays > 0 ? new Date() : null,
+          trialEnd: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null,
+        },
       });
       
       res.json({
@@ -236,7 +238,7 @@ class SubscriptionController {
         });
         
         // Buscar suscripción en BD por mpSubscriptionId
-        const subscription = await Subscription.findOne({
+        const subscription = await prisma.subscriptions.findFirst({
           where: { mpSubscriptionId: preapprovalId }
         });
         
@@ -256,10 +258,13 @@ class SubscriptionController {
               break;
           }
           
-          await subscription.update({
-            status: newStatus,
-            currentPeriodStart: preapproval.last_modified ? new Date(preapproval.last_modified) : subscription.currentPeriodStart,
-            currentPeriodEnd: preapproval.next_payment_date ? new Date(preapproval.next_payment_date) : subscription.currentPeriodEnd
+          await prisma.subscriptions.update({
+            where: { subscriptionId: subscription.subscriptionId },
+            data: {
+              status: newStatus,
+              currentPeriodStart: preapproval.last_modified ? new Date(preapproval.last_modified) : subscription.currentPeriodStart,
+              currentPeriodEnd: preapproval.next_payment_date ? new Date(preapproval.next_payment_date) : subscription.currentPeriodEnd,
+            }
           });
           
           console.log('✅ Suscripción actualizada en BD:', subscription.subscriptionId);
@@ -287,19 +292,22 @@ class SubscriptionController {
         
         if (payment.status === 'approved' && payment.preapproval_id) {
           // Buscar suscripción por mpSubscriptionId
-          const subscription = await Subscription.findOne({
+          const subscription = await prisma.subscriptions.findFirst({
             where: { mpSubscriptionId: payment.preapproval_id }
           });
           
           if (subscription) {
             // Actualizar con información del último pago
-            await subscription.update({
-              status: 'active',
-              mpPaymentId: payment.id.toString(),
-              mpPayerId: payment.payer?.id?.toString(),
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 días
-              amount: payment.transaction_amount
+            await prisma.subscriptions.update({
+              where: { subscriptionId: subscription.subscriptionId },
+              data: {
+                status: 'active',
+                mpPaymentId: payment.id.toString(),
+                mpPayerId: payment.payer?.id?.toString(),
+                currentPeriodStart: new Date(),
+                currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                amount: payment.transaction_amount,
+              }
             });
             
             console.log('✅ Pago aplicado a suscripción:', subscription.subscriptionId);
@@ -323,10 +331,10 @@ class SubscriptionController {
       const { tenantId } = req.user;
       const { immediately = false } = req.body;
       
-      const subscription = await Subscription.findOne({
+      const subscription = await prisma.subscriptions.findFirst({
         where: {
           tenantId,
-          status: ['trialing', 'active']
+          status: { in: ['trialing', 'active'] }
         }
       });
       
@@ -353,23 +361,33 @@ class SubscriptionController {
       
       if (immediately) {
         // Cancelar inmediatamente
-        await subscription.update({
-          status: 'canceled',
-          canceledAt: new Date()
+        await prisma.subscriptions.update({
+          where: { subscriptionId: subscription.subscriptionId },
+          data: {
+            status: 'canceled',
+            canceledAt: new Date(),
+          }
         });
       } else {
         // Cancelar al final del período
-        await subscription.update({
-          cancelAtPeriodEnd: true
+        await prisma.subscriptions.update({
+          where: { subscriptionId: subscription.subscriptionId },
+          data: {
+            cancelAtPeriodEnd: true,
+          }
         });
       }
+
+      const updatedSubscription = await prisma.subscriptions.findUnique({
+        where: { subscriptionId: subscription.subscriptionId },
+      });
       
       res.json({
         success: true,
         message: immediately 
           ? 'Suscripción cancelada inmediatamente'
           : 'Suscripción se cancelará al final del período',
-        subscription
+        subscription: updatedSubscription
       });
     } catch (error) {
       console.error('Error cancelando suscripción:', error);
@@ -391,7 +409,7 @@ class SubscriptionController {
       const { newPlanId, billingCycle = 'monthly' } = req.body;
       
       // Validar nuevo plan
-      const newPlan = await Plan.findByPk(newPlanId);
+      const newPlan = await prisma.plans.findUnique({ where: { planId: newPlanId } });
       if (!newPlan || !newPlan.isActive) {
         return res.status(400).json({
           success: false,
@@ -400,12 +418,12 @@ class SubscriptionController {
       }
       
       // Buscar suscripción actual
-      const subscription = await Subscription.findOne({
+      const subscription = await prisma.subscriptions.findFirst({
         where: {
           tenantId,
-          status: ['trialing', 'active']
+          status: { in: ['trialing', 'active'] }
         },
-        include: [{ model: Plan, as: 'Plan' }]
+        include: { plans: true }
       });
       
       if (!subscription) {
@@ -416,17 +434,26 @@ class SubscriptionController {
       }
       
       // Actualizar plan
-      await subscription.update({
-        planId: newPlanId,
-        billingCycle
+      await prisma.subscriptions.update({
+        where: { subscriptionId: subscription.subscriptionId },
+        data: {
+          planId: newPlanId,
+          billingCycle,
+        }
       });
-      
-      await subscription.reload({ include: [{ model: Plan, as: 'Plan' }] });
+
+      const updatedSubscription = await prisma.subscriptions.findUnique({
+        where: { subscriptionId: subscription.subscriptionId },
+        include: { plans: true },
+      });
       
       res.json({
         success: true,
         message: `Plan cambiado a ${newPlan.name}`,
-        subscription
+        subscription: {
+          ...updatedSubscription,
+          Plan: updatedSubscription?.plans || null,
+        }
       });
     } catch (error) {
       console.error('Error cambiando plan:', error);
@@ -448,7 +475,7 @@ class SubscriptionController {
       const { planId = 'basic' } = req.body;
       
       // Verificar si ya tuvo trial
-      const hadTrial = await Subscription.findOne({
+      const hadTrial = await prisma.subscriptions.findFirst({
         where: { tenantId }
       });
       
@@ -460,7 +487,7 @@ class SubscriptionController {
       }
       
       // Buscar plan
-      const plan = await Plan.findByPk(planId);
+      const plan = await prisma.plans.findUnique({ where: { planId } });
       if (!plan || !plan.isActive) {
         return res.status(400).json({
           success: false,
@@ -474,26 +501,34 @@ class SubscriptionController {
       trialEnd.setDate(trialEnd.getDate() + plan.trialDays);
       
       // Crear suscripción en trial
-      const subscription = await Subscription.create({
-        tenantId,
-        planId,
-        status: 'trialing',
-        paymentProvider: 'manual',
-        trialStart,
-        trialEnd,
-        currentPeriodStart: trialStart,
-        currentPeriodEnd: trialEnd,
-        billingCycle: 'monthly',
-        amount: 0,
-        currency: 'ARS'
+      const subscription = await prisma.subscriptions.create({
+        data: {
+          tenantId,
+          planId,
+          status: 'trialing',
+          paymentProvider: 'manual',
+          trialStart,
+          trialEnd,
+          currentPeriodStart: trialStart,
+          currentPeriodEnd: trialEnd,
+          billingCycle: 'monthly',
+          amount: 0,
+          currency: 'ARS',
+        }
       });
-      
-      await subscription.reload({ include: [{ model: Plan, as: 'Plan' }] });
+
+      const subscriptionWithPlan = await prisma.subscriptions.findUnique({
+        where: { subscriptionId: subscription.subscriptionId },
+        include: { plans: true },
+      });
       
       res.json({
         success: true,
         message: `Trial de ${plan.trialDays} días iniciado`,
-        subscription
+        subscription: {
+          ...subscriptionWithPlan,
+          Plan: subscriptionWithPlan?.plans || null,
+        }
       });
     } catch (error) {
       console.error('Error iniciando trial:', error);

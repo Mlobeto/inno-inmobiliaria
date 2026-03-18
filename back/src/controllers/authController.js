@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const {Admin, PasswordResetToken, Tenant, Subscription, Plan} = require('../data');  // Modelos
+const prisma = require('../utils/prismaClient');
 const { sendPasswordResetEmail, sendPasswordChangedEmail } = require('../emailService');
 const { MercadoPagoConfig, PreApproval } = require('mercadopago');
 require('dotenv').config();  // Para usar las variables de entorno
@@ -26,7 +26,7 @@ exports.register = async (req, res) => {
       console.log('Contraseña hasheada:', hashedPassword);
   
       // Crear el nuevo administrador en la base de datos
-      const newAdmin = await Admin.create({ username, password: hashedPassword });
+      const newAdmin = await prisma.admins.create({ data: { username, password: hashedPassword } });
       console.log('Admin creado:', newAdmin);
   
       res.status(201).json({ message: 'Admin registrado con éxito', admin: newAdmin });
@@ -57,7 +57,7 @@ exports.registerTenant = async (req, res) => {
     }
 
     // Verificar si el email ya existe
-    const existingTenant = await Tenant.findOne({ where: { email } });
+    const existingTenant = await prisma.tenants.findFirst({ where: { email } });
     if (existingTenant) {
       return res.status(409).json({ 
         success: false,
@@ -80,14 +80,14 @@ exports.registerTenant = async (req, res) => {
     // Verificar si el subdomain ya existe (agregar número si es necesario)
     let finalSubdomain = subdomain;
     let counter = 1;
-    while (await Tenant.findOne({ where: { subdomain: finalSubdomain } })) {
+    while (await prisma.tenants.findFirst({ where: { subdomain: finalSubdomain } })) {
       finalSubdomain = `${subdomain}-${counter}`;
       counter++;
     }
 
     // Buscar plan por planId (si no se envía, usar 'basic' por defecto)
     const selectedPlanId = planId || 'basic';
-    const plan = await Plan.findOne({ where: { planId: selectedPlanId, isActive: true } });
+    const plan = await prisma.plans.findFirst({ where: { planId: selectedPlanId, isActive: true } });
     if (!plan) {
       console.log('❌ Plan no encontrado:', selectedPlanId);
       return res.status(400).json({ 
@@ -105,17 +105,21 @@ exports.registerTenant = async (req, res) => {
     const tenantStatus = plan.trialDays > 0 ? 'TRIAL' : 'ACTIVE';
 
     // Crear el tenant con datos del plan seleccionado
-    const newTenant = await Tenant.create({
-      businessName: tempCompanyName,
-      email,
-      cuit: tempCuit,
-      subdomain: finalSubdomain,
-      status: tenantStatus,
-      plan: plan.planId.toUpperCase(), // 'BASIC', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE'
-      maxAgents: plan.maxUsers || 2,
-      maxProperties: plan.maxProperties || 50,
-      features: plan.features || {},
-      trialEndsAt: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null
+    const newTenant = await prisma.tenants.create({
+      data: {
+        businessName: tempCompanyName,
+        email,
+        cuit: tempCuit,
+        subdomain: finalSubdomain,
+        status: tenantStatus,
+        plan: plan.planId.toUpperCase(),
+        maxAgents: plan.maxUsers || 2,
+        maxProperties: plan.maxProperties || 50,
+        features: plan.features || {},
+        trialEndsAt: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     });
 
     console.log('✅ Tenant creado:', newTenant.tenantId, newTenant.businessName, `Plan: ${newTenant.plan}`);
@@ -124,13 +128,15 @@ exports.registerTenant = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Crear el usuario admin del tenant
-    const newAdmin = await Admin.create({
-      username: email, // Usar email como username
-      password: hashedPassword,
-      fullName,
-      email,
-      role: 'SUPER_ADMIN', // Rol de dueño de la inmobiliaria
-      tenantId: newTenant.tenantId
+    const newAdmin = await prisma.admins.create({
+      data: {
+        username: email,
+        password: hashedPassword,
+        fullName,
+        email,
+        role: 'SUPER_ADMIN',
+        tenantId: newTenant.tenantId,
+      },
     });
 
     console.log('✅ Admin creado:', newAdmin.adminId, newAdmin.username);
@@ -140,18 +146,20 @@ exports.registerTenant = async (req, res) => {
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + (plan.trialDays || 30));
 
-    const subscription = await Subscription.create({
-      tenantId: newTenant.tenantId,
-      planId: plan.planId,
-      status: plan.trialDays > 0 ? 'trialing' : 'active',
-      paymentProvider: 'manual',
-      trialStart: plan.trialDays > 0 ? trialStart : null,
-      trialEnd: plan.trialDays > 0 ? trialEnd : null,
-      currentPeriodStart: trialStart,
-      currentPeriodEnd: trialEnd,
-      billingCycle: 'monthly',
-      amount: 0,
-      currency: 'ARS'
+    const subscription = await prisma.subscriptions.create({
+      data: {
+        tenantId: newTenant.tenantId,
+        planId: plan.planId,
+        status: plan.trialDays > 0 ? 'trialing' : 'active',
+        paymentProvider: 'manual',
+        trialStart: plan.trialDays > 0 ? trialStart : null,
+        trialEnd: plan.trialDays > 0 ? trialEnd : null,
+        currentPeriodStart: trialStart,
+        currentPeriodEnd: trialEnd,
+        billingCycle: 'monthly',
+        amount: 0,
+        currency: 'ARS',
+      },
     });
 
     console.log('✅ Suscripción creada:', subscription.subscriptionId);
@@ -216,7 +224,7 @@ exports.registerPlatformAdmin = async (req, res) => {
     }
 
     // Verificar que el username no exista
-    const existingAdmin = await Admin.findOne({ where: { username } });
+    const existingAdmin = await prisma.admins.findFirst({ where: { username } });
     if (existingAdmin) {
       return res.status(409).json({ message: 'El username ya está en uso' });
     }
@@ -225,13 +233,15 @@ exports.registerPlatformAdmin = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Crear el Platform Admin con tenantId = null
-    const newPlatformAdmin = await Admin.create({
-      username,
-      password: hashedPassword,
-      fullName: fullName || 'Platform Administrator',
-      email: email || null,
-      role: 'PLATFORM_ADMIN',
-      tenantId: null // NULL para Platform Admin
+    const newPlatformAdmin = await prisma.admins.create({
+      data: {
+        username,
+        password: hashedPassword,
+        fullName: fullName || 'Platform Administrator',
+        email: email || null,
+        role: 'PLATFORM_ADMIN',
+        tenantId: null,
+      },
     });
 
     console.log('✅ Platform Admin creado:', {
@@ -265,7 +275,7 @@ exports.loginAdmin = async (req, res) => {
   console.log('POST /auth/login - Datos recibidos:', { username, password: '***' });
 
   try {
-    const admin = await Admin.findOne({ where: { username } });
+    const admin = await prisma.admins.findFirst({ where: { username } });
     if (!admin) {
       console.log('POST /auth/login - Usuario no encontrado:', username);
       return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -312,7 +322,7 @@ exports.verifyToken = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const admin = await Admin.findByPk(decoded.id);
+    const admin = await prisma.admins.findUnique({ where: { adminId: decoded.id } });
     
     if (!admin) {
       console.log('GET /auth/verify - Admin no encontrado para token');
@@ -339,7 +349,7 @@ exports.verifyToken = async (req, res) => {
 exports.getAllAdmins = async (req, res) => {
   try {
     // Obtener todos los administradores
-    const admins = await Admin.findAll();
+    const admins = await prisma.admins.findMany();
     
     // Verificar si hay administradores
     if (admins.length === 0) {
@@ -360,21 +370,24 @@ exports.editAdmin = async (req, res) => {
   const { username, password } = req.body;  // Nuevos datos del admin
 
   try {
-    const admin = await Admin.findByPk(adminId);
+    const admin = await prisma.admins.findUnique({ where: { adminId: parseInt(adminId) } });
     if (!admin) {
       return res.status(404).json({ message: 'Administrador no encontrado' });
     }
 
     // Si se proporciona una nueva contraseña, la hasheamos
-    let updatedPassword = admin.password;  // Mantener la contraseña actual por defecto
+    let updatedPassword = admin.password;
     if (password) {
-      updatedPassword = await bcrypt.hash(password, 10);  // Hashear la nueva contraseña
+      updatedPassword = await bcrypt.hash(password, 10);
     }
 
     // Actualizamos el administrador
-    const updatedAdmin = await admin.update({
-      username: username || admin.username,  // Solo actualizamos el username si se proporciona uno nuevo
-      password: updatedPassword,  // Actualizamos la contraseña si es necesario
+    const updatedAdmin = await prisma.admins.update({
+      where: { adminId: parseInt(adminId) },
+      data: {
+        username: username || admin.username,
+        password: updatedPassword,
+      },
     });
 
     res.status(200).json({ message: 'Administrador actualizado con éxito', admin: updatedAdmin });
@@ -397,9 +410,7 @@ exports.forgotPassword = async (req, res) => {
 
   try {
     // Buscar admin por email (puede ser username o email dependiendo de tu schema)
-    const admin = await Admin.findOne({ 
-      where: { username: email } // Ajustar si tienes campo email separado
-    });
+    const admin = await prisma.admins.findFirst({ where: { username: email } });
 
     // Por seguridad, siempre respondemos con éxito aunque no exista el usuario
     if (!admin) {
@@ -418,23 +429,20 @@ exports.forgotPassword = async (req, res) => {
     expiresAt.setHours(expiresAt.getHours() + 1);
 
     // Invalidar tokens anteriores del mismo usuario
-    await PasswordResetToken.update(
-      { used: true },
-      { 
-        where: { 
-          adminId: admin.adminId,
-          used: false 
-        } 
-      }
-    );
+    await prisma.password_reset_tokens.updateMany({
+      where: { adminId: admin.adminId, used: false },
+      data: { used: true },
+    });
 
     // Crear nuevo token
-    await PasswordResetToken.create({
-      adminId: admin.adminId,
-      email: admin.username, // O admin.email si tienes ese campo
-      token: hashedToken,
-      expiresAt,
-      used: false
+    await prisma.password_reset_tokens.create({
+      data: {
+        adminId: admin.adminId,
+        email: admin.username,
+        token: hashedToken,
+        expiresAt,
+        used: false,
+      },
     });
 
     // Enviar email (usar el token sin hashear en el link)
@@ -482,18 +490,13 @@ exports.resetPassword = async (req, res) => {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Buscar token válido
-    const resetToken = await PasswordResetToken.findOne({
+    const resetToken = await prisma.password_reset_tokens.findFirst({
       where: {
         token: hashedToken,
         used: false,
-        expiresAt: {
-          [require('sequelize').Op.gt]: new Date() // Token no expirado
-        }
+        expiresAt: { gt: new Date() },
       },
-      include: [{
-        model: Admin,
-        as: 'admin'
-      }]
+      include: { admins: true },
     });
 
     if (!resetToken) {
@@ -505,19 +508,22 @@ exports.resetPassword = async (req, res) => {
 
     // Actualizar contraseña del admin
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await Admin.update(
-      { password: hashedPassword },
-      { where: { adminId: resetToken.adminId } }
-    );
+    await prisma.admins.update({
+      where: { adminId: resetToken.adminId },
+      data: { password: hashedPassword },
+    });
 
     // Marcar token como usado
-    await resetToken.update({ used: true });
+    await prisma.password_reset_tokens.update({
+      where: { id: resetToken.id },
+      data: { used: true },
+    });
 
     // Enviar email de confirmación
     try {
       await sendPasswordChangedEmail(
         resetToken.email, 
-        resetToken.admin.username
+        resetToken.admins.username
       );
       console.log('POST /auth/reset-password - Email de confirmación enviado');
     } catch (emailError) {
@@ -546,13 +552,13 @@ exports.deleteAdmin = async (req, res) => {
   const { adminId } = req.params;  // ID del administrador a eliminar
 
   try {
-    const admin = await Admin.findByPk(adminId);
+    const admin = await prisma.admins.findUnique({ where: { adminId: parseInt(adminId) } });
     if (!admin) {
       return res.status(404).json({ message: 'Administrador no encontrado' });
     }
 
     // Eliminamos el administrador
-    await admin.destroy();
+    await prisma.admins.delete({ where: { adminId: parseInt(adminId) } });
     res.status(200).json({ message: 'Administrador eliminado con éxito' });
   } catch (error) {
     console.error('Error al eliminar administrador:', error);

@@ -1,11 +1,11 @@
-const { conn } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 exports.checkConstraints = async (req, res) => {
   try {
     console.log('=== VERIFICANDO CONSTRAINTS ===');
     
     // Verificar constraints de Leases
-    const leasesConstraints = await conn.query(`
+    const leasesConstraints = await prisma.$queryRawUnsafe(`
       SELECT 
         tc.constraint_name, 
         tc.table_name, 
@@ -21,10 +21,10 @@ exports.checkConstraints = async (req, res) => {
         AND ccu.table_schema = tc.table_schema
       WHERE tc.constraint_type = 'FOREIGN KEY' 
       AND tc.table_name='Leases'
-    `, { type: conn.QueryTypes.SELECT });
+    `);
     
     // Verificar constraints de ClientProperties
-    const clientPropertiesConstraints = await conn.query(`
+    const clientPropertiesConstraints = await prisma.$queryRawUnsafe(`
       SELECT 
         tc.constraint_name, 
         tc.table_name, 
@@ -40,16 +40,16 @@ exports.checkConstraints = async (req, res) => {
         AND ccu.table_schema = tc.table_schema
       WHERE tc.constraint_type = 'FOREIGN KEY' 
       AND tc.table_name='ClientProperties'
-    `, { type: conn.QueryTypes.SELECT });
+    `);
     
     // Verificar si existe tabla Properties (plural)
-    const tablesCheck = await conn.query(`
+    const tablesCheck = await prisma.$queryRawUnsafe(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
       AND (table_name = 'Property' OR table_name = 'Properties' OR table_name = 'Client' OR table_name = 'Clients')
       ORDER BY table_name
-    `, { type: conn.QueryTypes.SELECT });
+    `);
     
     res.status(200).json({
       success: true,
@@ -75,19 +75,19 @@ exports.fixClientPropertyConstraints = async (req, res) => {
     
     // 1. Eliminar constraints antiguos de ClientProperties
     console.log('Eliminando constraints antiguos de ClientProperties...');
-    await conn.query('ALTER TABLE "ClientProperties" DROP CONSTRAINT IF EXISTS "ClientProperties_clientId_fkey"');
-    await conn.query('ALTER TABLE "ClientProperties" DROP CONSTRAINT IF EXISTS "ClientProperties_propertyId_fkey"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "ClientProperties" DROP CONSTRAINT IF EXISTS "ClientProperties_clientId_fkey"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "ClientProperties" DROP CONSTRAINT IF EXISTS "ClientProperties_propertyId_fkey"');
     console.log('✓ Constraints antiguos de ClientProperties eliminados');
     
     // 2. Crear constraints nuevos de ClientProperties con referencias correctas
     console.log('Creando constraints nuevos para ClientProperties...');
-    await conn.query(`
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "ClientProperties" 
       ADD CONSTRAINT "ClientProperties_clientId_fkey" 
       FOREIGN KEY ("clientId") REFERENCES "Clients"("idClient") ON DELETE CASCADE
     `);
     
-    await conn.query(`
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "ClientProperties" 
       ADD CONSTRAINT "ClientProperties_propertyId_fkey" 
       FOREIGN KEY ("propertyId") REFERENCES "Property"("propertyId") ON DELETE CASCADE
@@ -96,27 +96,27 @@ exports.fixClientPropertyConstraints = async (req, res) => {
     
     // 3. Eliminar constraints antiguos de Leases
     console.log('Eliminando constraints antiguos de Leases...');
-    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_landlordId_fkey"');
-    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_renterId_fkey"');
-    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey"');
-    await conn.query('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey1"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_landlordId_fkey"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_renterId_fkey"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey"');
+    await prisma.$executeRawUnsafe('ALTER TABLE "Leases" DROP CONSTRAINT IF EXISTS "Leases_propertyId_fkey1"');
     console.log('✓ Constraints antiguos de Leases eliminados');
     
     // 4. Crear constraints nuevos de Leases con referencias correctas
     console.log('Creando constraints nuevos para Leases...');
-    await conn.query(`
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "Leases" 
       ADD CONSTRAINT "Leases_landlordId_fkey" 
       FOREIGN KEY ("landlordId") REFERENCES "Clients"("idClient") ON DELETE RESTRICT
     `);
     
-    await conn.query(`
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "Leases" 
       ADD CONSTRAINT "Leases_renterId_fkey" 
       FOREIGN KEY ("renterId") REFERENCES "Clients"("idClient") ON DELETE RESTRICT
     `);
     
-    await conn.query(`
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE "Leases" 
       ADD CONSTRAINT "Leases_propertyId_fkey" 
       FOREIGN KEY ("propertyId") REFERENCES "Property"("propertyId") ON DELETE RESTRICT
@@ -127,19 +127,19 @@ exports.fixClientPropertyConstraints = async (req, res) => {
     
     // 5. Eliminar tablas duplicadas si existen
     console.log('Verificando tablas duplicadas...');
-    const tablesCheck = await conn.query(`
+    const tablesCheck = await prisma.$queryRawUnsafe(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
       AND (table_name = 'Properties' OR table_name = 'Client')
-    `, { type: conn.QueryTypes.SELECT });
+    `);
     
     let tablesDeleted = [];
     
     if (tablesCheck.length > 0) {
       for (const table of tablesCheck) {
         console.log(`Eliminando tabla ${table.table_name} duplicada...`);
-        await conn.query(`DROP TABLE IF EXISTS "${table.table_name}" CASCADE`);
+        await prisma.$executeRawUnsafe(`DROP TABLE IF EXISTS "${table.table_name}" CASCADE`);
         tablesDeleted.push(table.table_name);
         console.log(`✓ Tabla ${table.table_name} eliminada`);
       }

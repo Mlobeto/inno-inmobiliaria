@@ -1,17 +1,5 @@
-/**
- * Script para crear los planes en la base de datos de producción (Neon)
- * 
- * Uso: node scripts/seed-plans-production.js
- * 
- * Este script:
- * 1. Carga variables de entorno desde .env.production
- * 2. Conecta a la base de datos de producción
- * 3. Crea los 3 planes: Basic, Professional, Enterprise
- * 4. Todos los planes tienen 7 días de prueba gratis
- */
-
 require('dotenv').config({ path: '.env.production' });
-const { sequelize, Plan } = require('../src/data');
+const prisma = require('../src/utils/prismaClient');
 
 const plans = [
   {
@@ -36,12 +24,12 @@ const plans = [
       prioritySupport: false,
       landingPage: false,
       mercadoLibreIntegration: false,
-      agentRole: false
+      agentRole: false,
     },
     trialDays: 7,
     isActive: true,
     isPopular: false,
-    sortOrder: 1
+    sortOrder: 1,
   },
   {
     planId: 'professional',
@@ -65,12 +53,12 @@ const plans = [
       prioritySupport: true,
       landingPage: true,
       mercadoLibreIntegration: true,
-      agentRole: true
+      agentRole: true,
     },
     trialDays: 7,
     isActive: true,
     isPopular: true,
-    sortOrder: 2
+    sortOrder: 2,
   },
   {
     planId: 'enterprise',
@@ -80,8 +68,8 @@ const plans = [
     priceYearly: 699000,
     currency: 'ARS',
     features: {
-      maxProperties: -1,  // ilimitado
-      maxClients: -1,     // ilimitado
+      maxProperties: -1,
+      maxClients: -1,
       maxUsers: 20,
       maxStorageGB: 100,
       pdfTemplates: true,
@@ -94,97 +82,65 @@ const plans = [
       prioritySupport: true,
       landingPage: true,
       mercadoLibreIntegration: true,
-      agentRole: true
+      agentRole: true,
     },
     trialDays: 7,
     isActive: true,
     isPopular: false,
-    sortOrder: 3
-  }
+    sortOrder: 3,
+  },
 ];
 
 async function seedPlans() {
   try {
     console.log('\n🚀 Iniciando creación de planes...\n');
-    console.log('📊 Configuración:');
-    console.log(`   - Base de datos: ${process.env.DB_NAME}`);
-    console.log(`   - Host: ${process.env.DB_HOST}`);
-    console.log(`   - Usuario: ${process.env.DB_USER}\n`);
 
-    // Conectar a la base de datos
-    console.log('🔌 Conectando a la base de datos...');
-    await sequelize.authenticate();
-    console.log('✅ Conexión exitosa\n');
-
-    // Verificar que existe la tabla plans
-    const [tables] = await sequelize.query(
+    const tables = await prisma.$queryRawUnsafe(
       "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'plans'"
     );
 
-    if (tables.length === 0) {
+    if (!tables.length) {
       console.error('❌ ERROR: La tabla "plans" no existe.');
-      console.error('   Por favor ejecuta primero: node scripts/init-production-tables.js');
       process.exit(1);
     }
 
-    console.log('📝 Creando planes...\n');
-
     for (const planData of plans) {
-      try {
-        const [plan, created] = await Plan.findOrCreate({
-          where: { planId: planData.planId },
-          defaults: planData
-        });
+      const existing = await prisma.plans.findUnique({ where: { planId: planData.planId } });
 
-        if (created) {
-          console.log(`   ✅ Plan "${plan.name}" creado`);
-          console.log(`      - ID: ${plan.planId}`);
-          console.log(`      - Precio mensual: $${plan.priceMonthly / 100} ARS`);
-          console.log(`      - Días de prueba: ${plan.trialDays}`);
-          console.log(`      - Popular: ${plan.isPopular ? 'Sí' : 'No'}\n`);
-        } else {
-          // Actualizar si ya existe
-          await plan.update(planData);
-          console.log(`   🔄 Plan "${plan.name}" actualizado\n`);
-        }
-      } catch (error) {
-        console.error(`   ❌ Error creando plan ${planData.name}:`, error.message);
+      if (existing) {
+        await prisma.plans.update({
+          where: { planId: planData.planId },
+          data: planData,
+        });
+        console.log(`🔄 Plan "${planData.name}" actualizado`);
+      } else {
+        await prisma.plans.create({ data: planData });
+        console.log(`✅ Plan "${planData.name}" creado`);
       }
     }
 
-    // Mostrar resumen
-    console.log('\n📊 Resumen de planes en base de datos:\n');
-    const allPlans = await Plan.findAll({
-      order: [['sortOrder', 'ASC']]
-    });
+    const allPlans = await prisma.plans.findMany({ orderBy: { sortOrder: 'asc' } });
 
     console.table(
-      allPlans.map(p => ({
+      allPlans.map((p) => ({
         ID: p.planId,
         Nombre: p.name,
-        'Precio/mes': `$${p.priceMonthly / 100}`,
-        'Precio/año': `$${p.priceYearly / 100}`,
+        'Precio/mes': `$${Number(p.priceMonthly) / 100}`,
+        'Precio/año': `$${Number(p.priceYearly || 0) / 100}`,
         'Trial (días)': p.trialDays,
         Activo: p.isActive ? '✅' : '❌',
-        Popular: p.isPopular ? '⭐' : '-'
+        Popular: p.isPopular ? '⭐' : '-',
       }))
     );
 
     console.log('\n✅ Proceso completado exitosamente');
-    console.log('\n📌 Próximos pasos:');
-    console.log('   1. Ejecutar: node scripts/seed-platform-admin-production.js');
-    console.log('   2. Verificar en frontend que aparecen los planes');
-    console.log('   3. Registrar primer tenant de prueba\n');
-
   } catch (error) {
     console.error('\n❌ Error durante la creación de planes:', error);
-    console.error('Stack:', error.stack);
     process.exit(1);
   } finally {
-    await sequelize.close();
+    await prisma.$disconnect();
     console.log('🔌 Conexión cerrada\n');
   }
 }
 
-// Ejecutar
 seedPlans();

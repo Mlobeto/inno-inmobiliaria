@@ -1,4 +1,5 @@
-const { PaymentReceipt, Lease, Client, Property } = require('../data');
+const prisma = require('../utils/prismaClient');
+const { logAudit } = require('../utils/audit');
 
 exports.createPayment = async (req, res) => {
     try {
@@ -35,9 +36,9 @@ exports.createPayment = async (req, res) => {
   
       // Validar que solo exista un pago inicial por contrato
       if (type === "initial") {
-        const existingInitial = await PaymentReceipt.findOne({
-          where: { leaseId, type: 'initial', tenantId }, // Filtrar por tenant
-        });
+      const existingInitial = await prisma.PaymentReceipts.findFirst({
+        where: { leaseId: parseInt(leaseId), type: 'initial', tenantId },
+      });
         if (existingInitial) {
           return res.status(400).json({ 
             error: 'Ya existe un pago inicial para este contrato. Solo se permite un pago inicial por contrato.' 
@@ -51,9 +52,9 @@ exports.createPayment = async (req, res) => {
       if (type === "installment") {
         // Si es cuota, se requiere calcular o recibir installmentNumber y totalInstallments.
         // Podés calcular el número siguiente si no lo pasás desde el front:
-        const lastReceipt = await PaymentReceipt.findOne({
-          where: { leaseId, type: 'installment', tenantId }, // Filtrar por tenant
-          order: [['installmentNumber', 'DESC']],
+        const lastReceipt = await prisma.PaymentReceipts.findFirst({
+          where: { leaseId: parseInt(leaseId), type: 'installment', tenantId },
+          orderBy: { installmentNumber: 'desc' },
         });
         finalInstallmentNumber = lastReceipt ? lastReceipt.installmentNumber + 1 : 1;
   
@@ -66,17 +67,18 @@ exports.createPayment = async (req, res) => {
         }
       }
   
-      // Para comisión y pago inicial, no se requieren installmentNumber y totalInstallments.
-      const newPaymentReceipt = await PaymentReceipt.create({
-        tenantId, // Inyectar tenantId
-        idClient,
-        leaseId,
-        paymentDate,
-        amount,
-        period: finalPeriod,
-        type,
-        installmentNumber: type === "installment" ? finalInstallmentNumber : null,
-        totalInstallments: type === "installment" ? finalTotalInstallments : null,
+      const newPaymentReceipt = await prisma.PaymentReceipts.create({
+        data: {
+          tenantId,
+          idClient: parseInt(idClient),
+          leaseId: parseInt(leaseId),
+          paymentDate: new Date(paymentDate),
+          amount,
+          period: finalPeriod,
+          type,
+          installmentNumber: type === "installment" ? finalInstallmentNumber : null,
+          totalInstallments: type === "installment" ? finalTotalInstallments : null,
+        },
       });
   
       res.status(201).json(newPaymentReceipt);
@@ -95,21 +97,23 @@ exports.getPaymentsByIdClient = async (req, res) => {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { idClient } = req.params;
 
-        const payments = await PaymentReceipt.findAll({
-            where: { idClient, tenantId }, // Filtrar por tenant
-            include: [
-                {
-                    model: Lease,
-                    include: [{ model: Property }], // Detalles de la propiedad si es necesario
-                },
-            ],
+        const payments = await prisma.PaymentReceipts.findMany({
+            where: { idClient: parseInt(idClient), tenantId },
+            include: { Clients: true },
         });
 
         if (!payments.length) {
             return res.status(404).json({ error: 'No se encontraron pagos para este cliente' });
         }
 
-        res.status(200).json(payments);
+        // Enrich with lease + property data
+        const leaseIds = [...new Set(payments.map(p => p.leaseId).filter(Boolean))];
+        const leases = leaseIds.length
+            ? await prisma.Leases.findMany({ where: { id: { in: leaseIds } }, include: { Property: true } })
+            : [];
+        const leaseMap = Object.fromEntries(leases.map(l => [l.id, l]));
+        const enriched = payments.map(p => ({ ...p, Lease: leaseMap[p.leaseId] || null }));
+        res.status(200).json(enriched);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener los pagos', details: error.message });
     }
@@ -119,12 +123,9 @@ exports.getPaymentsByLeaseId = async (req, res) => {
         const { tenantId } = req.user; // Obtener tenantId del token JWT
         const { leaseId } = req.params;
 
-        const payments = await PaymentReceipt.findAll({
-            where: { leaseId, tenantId }, // Filtrar por tenant
-            include: [
-                { model: Client }, // Incluye información del cliente
-                { model: Lease },  // Incluye información del contrato
-            ],
+        const payments = await prisma.PaymentReceipts.findMany({
+            where: { leaseId: parseInt(leaseId), tenantId },
+            include: { Clients: true },
         });
 
         if (!payments.length) {
@@ -141,19 +142,21 @@ exports.getAllPayments = async (req, res) => {
   try {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     
-    const payments = await PaymentReceipt.findAll({
-      where: { tenantId }, // Filtrar por tenant
-      include: [
-        { model: Client }, // Información del cliente
-        { 
-          model: Lease,   // Información del contrato
-          include: [{ model: Property }] // Opcional: Detalles de la propiedad
-        },
-      ],
+    const payments = await prisma.PaymentReceipts.findMany({
+      where: { tenantId },
+      include: { Clients: true },
     });
 
+    // Enrich with lease + property data
+    const leaseIds = [...new Set(payments.map(p => p.leaseId).filter(Boolean))];
+    const leases = leaseIds.length
+      ? await prisma.Leases.findMany({ where: { id: { in: leaseIds } }, include: { Property: true } })
+      : [];
+    const leaseMap = Object.fromEntries(leases.map(l => [l.id, l]));
+    const enriched = payments.map(p => ({ ...p, Lease: leaseMap[p.leaseId] || null }));
+
     // ✅ Devolver array vacío si no hay pagos, no un error 404
-    res.status(200).json(payments);
+    res.status(200).json(enriched);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener los pagos', details: error.message });
   }
@@ -163,27 +166,23 @@ exports.getPaymentsByLease = async (req, res) => {
   try {
     const { leaseId } = req.params;
 
-    // Buscar el contrato
-    const lease = await Lease.findByPk(leaseId, {
-      include: [
-        {
-          model: PaymentReceipt,
-          required: false,
-          attributes: ['id', 'amount', 'paymentDate', 'periodMonth', 'periodYear'],
-        },
-      ],
-    });
+    const lease = await prisma.Leases.findUnique({ where: { id: parseInt(leaseId) } });
     if (!lease) {
       return res.status(404).json({ error: 'Contrato no encontrado.' });
     }
 
+    const paymentReceipts = await prisma.PaymentReceipts.findMany({
+      where: { leaseId: parseInt(leaseId) },
+      select: { id: true, amount: true, paymentDate: true, period: true },
+    });
+
     res.status(200).json({
       message: 'Pagos encontrados.',
-      payments: lease.PaymentReceipts.map((payment) => ({
+      payments: paymentReceipts.map(payment => ({
         id: payment.id,
         amount: payment.amount,
         paymentDate: payment.paymentDate,
-        period: `${payment.periodMonth}/${payment.periodYear}`,
+        period: payment.period,
       })),
     });
   } catch (error) {

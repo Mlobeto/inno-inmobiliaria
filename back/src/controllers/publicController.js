@@ -1,5 +1,4 @@
-const { Property, Tenant, AdminSetting } = require('../data');
-const { Op } = require('sequelize');
+const prisma = require('../utils/prismaClient');
 
 /**
  * Controlador para endpoints públicos (sin autenticación)
@@ -15,10 +14,9 @@ exports.getTenantLanding = async (req, res) => {
     const { subdomain } = req.params;
     const { type, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
 
-    // 1. Buscar tenant por subdominio
-    const tenant = await Tenant.findOne({
+    const tenant = await prisma.tenants.findFirst({
       where: { subdomain: subdomain.toLowerCase() },
-      attributes: ['tenantId', 'companyName', 'subdomain', 'features']
+      select: { tenantId: true, companyName: true, subdomain: true, features: true }
     });
 
     if (!tenant) {
@@ -36,40 +34,22 @@ exports.getTenantLanding = async (req, res) => {
       });
     }
 
-    // 3. Obtener configuración de la empresa (logo, contacto, etc)
-    const companySettings = await AdminSetting.findOne({
-      where: { tenantId: tenant.tenantId },
-      attributes: [
-        'company_name',
-        'company_address', 
-        'company_phone',
-        'company_email',
-        'company_logo',
-        'company_whatsapp'
-      ]
+    const companySettings = await prisma.admin_settings.findFirst({
+      where: { tenant_id: tenant.tenantId },
+      select: {
+        company_name: true,
+        company_address: true,
+        company_phone: true,
+        company_email: true,
+        company_logo_url: true,
+        company_whatsapp: true,
+      }
     });
 
-    // 4. Construir filtros para propiedades
     const whereConditions = {
       tenantId: tenant.tenantId,
-      isPublishedInLanding: true
+      isPublishedInLanding: true,
     };
-
-    // Excluir propiedades vendidas o alquiladas hace más de 7 días
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    whereConditions[Op.or] = [
-      // Propiedades disponibles (cualquier tipo)
-      { 
-        status: { [Op.notIn]: ['Vendida', 'Alquilada'] }
-      },
-      // Propiedades alquiladas recientemente (menos de 7 días)
-      { 
-        status: 'Alquilada',
-        rentedAt: { [Op.gte]: sevenDaysAgo }
-      }
-    ];
 
     if (type && ['venta', 'alquiler'].includes(type.toLowerCase())) {
       whereConditions.type = type.toLowerCase();
@@ -77,47 +57,28 @@ exports.getTenantLanding = async (req, res) => {
 
     if (minPrice || maxPrice) {
       whereConditions.price = {};
-      if (minPrice) whereConditions.price[Op.gte] = parseFloat(minPrice);
-      if (maxPrice) whereConditions.price[Op.lte] = parseFloat(maxPrice);
+      if (minPrice) whereConditions.price.gte = parseFloat(minPrice);
+      if (maxPrice) whereConditions.price.lte = parseFloat(maxPrice);
     }
 
-    // 5. Obtener propiedades publicadas con paginación
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    const { count, rows: properties } = await Property.findAndCountAll({
-      where: whereConditions,
-      attributes: [
-        'propertyId',
-        'title',
-        'description',
-        'type',
-        'price',
-        'currency',
-        'address',
-        'neighborhood',
-        'city',
-        'province',
-        'country',
-        'bedrooms',
-        'bathrooms',
-        'garages',
-        'surface',
-        'coveredSurface',
-        'images',
-        'status',
-        'createdAt'
-      ],
-      order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    const [count, properties] = await Promise.all([
+      prisma.Property.count({ where: whereConditions }),
+      prisma.Property.findMany({
+        where: whereConditions,
+        orderBy: { createdAt: 'desc' },
+        take: parseInt(limit),
+        skip: offset,
+      }),
+    ]);
 
     // 6. Formatear respuesta
     res.json({
       tenant: {
         name: tenant.companyName,
         subdomain: tenant.subdomain,
-        logo: companySettings?.company_logo || null,
+        logo: companySettings?.company_logo_url_url || null,
         contact: {
           phone: companySettings?.company_phone || null,
           email: companySettings?.company_email || null,
@@ -175,10 +136,9 @@ exports.getPropertyDetail = async (req, res) => {
   try {
     const { subdomain, propertyId } = req.params;
 
-    // 1. Buscar tenant por subdominio
-    const tenant = await Tenant.findOne({
+    const tenant = await prisma.tenants.findFirst({
       where: { subdomain: subdomain.toLowerCase() },
-      attributes: ['tenantId', 'companyName', 'features']
+      select: { tenantId: true, companyName: true, features: true }
     });
 
     if (!tenant) {
@@ -194,12 +154,11 @@ exports.getPropertyDetail = async (req, res) => {
       });
     }
 
-    // 3. Buscar propiedad
-    const property = await Property.findOne({
+    const property = await prisma.Property.findFirst({
       where: {
-        propertyId,
+        propertyId: parseInt(propertyId),
         tenantId: tenant.tenantId,
-        isPublishedInLanding: true
+        isPublishedInLanding: true,
       }
     });
 
@@ -210,16 +169,15 @@ exports.getPropertyDetail = async (req, res) => {
       });
     }
 
-    // 4. Obtener datos de contacto
-    const companySettings = await AdminSetting.findOne({
-      where: { tenantId: tenant.tenantId },
-      attributes: [
-        'company_name',
-        'company_phone',
-        'company_email',
-        'company_whatsapp',
-        'company_logo'
-      ]
+    const companySettings = await prisma.admin_settings.findFirst({
+      where: { tenant_id: tenant.tenantId },
+      select: {
+        company_name: true,
+        company_phone: true,
+        company_email: true,
+        company_whatsapp: true,
+        company_logo_url: true,
+      }
     });
 
     // 5. Incrementar contador de vistas (opcional - implementar después)

@@ -6,38 +6,8 @@
  */
 
 require('dotenv').config();
-const { Sequelize, DataTypes } = require('sequelize');
+const prisma = require('../utils/prismaClient');
 const { MercadoPagoConfig, PreApprovalPlan } = require('mercadopago');
-
-// Configurar conexión a la BD
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    dialect: 'postgres',
-    logging: false
-  }
-);
-
-// Definir modelo Plan
-const Plan = sequelize.define('Plan', {
-  planId: {
-    type: DataTypes.STRING(50),
-    primaryKey: true
-  },
-  name: DataTypes.STRING(100),
-  priceMonthly: DataTypes.DECIMAL(10, 2),
-  currency: DataTypes.STRING(3),
-  trialDays: DataTypes.INTEGER,
-  mpPlanId: DataTypes.STRING(255),
-  isActive: DataTypes.BOOLEAN
-}, {
-  tableName: 'plans',
-  timestamps: true
-});
 
 // Configurar cliente de MercadoPago
 const client = new MercadoPagoConfig({ 
@@ -51,13 +21,13 @@ async function syncPlans() {
   try {
     console.log('🔄 Iniciando sincronización de planes con MercadoPago...\n');
 
-    await sequelize.authenticate();
+    await prisma.$connect();
     console.log('✅ Conexión a BD establecida\n');
 
     // Obtener todos los planes activos de la BD
-    const plans = await Plan.findAll({
+    const plans = await prisma.plans.findMany({
       where: { isActive: true },
-      order: [['sortOrder', 'ASC']]
+      orderBy: { sortOrder: 'asc' }
     });
 
     console.log(`📋 Encontrados ${plans.length} planes en la base de datos\n`);
@@ -112,7 +82,10 @@ async function syncPlans() {
         const response = await preApprovalPlanClient.create({ body: mpPlanData });
 
         // Actualizar plan en BD con el ID de MercadoPago
-        await plan.update({ mpPlanId: response.id });
+        await prisma.plans.update({
+          where: { planId: plan.planId },
+          data: { mpPlanId: response.id },
+        });
 
         console.log(`   ✅ Plan creado exitosamente en MercadoPago`);
         console.log(`      - MP Plan ID: ${response.id}`);
@@ -131,19 +104,19 @@ async function syncPlans() {
     console.log('📝 Resumen:');
     
     // Contar planes con precio > 0 que tienen mpPlanId
-    const plansWithMpId = await Plan.count({ 
+    const plansWithMpId = await prisma.plans.count({ 
       where: { 
         isActive: true,
-        mpPlanId: { [Sequelize.Op.ne]: null },
-        priceMonthly: { [Sequelize.Op.gt]: 0 }
+        mpPlanId: { not: null },
+        priceMonthly: { gt: 0 }
       } 
     });
     
     // Contar total de planes de pago (precio > 0)
-    const paidPlans = await Plan.count({
+    const paidPlans = await prisma.plans.count({
       where: {
         isActive: true,
-        priceMonthly: { [Sequelize.Op.gt]: 0 }
+        priceMonthly: { gt: 0 }
       }
     });
     
@@ -157,7 +130,7 @@ async function syncPlans() {
   } catch (error) {
     console.error('\n❌ Error en la sincronización:', error);
   } finally {
-    await sequelize.close();
+    await prisma.$disconnect();
     process.exit();
   }
 }

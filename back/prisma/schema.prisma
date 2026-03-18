@@ -1,0 +1,769 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admins {
+  adminId   Int       @id @default(autoincrement())
+  tenantId  Int
+  username  String    @unique @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  fullName  String?   @db.VarChar(255)
+  email     String?   @db.VarChar(255)
+  role      String?   @default("AGENT") @db.VarChar(50)
+  deletedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime  @db.Timestamptz(6)
+  updatedAt DateTime  @db.Timestamptz(6)
+  tenants   tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([role], map: "admins_role")
+  @@index([tenantId], map: "admins_tenant_id")
+}
+
+model ClientProperties {
+  role       enum_ClientProperties_role
+  clientId   Int
+  propertyId Int
+  createdAt  DateTime                   @db.Timestamptz(6)
+  updatedAt  DateTime                   @db.Timestamptz(6)
+  tenantId   Int
+  Clients    Clients                    @relation(fields: [clientId], references: [idClient], onDelete: Cascade)
+  Property   Property                   @relation(fields: [propertyId], references: [propertyId], onDelete: Cascade)
+  tenants    tenants                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([clientId, propertyId])
+  @@index([tenantId], map: "idx_client_properties_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model Clients {
+  idClient                                      Int                @id @default(autoincrement())
+  cuil                                          String?            @unique @db.VarChar(255)
+  name                                          String             @db.VarChar(255)
+  email                                         String?            @unique @db.VarChar(255)
+  direccion                                     String?            @db.VarChar(255)
+  ciudad                                        String             @db.VarChar(255)
+  provincia                                     String?            @db.VarChar(255)
+  mobilePhone                                   String             @db.VarChar(255)
+  linkMaps                                      String?            @db.VarChar(255)
+  createdAt                                     DateTime           @db.Timestamptz(6)
+  updatedAt                                     DateTime           @db.Timestamptz(6)
+  deletedAt                                     DateTime?          @db.Timestamptz(6)
+  tenantId                                      Int
+  migrated_to_documents                         Boolean?           @default(false)
+  codigo_postal                                 String?            @db.VarChar(10)
+  ClientProperties                              ClientProperties[]
+  tenants                                       tenants            @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  Leases_Leases_landlordIdToClients             Leases[]           @relation("Leases_landlordIdToClients")
+  Leases_Leases_renterIdToClients               Leases[]           @relation("Leases_renterIdToClients")
+  PaymentReceipts                               PaymentReceipts[]
+  SaleContracts_SaleContracts_buyerIdToClients  SaleContracts[]    @relation("SaleContracts_buyerIdToClients")
+  SaleContracts_SaleContracts_sellerIdToClients SaleContracts[]    @relation("SaleContracts_sellerIdToClients")
+  client_documents                              client_documents[]
+  commissions                                   commissions[]
+
+  @@index([codigo_postal], map: "idx_clients_codigo_postal")
+  @@index([migrated_to_documents], map: "idx_clients_migration_status", where: raw("(migrated_to_documents = false)"))
+  @@index([tenantId], map: "idx_clients_tenant")
+}
+
+model Garantors {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(255)
+  cuil        String   @db.VarChar(255)
+  address     String   @db.VarChar(255)
+  mobilePhone String?  @db.VarChar(255)
+  email       String?  @unique @db.VarChar(255)
+  description String   @db.VarChar(255)
+  createdAt   DateTime @db.Timestamptz(6)
+  updatedAt   DateTime @db.Timestamptz(6)
+  leaseId     Int?
+  tenantId    Int?
+  tenants     tenants? @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenantId], map: "idx_garantors_tenant")
+}
+
+model Leases {
+  id                                 Int       @id @default(autoincrement())
+  tenantId                           Int
+  propertyId                         Int
+  landlordId                         Int
+  renterId                           Int
+  agentId                            Int?
+  startDate                          DateTime  @db.Date
+  rentAmount                         Decimal   @db.Decimal(12, 2)
+  updateFrequency                    String?   @db.VarChar(50)
+  commission                         Decimal?  @db.Decimal(5, 2)
+  totalMonths                        Int
+  inventory                          String
+  status                             String?   @default("active") @db.VarChar(50)
+  pdfPath                            String?   @db.VarChar(500)
+  customContent                      String?
+  createdAt                          DateTime? @default(now()) @db.Timestamp(6)
+  updatedAt                          DateTime? @default(now()) @db.Timestamp(6)
+  deletedAt                          DateTime? @db.Timestamp(6)
+  admins                             admins?   @relation(fields: [agentId], references: [adminId], onUpdate: NoAction)
+  Clients_Leases_landlordIdToClients Clients   @relation("Leases_landlordIdToClients", fields: [landlordId], references: [idClient], onUpdate: NoAction)
+  Property                           Property  @relation(fields: [propertyId], references: [propertyId], onUpdate: NoAction)
+  Clients_Leases_renterIdToClients   Clients   @relation("Leases_renterIdToClients", fields: [renterId], references: [idClient], onUpdate: NoAction)
+  tenants                            tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([agentId], map: "idx_leases_agent")
+  @@index([landlordId], map: "idx_leases_landlord")
+  @@index([propertyId], map: "idx_leases_property")
+  @@index([renterId], map: "idx_leases_renter")
+  @@index([status], map: "idx_leases_status")
+  @@index([tenantId], map: "idx_leases_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model MercadoLibreConfig {
+  id             Int       @id @default(autoincrement())
+  tenantId       Int       @unique
+  mlUserId       String?   @db.VarChar(100)
+  accessToken    String?
+  accessTokenIv  String?   @db.VarChar(32)
+  accessTokenAuthTag String? @db.VarChar(32)
+  accessTokenSalt String?  @db.VarChar(128)
+  refreshToken   String?
+  refreshTokenIv String?   @db.VarChar(32)
+  refreshTokenAuthTag String? @db.VarChar(32)
+  refreshTokenSalt String? @db.VarChar(128)
+  tokenExpiresAt DateTime? @db.Timestamp(6)
+  isActive       Boolean?  @default(false)
+  lastSync       DateTime? @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @db.Timestamp(6)
+  tenants        tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([isActive], map: "idx_ml_config_active")
+  @@index([tenantId], map: "idx_ml_config_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model MercadoLibreMessages {
+  id           Int       @id @default(autoincrement())
+  tenantId     Int
+  propertyId   Int?
+  mlListingId  String?   @db.VarChar(100)
+  mlMessageId  String    @unique @db.VarChar(100)
+  mlQuestionId String?   @db.VarChar(100)
+  mlUserId     String?   @db.VarChar(100)
+  userNickname String?   @db.VarChar(255)
+  message      String
+  answer       String?
+  status       String?   @default("UNANSWERED") @db.VarChar(50)
+  isRead       Boolean?  @default(false)
+  receivedAt   DateTime? @db.Timestamp(6)
+  answeredAt   DateTime? @db.Timestamp(6)
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @default(now()) @db.Timestamp(6)
+  Property     Property? @relation(fields: [propertyId], references: [propertyId], onUpdate: NoAction)
+  tenants      tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([propertyId], map: "idx_ml_msg_property")
+  @@index([isRead], map: "idx_ml_msg_read")
+  @@index([receivedAt], map: "idx_ml_msg_received")
+  @@index([status], map: "idx_ml_msg_status")
+  @@index([tenantId], map: "idx_ml_msg_tenant")
+}
+
+model PaymentReceipts {
+  id                Int                         @id @default(autoincrement())
+  paymentDate       DateTime                    @db.Timestamptz(6)
+  amount            Decimal                     @db.Decimal
+  period            String                      @db.VarChar(255)
+  installmentNumber Int?
+  totalInstallments Int?
+  type              enum_PaymentReceipts_type   @default(installment)
+  status            enum_PaymentReceipts_status @default(pending)
+  createdAt         DateTime                    @db.Timestamptz(6)
+  updatedAt         DateTime                    @db.Timestamptz(6)
+  deletedAt         DateTime?                   @db.Timestamptz(6)
+  leaseId           Int?
+  idClient          Int?
+  tenantId          Int?
+  Clients           Clients?                    @relation(fields: [idClient], references: [idClient])
+  tenants           tenants?                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenantId], map: "idx_payment_receipts_tenant")
+}
+
+model Property {
+  propertyId           Int                        @id @default(autoincrement())
+  address              String                     @db.VarChar(255)
+  neighborhood         String?                    @db.VarChar(255)
+  socio                String?                    @db.VarChar(255)
+  city                 String?                    @db.VarChar(255)
+  type                 enum_Property_type
+  typeProperty         enum_Property_typeProperty
+  price                Decimal                    @db.Decimal
+  precioReferencia     Decimal?                   @db.Decimal
+  rooms                Int?
+  comision             Decimal                    @db.Decimal
+  isAvailable          Boolean?                   @default(true)
+  description          String?
+  escritura            enum_Property_escritura
+  matriculaOPadron     String?                    @db.VarChar(255)
+  frente               String?                    @db.VarChar(255)
+  profundidad          String?                    @db.VarChar(255)
+  linkInstagram        String?                    @db.VarChar(255)
+  linkMaps             String?                    @db.VarChar(255)
+  images               String[]                   @default([]) @db.VarChar(255)
+  plantType            String?                    @db.VarChar(255)
+  plantQuantity        Int?
+  bathrooms            Int?
+  highlights           String?
+  inventory            String?
+  superficieCubierta   String?                    @db.VarChar(255)
+  superficieTotal      String?                    @db.VarChar(255)
+  whatsappTemplate     String?                    @default("Gracias por ponerte en contacto con Quintero Lobeto Propiedades! Estamos encantados de poder ayudar. \n\n{descripcion}\n\nTe comento que estamos en lanzamiento de ofertas y este es el primero!\n\nPrecio: AR$ {precio}\nUbicación: {direccion}\n\nEstamos a tu entera disposición por dudas, precio o consultas.")
+  createdAt            DateTime                   @db.Timestamptz(6)
+  updatedAt            DateTime                   @db.Timestamptz(6)
+  deletedAt            DateTime?                  @db.Timestamptz(6)
+  tenantId             Int
+  agentId              Int?
+  rentalType           String?                    @default("TRADICIONAL") @db.VarChar(50)
+  minStayDays          Int?
+  isPublishedInLanding Boolean?                   @default(false)
+  rentedAt             DateTime?                  @db.Timestamp(6)
+  ClientProperties     ClientProperties[]
+  Leases               Leases[]
+  MercadoLibreMessages MercadoLibreMessages[]
+  admins               admins?                    @relation(fields: [agentId], references: [adminId], onUpdate: NoAction)
+  tenants              tenants                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  PropertyMLListings   PropertyMLListings[]
+  SaleContracts        SaleContracts[]
+  commissions          commissions[]
+
+  @@index([agentId], map: "idx_property_agent")
+  @@index([tenantId], map: "idx_property_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model PropertyMLListings {
+  id          Int       @id @default(autoincrement())
+  propertyId  Int
+  tenantId    Int
+  mlListingId String    @db.VarChar(100)
+  mlStatus    String?   @db.VarChar(50)
+  mlPermalink String?
+  mlTitle     String?   @db.VarChar(255)
+  mlPrice     Decimal?  @db.Decimal(15, 2)
+  viewsCount  Int?      @default(0)
+  lastSync    DateTime? @db.Timestamp(6)
+  syncErrors  String?
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @db.Timestamp(6)
+  Property    Property  @relation(fields: [propertyId], references: [propertyId], onDelete: Cascade, onUpdate: NoAction)
+  tenants     tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([propertyId, tenantId])
+  @@index([mlListingId], map: "idx_ml_listing_id")
+  @@index([propertyId], map: "idx_ml_listing_property")
+  @@index([mlStatus], map: "idx_ml_listing_status")
+  @@index([tenantId], map: "idx_ml_listing_tenant")
+}
+
+model RentUpdates {
+  id            Int       @id @default(autoincrement())
+  updateDate    DateTime  @db.Timestamptz(6)
+  oldRentAmount Decimal   @db.Decimal
+  newRentAmount Decimal   @db.Decimal
+  period        String    @db.VarChar(255)
+  pdfPath       String?   @db.VarChar(255)
+  createdAt     DateTime  @db.Timestamptz(6)
+  updatedAt     DateTime  @db.Timestamptz(6)
+  deletedAt     DateTime? @db.Timestamptz(6)
+  leaseId       Int?
+  tenantId      Int?
+  tenants       tenants?  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenantId], map: "idx_rent_updates_tenant")
+}
+
+model SaleContracts {
+  id                                      Int      @id @default(autoincrement())
+  saleDate                                DateTime @db.Timestamptz(6)
+  salePrice                               Decimal  @db.Decimal
+  commission                              Decimal? @db.Decimal
+  propertyId                              Int
+  sellerId                                Int
+  buyerId                                 Int
+  createdAt                               DateTime @db.Timestamptz(6)
+  updatedAt                               DateTime @db.Timestamptz(6)
+  tenantId                                Int?
+  agentId                                 Int?
+  admins                                  admins?  @relation(fields: [agentId], references: [adminId], onUpdate: NoAction)
+  Clients_SaleContracts_buyerIdToClients  Clients  @relation("SaleContracts_buyerIdToClients", fields: [buyerId], references: [idClient], onDelete: NoAction)
+  Property                                Property @relation(fields: [propertyId], references: [propertyId], onDelete: NoAction)
+  Clients_SaleContracts_sellerIdToClients Clients  @relation("SaleContracts_sellerIdToClients", fields: [sellerId], references: [idClient], onDelete: NoAction)
+  tenants                                 tenants? @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([agentId], map: "idx_sale_contracts_agent")
+  @@index([tenantId], map: "idx_sale_contracts_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model admin_settings {
+  id                       Int      @id @default(autoincrement())
+  signatureUrl             String?  @db.VarChar(255)
+  company_name             String?  @db.VarChar(255)
+  company_address          String?  @db.VarChar(255)
+  company_phone            String?  @db.VarChar(255)
+  company_email            String?  @db.VarChar(255)
+  company_registration     String?  @db.VarChar(255)
+  company_cuit             String?  @db.VarChar(255)
+  company_logo_url         String?  @db.VarChar(255)
+  contract_footer_text     String?
+  additional_config        Json?    @default("{}")
+  createdAt                DateTime @db.Timestamptz(6)
+  updatedAt                DateTime @db.Timestamptz(6)
+  tenant_id                Int?
+  whatsapp_template        String?
+  requisitos_template      String?
+  company_city             String?  @db.VarChar(255)
+  company_province         String?  @db.VarChar(255)
+  company_ingresos_brutos  String?  @db.VarChar(255)
+  company_condicion_iva    String?  @default("RESPONSABLE MONOTRIBUTO") @db.VarChar(255)
+  company_inicio_actividad String?  @db.VarChar(255)
+  professional_title       String?  @db.VarChar(255)
+  receipt_prefix           String?  @default("X") @db.VarChar(1)
+  receipt_footer_text      String?
+  company_whatsapp         String?  @db.VarChar(50)
+  tenants                  tenants? @relation(fields: [tenant_id], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenant_id], map: "idx_admin_settings_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model admins {
+  adminId                                    Int                     @id @default(autoincrement())
+  username                                   String                  @unique @db.VarChar(255)
+  password                                   String                  @db.VarChar(255)
+  role                                       String?                 @default("admin") @db.VarChar(50)
+  createdAt                                  DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt                                  DateTime                @default(now()) @db.Timestamptz(6)
+  deletedAt                                  DateTime?               @db.Timestamptz(6)
+  tenantId                                   Int?
+  fullName                                   String?                 @db.VarChar(255)
+  email                                      String?                 @db.VarChar(255)
+  Leases                                     Leases[]
+  Property                                   Property[]
+  SaleContracts                              SaleContracts[]
+  tenants                                    tenants?                @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  commissions_commissions_agentIdToadmins    commissions[]           @relation("commissions_agentIdToadmins")
+  commissions_commissions_approvedByToadmins commissions[]           @relation("commissions_approvedByToadmins")
+  password_reset_tokens                      password_reset_tokens[]
+  pdf_templates                              pdf_templates[]
+
+  @@index([role], map: "idx_admins_role")
+  @@index([tenantId], map: "idx_admins_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model client_documents {
+  document_id   Int                @id @default(autoincrement())
+  client_id     Int
+  tenant_id     Int
+  document_type document_type_enum
+  country       String             @default("AR") @db.VarChar(2)
+  document_code String             @db.VarChar(20)
+  number        String             @db.VarChar(50)
+  issued_by     String?            @db.VarChar(100)
+  issued_at     DateTime?          @db.Date
+  expires_at    DateTime?          @db.Date
+  is_primary    Boolean?           @default(false)
+  is_verified   Boolean?           @default(false)
+  metadata      Json?              @default("{}")
+  created_at    DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at    DateTime?          @default(now()) @db.Timestamp(6)
+  deleted_at    DateTime?          @db.Timestamp(6)
+  Clients       Clients            @relation(fields: [client_id], references: [idClient], onDelete: Cascade, onUpdate: NoAction, map: "fk_client_documents_client")
+  tenants       tenants            @relation(fields: [tenant_id], references: [tenantId], onDelete: Cascade, onUpdate: NoAction, map: "fk_client_documents_tenant")
+
+  @@unique([client_id, document_type, document_code, is_primary], map: "unique_primary_doc_per_type")
+  @@index([client_id], map: "idx_client_documents_client")
+  @@index([country], map: "idx_client_documents_country")
+  @@index([client_id, is_primary], map: "idx_client_documents_primary", where: raw("(is_primary = true)"))
+  @@index([tenant_id], map: "idx_client_documents_tenant")
+  @@index([document_type], map: "idx_client_documents_type")
+}
+
+model client_properties {
+  idClient   Int
+  propertyId Int
+  role       String?    @db.VarChar(50)
+  createdAt  DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime   @default(now()) @db.Timestamptz(6)
+  clients    clients    @relation(fields: [idClient], references: [idClient], onDelete: Cascade, onUpdate: NoAction)
+  properties properties @relation(fields: [propertyId], references: [propertyId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([idClient, propertyId])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model clients {
+  idClient                                        Int                 @id @default(autoincrement())
+  name                                            String              @db.VarChar(255)
+  email                                           String?             @db.VarChar(255)
+  phone                                           String?             @db.VarChar(50)
+  dni                                             String?             @db.VarChar(20)
+  address                                         String?
+  city                                            String?             @db.VarChar(100)
+  nationality                                     String?             @db.VarChar(100)
+  maritalStatus                                   String?             @db.VarChar(50)
+  profession                                      String?             @db.VarChar(100)
+  birthDate                                       DateTime?           @db.Date
+  createdAt                                       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt                                       DateTime            @default(now()) @db.Timestamptz(6)
+  deletedAt                                       DateTime?           @db.Timestamptz(6)
+  client_properties                               client_properties[]
+  payment_receipts                                payment_receipts[]
+  sale_contracts_sale_contracts_buyerIdToclients  sale_contracts[]    @relation("sale_contracts_buyerIdToclients")
+  sale_contracts_sale_contracts_sellerIdToclients sale_contracts[]    @relation("sale_contracts_sellerIdToclients")
+
+  @@index([dni], map: "idx_clients_dni")
+  @@index([email], map: "idx_clients_email")
+}
+
+model commissions {
+  id                                    Int       @id @default(autoincrement())
+  tenantId                              Int
+  agentId                               Int
+  transactionType                       String    @db.VarChar(50)
+  transactionId                         Int
+  propertyId                            Int
+  clientId                              Int?
+  transactionAmount                     Decimal   @db.Decimal(12, 2)
+  inmobiliariaCommissionPercent         Decimal?  @db.Decimal(5, 2)
+  inmobiliariaCommissionAmount          Decimal?  @db.Decimal(12, 2)
+  agentCommissionPercent                Decimal?  @db.Decimal(5, 2)
+  agentCommissionAmount                 Decimal?  @db.Decimal(12, 2)
+  status                                String?   @default("PENDING") @db.VarChar(50)
+  approvedBy                            Int?
+  approvedAt                            DateTime? @db.Timestamp(6)
+  paidAt                                DateTime? @db.Timestamp(6)
+  notes                                 String?
+  createdAt                             DateTime? @default(now()) @db.Timestamp(6)
+  updatedAt                             DateTime? @default(now()) @db.Timestamp(6)
+  admins_commissions_agentIdToadmins    admins    @relation("commissions_agentIdToadmins", fields: [agentId], references: [adminId], onUpdate: NoAction)
+  admins_commissions_approvedByToadmins admins?   @relation("commissions_approvedByToadmins", fields: [approvedBy], references: [adminId], onUpdate: NoAction)
+  Clients                               Clients?  @relation(fields: [clientId], references: [idClient], onUpdate: NoAction)
+  Property                              Property  @relation(fields: [propertyId], references: [propertyId], onUpdate: NoAction)
+  tenants                               tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([agentId], map: "idx_commissions_agent")
+  @@index([status], map: "idx_commissions_status")
+  @@index([tenantId], map: "idx_commissions_tenant")
+  @@index([transactionType], map: "idx_commissions_type")
+}
+
+model garantors {
+  garantorId   Int      @id @default(autoincrement())
+  leaseId      Int?
+  name         String   @db.VarChar(255)
+  dni          String?  @db.VarChar(20)
+  phone        String?  @db.VarChar(50)
+  address      String?
+  email        String?  @db.VarChar(255)
+  relationship String?  @db.VarChar(100)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model password_reset_tokens {
+  id        Int       @id @default(autoincrement())
+  adminId   Int
+  email     String    @db.VarChar(255)
+  token     String    @unique @db.VarChar(255)
+  expiresAt DateTime  @db.Timestamp(6)
+  used      Boolean?  @default(false)
+  createdAt DateTime? @default(now()) @db.Timestamp(6)
+  admins    admins    @relation(fields: [adminId], references: [adminId], onDelete: Cascade, onUpdate: NoAction, map: "fk_admin")
+
+  @@index([email], map: "idx_password_reset_email")
+  @@index([expiresAt], map: "idx_password_reset_expires")
+  @@index([token], map: "idx_password_reset_token")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model payment_receipts {
+  receiptId     Int      @id @default(autoincrement())
+  leaseId       Int?
+  clientId      Int?
+  amount        Decimal  @db.Decimal(12, 2)
+  paymentDate   DateTime @db.Date
+  paymentMethod String?  @db.VarChar(50)
+  receiptNumber String?  @db.VarChar(100)
+  notes         String?
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @db.Timestamptz(6)
+  clients       clients? @relation(fields: [clientId], references: [idClient], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([paymentDate], map: "idx_payment_receipts_date")
+  @@index([leaseId], map: "idx_payment_receipts_lease")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model pdf_templates {
+  id           Int       @id @default(autoincrement())
+  tenantId     Int
+  templateType String    @db.VarChar(50)
+  templateName String    @db.VarChar(100)
+  htmlTemplate String
+  styles       String?
+  headerHtml   String?
+  footerHtml   String?
+  variables    Json?     @default("{}")
+  pageSize     String    @default("A4") @db.VarChar(20)
+  orientation  String    @default("portrait") @db.VarChar(20)
+  margins      Json?     @default("{\"top\": \"20mm\", \"left\": \"15mm\", \"right\": \"15mm\", \"bottom\": \"20mm\"}")
+  isActive     Boolean   @default(true)
+  isDefault    Boolean   @default(false)
+  createdBy    Int?
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt    DateTime? @db.Timestamptz(6)
+  admins       admins?   @relation(fields: [createdBy], references: [adminId], onUpdate: NoAction)
+  tenants      tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([isActive], map: "idx_pdf_templates_active")
+  @@index([tenantId, isDefault], map: "idx_pdf_templates_tenant_default")
+  @@index([tenantId, templateType], map: "idx_pdf_templates_tenant_type")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model plans {
+  planId        String          @id @db.VarChar(50)
+  name          String          @db.VarChar(100)
+  description   String?
+  priceMonthly  Decimal         @db.Decimal(10, 2)
+  priceYearly   Decimal?        @db.Decimal(10, 2)
+  currency      String          @default("ARS") @db.VarChar(3)
+  mpPlanId      String?         @db.VarChar(100)
+  stripePriceId String?         @db.VarChar(100)
+  features      Json            @default("{}")
+  trialDays     Int             @default(14)
+  isActive      Boolean         @default(true)
+  isPopular     Boolean         @default(false)
+  sortOrder     Int             @default(0)
+  createdAt     DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime        @default(now()) @db.Timestamp(6)
+  subscriptions subscriptions[]
+
+  @@index([isActive], map: "idx_plans_active")
+  @@index([sortOrder], map: "idx_plans_sort_order")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model properties {
+  propertyId           Int                 @id @default(autoincrement())
+  title                String?             @db.VarChar(255)
+  address              String
+  type                 String              @db.VarChar(50)
+  status               String?             @default("available") @db.VarChar(50)
+  price                Decimal?            @db.Decimal(12, 2)
+  description          String?
+  images               String[]
+  surface              Decimal?            @db.Decimal(10, 2)
+  bedrooms             Int?
+  bathrooms            Int?
+  garages              Int?
+  amenities            String[]
+  location             Json?
+  is_published         Boolean?            @default(false)
+  createdAt            DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime            @default(now()) @db.Timestamptz(6)
+  deletedAt            DateTime?           @db.Timestamptz(6)
+  isPublishedInLanding Boolean?            @default(false)
+  rentedAt             DateTime?           @db.Timestamp(6)
+  client_properties    client_properties[]
+  sale_contracts       sale_contracts[]
+
+  @@index([status], map: "idx_properties_status")
+  @@index([type], map: "idx_properties_type")
+}
+
+model rent_updates {
+  id         Int       @id @default(autoincrement())
+  leaseId    Int?
+  oldAmount  Decimal   @db.Decimal(12, 2)
+  newAmount  Decimal   @db.Decimal(12, 2)
+  updateDate DateTime  @db.Date
+  appliedAt  DateTime? @db.Timestamptz(6)
+  notes      String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model sale_contracts {
+  id                                       Int         @id @default(autoincrement())
+  propertyId                               Int?
+  buyerId                                  Int?
+  sellerId                                 Int?
+  salePrice                                Decimal     @db.Decimal(12, 2)
+  saleDate                                 DateTime    @db.Date
+  status                                   String?     @default("pending") @db.VarChar(50)
+  notes                                    String?
+  createdAt                                DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt                                DateTime    @default(now()) @db.Timestamptz(6)
+  clients_sale_contracts_buyerIdToclients  clients?    @relation("sale_contracts_buyerIdToclients", fields: [buyerId], references: [idClient], onDelete: Cascade, onUpdate: NoAction)
+  properties                               properties? @relation(fields: [propertyId], references: [propertyId], onDelete: Cascade, onUpdate: NoAction)
+  clients_sale_contracts_sellerIdToclients clients?    @relation("sale_contracts_sellerIdToclients", fields: [sellerId], references: [idClient], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model subscriptions {
+  subscriptionId       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             Int
+  planId               String    @db.VarChar(50)
+  status               String    @default("trialing") @db.VarChar(20)
+  paymentProvider      String    @default("mercadopago") @db.VarChar(20)
+  mpPreferenceId       String?   @db.VarChar(100)
+  mpSubscriptionId     String?   @db.VarChar(100)
+  mpPayerId            String?   @db.VarChar(100)
+  mpPaymentId          String?   @db.VarChar(100)
+  stripeSubscriptionId String?   @db.VarChar(100)
+  stripeCustomerId     String?   @db.VarChar(100)
+  storeSubscriptionId  String?   @db.VarChar(100)
+  storeReceipt         String?
+  currentPeriodStart   DateTime? @db.Timestamp(6)
+  currentPeriodEnd     DateTime? @db.Timestamp(6)
+  trialStart           DateTime? @db.Timestamp(6)
+  trialEnd             DateTime? @db.Timestamp(6)
+  canceledAt           DateTime? @db.Timestamp(6)
+  cancelAtPeriodEnd    Boolean   @default(false)
+  billingCycle         String    @default("monthly") @db.VarChar(20)
+  amount               Decimal?  @db.Decimal(10, 2)
+  currency             String    @default("ARS") @db.VarChar(3)
+  metadata             Json?     @default("{}")
+  createdAt            DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime  @default(now()) @db.Timestamp(6)
+  plans                plans     @relation(fields: [planId], references: [planId], onUpdate: NoAction)
+  tenants              tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenantId, status], map: "idx_subscriptions_active_per_tenant", where: raw("((status)::text = ANY ((ARRAY['trialing'::character varying, 'active'::character varying])::text[]))"))
+  @@index([currentPeriodEnd], map: "idx_subscriptions_period_end")
+  @@index([paymentProvider], map: "idx_subscriptions_provider")
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([tenantId], map: "idx_subscriptions_tenant")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model tenants {
+  tenantId             Int                    @id @default(autoincrement())
+  businessName         String                 @db.VarChar(255)
+  cuit                 String                 @unique @db.VarChar(13)
+  subdomain            String                 @unique @db.VarChar(100)
+  email                String?                @db.VarChar(255)
+  phone                String?                @db.VarChar(50)
+  address              String?
+  logo                 String?                @db.VarChar(500)
+  plan                 String?                @default("FREE") @db.VarChar(50)
+  status               String?                @default("TRIAL") @db.VarChar(50)
+  maxAgents            Int?                   @default(1)
+  maxProperties        Int?                   @default(10)
+  features             Json?                  @default("{\"ml\": false, \"reports\": true, \"whatsapp\": false, \"contracts\": true}")
+  trialEndsAt          DateTime?              @db.Timestamptz(6)
+  createdAt            DateTime               @db.Timestamptz(6)
+  updatedAt            DateTime               @db.Timestamptz(6)
+  deletedAt            DateTime?              @db.Timestamptz(6)
+  signatureUrl         String?                @db.VarChar(500)
+  Admins               Admins[]
+  ClientProperties     ClientProperties[]
+  Clients              Clients[]
+  Garantors            Garantors[]
+  Leases               Leases[]
+  MercadoLibreConfig   MercadoLibreConfig?
+  MercadoLibreMessages MercadoLibreMessages[]
+  PaymentReceipts      PaymentReceipts[]
+  Property             Property[]
+  PropertyMLListings   PropertyMLListings[]
+  RentUpdates          RentUpdates[]
+  SaleContracts        SaleContracts[]
+  admin_settings       admin_settings[]
+  admins               admins[]
+  client_documents     client_documents[]
+  commissions          commissions[]
+  pdf_templates        pdf_templates[]
+  subscriptions        subscriptions[]
+
+  @@index([status], map: "idx_tenants_status")
+  @@index([subdomain], map: "idx_tenants_subdomain")
+  @@index([cuit], map: "tenants_cuit")
+  @@index([status], map: "tenants_status")
+  @@index([subdomain], map: "tenants_subdomain")
+}
+
+enum document_type_enum {
+  IDENTITY
+  TAX
+  PROPERTY
+  INCOME
+  GUARANTEE
+  OTHER
+}
+
+enum enum_ClientProperties_role {
+  propietario
+  inquilino
+  vendedor
+  comprador
+}
+
+enum enum_Leases_status {
+  active
+  terminated
+}
+
+enum enum_Leases_updateFrequency {
+  semestral
+  cuatrimestral
+  anual
+}
+
+enum enum_PaymentReceipts_status {
+  pending
+  paid
+}
+
+enum enum_PaymentReceipts_type {
+  installment
+  commission
+  initial
+}
+
+enum enum_Property_escritura {
+  prescripcion_en_tramite       @map("prescripcion en tramite")
+  escritura
+  prescripcion_adjudicada       @map("prescripcion adjudicada")
+  posesion
+  sesi_n_de_derechos_posesorios @map("sesión de derechos posesorios")
+}
+
+enum enum_Property_type {
+  venta
+  alquiler
+}
+
+enum enum_Property_typeProperty {
+  casa
+  departamento
+  duplex
+  finca
+  local
+  oficina
+  lote
+  terreno
+}

@@ -5,33 +5,10 @@
 
 require('dotenv').config();
 const bcrypt = require('bcrypt');
-const { Sequelize } = require('sequelize');
-
-// Usar DATABASE_URL de Neon (producción) o local
-const DATABASE_URL = process.env.DATABASE_URL 
-  || 'postgresql://neondb_owner:npg_vxah23FfkesH@ep-dark-voice-adc9yj70-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require';
-
-if (!DATABASE_URL) {
-  console.error('❌ Error: DATABASE_URL no está configurada');
-  process.exit(1);
-}
-
-console.log(`\n🔗 Conectando a: ${DATABASE_URL.includes('neon.tech') ? 'Neon (Producción)' : 'Local'}`);
-
-const sequelize = new Sequelize(DATABASE_URL, {
-  dialect: 'postgres',
-  dialectOptions: {
-    ssl: DATABASE_URL.includes('neon.tech') ? {
-      require: true,
-      rejectUnauthorized: false
-    } : false
-  },
-  logging: false,
-});
+const prisma = require('../src/utils/prismaClient');
 
 async function createPlatformAdmin() {
   try {
-    // Datos del Platform Admin
     const username = process.env.PLATFORM_ADMIN_USERNAME || 'platform_admin';
     const password = process.env.PLATFORM_ADMIN_PASSWORD || 'ChangeMe123!';
     const email = process.env.PLATFORM_ADMIN_EMAIL || 'admin@innoinmo.com';
@@ -41,51 +18,53 @@ async function createPlatformAdmin() {
     console.log(`📧 Email: ${email}`);
     console.log(`👤 Username: ${username}`);
 
-    // Verificar si ya existe
-    const [existing] = await sequelize.query(
-      'SELECT "adminId", "username", "email" FROM "Admins" WHERE "username" = :username OR "email" = :email',
-      {
-        replacements: { username, email },
-        type: Sequelize.QueryTypes.SELECT
-      }
-    );
+    const existing = await prisma.admins.findFirst({
+      where: {
+        OR: [{ username }, { email }],
+      },
+      select: {
+        adminId: true,
+        username: true,
+        email: true,
+      },
+    });
 
-    if (existing) {
-      console.log('\n⚠️  Ya existe un usuario con ese username o email:');
-      console.log(existing);
-      console.log('\n¿Deseas actualizar el rol a PLATFORM_ADMIN? (Ctrl+C para cancelar)');
-      
-      // Actualizar rol
-      await sequelize.query(
-        'UPDATE "Admins" SET "role" = :role, "tenantId" = NULL WHERE "adminId" = :adminId',
-        {
-          replacements: { role: 'PLATFORM_ADMIN', adminId: existing.adminId },
-        }
-      );
-      
-      console.log('✅ Usuario actualizado a PLATFORM_ADMIN');
-      return existing;
-    }
-
-    // Hash de la contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insertar usuario
-    const [result] = await sequelize.query(
-      `INSERT INTO "Admins" ("tenantId", "username", "password", "fullName", "email", "role", "createdAt", "updatedAt")
-       VALUES (NULL, :username, :password, :fullName, :email, :role, NOW(), NOW())
-       RETURNING "adminId", "username", "email", "role", "tenantId"`,
-      {
-        replacements: {
-          username,
+    if (existing) {
+      await prisma.admins.update({
+        where: { adminId: existing.adminId },
+        data: {
+          role: 'PLATFORM_ADMIN',
+          tenantId: null,
           password: hashedPassword,
           fullName,
           email,
-          role: 'PLATFORM_ADMIN',
         },
-        type: Sequelize.QueryTypes.INSERT
-      }
-    );
+      });
+
+      console.log('\n✅ Usuario actualizado a PLATFORM_ADMIN');
+      console.log(existing);
+      return existing;
+    }
+
+    const result = await prisma.admins.create({
+      data: {
+        tenantId: null,
+        username,
+        password: hashedPassword,
+        fullName,
+        email,
+        role: 'PLATFORM_ADMIN',
+      },
+      select: {
+        adminId: true,
+        username: true,
+        email: true,
+        role: true,
+        tenantId: true,
+      },
+    });
 
     console.log('\n✅ Usuario PLATFORM_ADMIN creado exitosamente:');
     console.log(result);
@@ -93,19 +72,19 @@ async function createPlatformAdmin() {
     console.log('1. Cambia la contraseña después del primer login');
     console.log(`2. Agrega este email al .env: PLATFORM_ADMIN_EMAILS=${email}`);
     console.log('3. No compartas estas credenciales');
-    console.log(`\n🔑 Credenciales temporales:`);
+    console.log('\n🔑 Credenciales temporales:');
     console.log(`   Username: ${username}`);
     console.log(`   Password: ${password}`);
 
+    return result;
   } catch (error) {
     console.error('\n❌ Error creando Platform Admin:', error);
     throw error;
   } finally {
-    await sequelize.close();
+    await prisma.$disconnect();
   }
 }
 
-// Ejecutar
 createPlatformAdmin()
   .then(() => {
     console.log('\n✅ Script completado');

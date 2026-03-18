@@ -38,6 +38,10 @@ export type { User, AuthState } from './store/slices/authSlice';
 export type { Client, ClientsState } from './store/slices/clientsSlice';
 export type { Property, PropertiesState } from './store/slices/propertiesSlice';
 
+// Exportar actions individuales para casos comunes
+export { clearError as clearAuthError } from './store/slices/authSlice';
+export { clearError as clearClientError, setSearchFilter, setRoleFilter, clearCurrentClient } from './store/slices/clientsSlice';
+
 // Exportar actions como namespaces para evitar conflictos
 export * as authActions from './store/slices/authSlice';
 export * as clientActions from './store/slices/clientsSlice';

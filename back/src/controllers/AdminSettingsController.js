@@ -1,4 +1,4 @@
-const { AdminSettings } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 // 🆕 Obtener TODA la configuración de la inmobiliaria
 exports.getSettings = async (req, res) => {
@@ -7,22 +7,26 @@ exports.getSettings = async (req, res) => {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     console.log('🔍 getSettings - tenantId:', tenantId);
     
-    let settings = await AdminSettings.findOne({ where: { tenantId } });
+    let settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
     console.log('🔍 getSettings - settings found:', settings ? 'Yes' : 'No');
     
     // Si no existe, crear con valores por defecto
     if (!settings) {
       console.log('🔍 getSettings - Creating new settings...');
-      settings = await AdminSettings.create({
-        tenantId,
-        company_name: 'Mi Inmobiliaria',
-        company_address: '',
-        company_city: '',
-        company_province: '',
-        company_phone: '',
-        company_email: '',
-        company_registration: '',
-        company_cuit: '',
+      settings = await prisma.admin_settings.create({
+        data: {
+          tenant_id: tenantId,
+          company_name: 'Mi Inmobiliaria',
+          company_address: '',
+          company_city: '',
+          company_province: '',
+          company_phone: '',
+          company_email: '',
+          company_registration: '',
+          company_cuit: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
       });
       console.log('🔍 getSettings - New settings created:', settings.id);
     }
@@ -59,55 +63,63 @@ exports.updateSettings = async (req, res) => {
       additional_config,
     } = req.body;
 
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
-    let settings = await AdminSettings.findOne({ where: { tenantId } });
+    const { tenantId } = req.user;
+    let settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     if (settings) {
       // Actualizar existente
-      await settings.update({
-        company_name: company_name || settings.company_name,
-        company_address: company_address || settings.company_address,
-        company_city: company_city || settings.company_city,
-        company_province: company_province || settings.company_province,
-        company_phone: company_phone || settings.company_phone,
-        company_email: company_email || settings.company_email,
-        company_registration: company_registration || settings.company_registration,
-        company_cuit: company_cuit || settings.company_cuit,
-        company_ingresos_brutos: company_ingresos_brutos || settings.company_ingresos_brutos,
-        company_condicion_iva: company_condicion_iva || settings.company_condicion_iva,
-        company_inicio_actividad: company_inicio_actividad || settings.company_inicio_actividad,
-        professional_title: professional_title || settings.professional_title,
-        company_logo_url: company_logo_url || settings.company_logo_url,
-        receipt_prefix: receipt_prefix || settings.receipt_prefix,
-        receipt_footer_text: receipt_footer_text !== undefined ? receipt_footer_text : settings.receipt_footer_text,
-        contract_footer_text: contract_footer_text || settings.contract_footer_text,
-        whatsapp_template: whatsapp_template !== undefined ? whatsapp_template : settings.whatsapp_template,
-        requisitos_template: requisitos_template !== undefined ? requisitos_template : settings.requisitos_template,
-        additional_config: additional_config || settings.additional_config,
+      settings = await prisma.admin_settings.update({
+        where: { id: settings.id },
+        data: {
+          company_name: company_name || settings.company_name,
+          company_address: company_address || settings.company_address,
+          company_city: company_city || settings.company_city,
+          company_province: company_province || settings.company_province,
+          company_phone: company_phone || settings.company_phone,
+          company_email: company_email || settings.company_email,
+          company_registration: company_registration || settings.company_registration,
+          company_cuit: company_cuit || settings.company_cuit,
+          company_ingresos_brutos: company_ingresos_brutos || settings.company_ingresos_brutos,
+          company_condicion_iva: company_condicion_iva || settings.company_condicion_iva,
+          company_inicio_actividad: company_inicio_actividad || settings.company_inicio_actividad,
+          professional_title: professional_title || settings.professional_title,
+          company_logo_url: company_logo_url || settings.company_logo_url,
+          receipt_prefix: receipt_prefix || settings.receipt_prefix,
+          receipt_footer_text: receipt_footer_text !== undefined ? receipt_footer_text : settings.receipt_footer_text,
+          contract_footer_text: contract_footer_text || settings.contract_footer_text,
+          whatsapp_template: whatsapp_template !== undefined ? whatsapp_template : settings.whatsapp_template,
+          requisitos_template: requisitos_template !== undefined ? requisitos_template : settings.requisitos_template,
+          additional_config: additional_config || settings.additional_config,
+          updatedAt: new Date(),
+        },
       });
     } else {
       // Crear nuevo
-      settings = await AdminSettings.create({
-        tenantId,
-        company_name,
-        company_address,
-        company_city,
-        company_province,
-        company_phone,
-        company_email,
-        company_registration,
-        company_cuit,
-        company_ingresos_brutos,
-        company_condicion_iva,
-        company_inicio_actividad,
-        professional_title,
-        company_logo_url,
-        receipt_prefix,
-        receipt_footer_text,
-        contract_footer_text,
-        whatsapp_template,
-        requisitos_template,
-        additional_config: additional_config || {},
+      settings = await prisma.admin_settings.create({
+        data: {
+          tenant_id: tenantId,
+          company_name,
+          company_address,
+          company_city,
+          company_province,
+          company_phone,
+          company_email,
+          company_registration,
+          company_cuit,
+          company_ingresos_brutos,
+          company_condicion_iva,
+          company_inicio_actividad,
+          professional_title,
+          company_logo_url,
+          receipt_prefix,
+          receipt_footer_text,
+          contract_footer_text,
+          whatsapp_template,
+          requisitos_template,
+          additional_config: additional_config || {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
       });
     }
 
@@ -123,8 +135,8 @@ exports.updateSettings = async (req, res) => {
 // Obtener firma actual
 exports.getSignature = async (req, res) => {
   try {
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
-    const settings = await AdminSettings.findOne({ where: { tenantId } });
+    const { tenantId } = req.user;
+    const settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
     
     if (!settings || !settings.signatureUrl) {
       return res.status(200).json({ signatureUrl: null });
@@ -145,17 +157,20 @@ exports.saveSignature = async (req, res) => {
       return res.status(400).json({ error: 'La URL de la firma es requerida' });
     }
 
-    // Buscar si ya existe configuración
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
-    let settings = await AdminSettings.findOne({ where: { tenantId } });
+    const { tenantId } = req.user;
+    let settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     if (settings) {
       // Actualizar
-      settings.signatureUrl = signatureUrl;
-      await settings.save();
+      settings = await prisma.admin_settings.update({
+        where: { id: settings.id },
+        data: { signatureUrl, updatedAt: new Date() },
+      });
     } else {
       // Crear nueva
-      settings = await AdminSettings.create({ tenantId, signatureUrl });
+      settings = await prisma.admin_settings.create({
+        data: { tenant_id: tenantId, signatureUrl, createdAt: new Date(), updatedAt: new Date() },
+      });
     }
 
     res.status(200).json({ 
@@ -170,15 +185,17 @@ exports.saveSignature = async (req, res) => {
 // Eliminar firma
 exports.deleteSignature = async (req, res) => {
   try {
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
-    const settings = await AdminSettings.findOne({ where: { tenantId } });
+    const { tenantId } = req.user;
+    const settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     if (!settings) {
       return res.status(404).json({ error: 'No hay firma para eliminar' });
     }
 
-    settings.signatureUrl = null;
-    await settings.save();
+    await prisma.admin_settings.update({
+      where: { id: settings.id },
+      data: { signatureUrl: null, updatedAt: new Date() },
+    });
 
     res.status(200).json({ message: 'Firma eliminada exitosamente' });
   } catch (error) {

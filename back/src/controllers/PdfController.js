@@ -1,128 +1,97 @@
-const { PdfTemplate, Tenant, Lease, Property, Client, Payment } = require("../data");
-const pdfService = require("../services/pdfService");
+const prisma = require('../utils/prismaClient');
+const pdfService = require('../services/pdfService');
 
-/**
- * @route POST /api/pdf/generate
- * @desc Genera un PDF usando un template y datos específicos
- * @access Private (requiere tenancyMiddleware)
- */
+async function getLeasePdfData(tenantId, dataId) {
+  const lease = await prisma.Leases.findFirst({ where: { id: Number(dataId), tenantId } });
+  if (!lease) return null;
+
+  const [property, renter, landlord, garantors] = await Promise.all([
+    prisma.Property.findUnique({ where: { propertyId: lease.propertyId } }),
+    prisma.Clients.findUnique({ where: { idClient: lease.renterId } }),
+    prisma.Clients.findUnique({ where: { idClient: lease.landlordId } }),
+    prisma.Garantors.findMany({ where: { leaseId: lease.id } }),
+  ]);
+
+  return {
+    ...lease,
+    Property: property,
+    Renter: renter,
+    Landlord: landlord,
+    Garantors: garantors,
+  };
+}
+
 const generatePdf = async (req, res) => {
   try {
     const { templateType, templateId, dataId, customVariables } = req.body;
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const { tenantId } = req.user;
 
-    // Validar parámetros requeridos
     if (!templateType || !dataId) {
       return res.status(400).json({
         success: false,
-        message: "templateType y dataId son requeridos",
+        message: 'templateType y dataId son requeridos',
       });
     }
 
-    // Obtener template (específico o default)
     let template;
     if (templateId) {
-      template = await PdfTemplate.findOne({
-        where: {
-          id: templateId,
-          tenantId,
-          isActive: true,
-        },
+      template = await prisma.pdf_templates.findFirst({
+        where: { id: Number(templateId), tenantId, isActive: true, deletedAt: null },
       });
     } else {
-      // Buscar template por defecto para este tipo
-      template = await PdfTemplate.findOne({
-        where: {
-          tenantId,
-          templateType,
-          isDefault: true,
-          isActive: true,
-        },
+      template = await prisma.pdf_templates.findFirst({
+        where: { tenantId, templateType, isDefault: true, isActive: true, deletedAt: null },
       });
     }
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template no encontrado",
-      });
+      return res.status(404).json({ success: false, message: 'Template no encontrado' });
     }
 
-    // Obtener datos según el tipo de template
     let data;
     switch (templateType) {
-      case "CONTRATO_ALQUILER":
-        data = await Lease.findOne({
-          where: { id: dataId, tenantId },
-          include: [
-            { model: Property, as: "Property" },
-            { model: Client, as: "Renter" },
-            { model: Client, as: "Landlord" },
-            { model: Client, as: "Garantors" },
-          ],
-        });
+      case 'CONTRATO_ALQUILER':
+      case 'ACTUALIZACION_RENTA':
+        data = await getLeasePdfData(tenantId, dataId);
         break;
-
-      case "AUTORIZACION_VENTA":
-        data = await Property.findOne({
-          where: { propertyId: dataId, tenantId },
-          include: [
-            { model: Client, as: "Owner" },
-          ],
+      case 'AUTORIZACION_VENTA': {
+        const property = await prisma.Property.findFirst({ where: { propertyId: Number(dataId), tenantId } });
+        if (!property) {
+          data = null;
+          break;
+        }
+        const ownerRelation = await prisma.ClientProperties.findFirst({
+          where: { propertyId: property.propertyId, tenantId, role: 'propietario' },
         });
+        const owner = ownerRelation
+          ? await prisma.Clients.findUnique({ where: { idClient: ownerRelation.clientId } })
+          : null;
+        data = { ...property, Owner: owner };
         break;
-
-      case "RECIBO_PAGO":
-        data = await Payment.findOne({
-          where: { id: dataId },
-          include: [
-            {
-              model: Lease,
-              as: "Lease",
-              include: [
-                { model: Client, as: "Renter" },
-                { model: Property, as: "Property" },
-              ],
-            },
-          ],
-        });
+      }
+      case 'RECIBO_PAGO': {
+        const payment = await prisma.PaymentReceipts.findFirst({ where: { id: Number(dataId) } });
+        if (!payment) {
+          data = null;
+          break;
+        }
+        const lease = payment.leaseId ? await getLeasePdfData(tenantId, payment.leaseId) : null;
+        data = { ...payment, Lease: lease };
         break;
-
-      case "FICHA_PROPIEDAD":
-        data = await Property.findOne({
-          where: { propertyId: dataId, tenantId },
-        });
+      }
+      case 'FICHA_PROPIEDAD':
+        data = await prisma.Property.findFirst({ where: { propertyId: Number(dataId), tenantId } });
         break;
-
-      case "ACTUALIZACION_RENTA":
-        data = await Lease.findOne({
-          where: { id: dataId, tenantId },
-          include: [
-            { model: Property, as: "Property" },
-            { model: Client, as: "Renter" },
-            { model: Client, as: "Landlord" },
-          ],
-        });
-        break;
-
       default:
-        return res.status(400).json({
-          success: false,
-          message: "Tipo de template no válido",
-        });
+        return res.status(400).json({ success: false, message: 'Tipo de template no válido' });
     }
 
     if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: "Datos no encontrados",
-      });
+      return res.status(404).json({ success: false, message: 'Datos no encontrados' });
     }
 
-    // Obtener datos del tenant para incluir en variables
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
 
-    // Generar PDF
     const pdfUrl = await pdfService.generatePdf({
       template,
       data,
@@ -132,7 +101,7 @@ const generatePdf = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "PDF generado exitosamente",
+      message: 'PDF generado exitosamente',
       data: {
         pdfUrl,
         templateType,
@@ -140,106 +109,62 @@ const generatePdf = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error generando PDF:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al generar PDF",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al generar PDF', error: error.message });
   }
 };
 
-/**
- * @route GET /api/pdf/templates
- * @desc Lista todos los templates del tenant
- * @access Private
- */
 const getTemplates = async (req, res) => {
   try {
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const { tenantId } = req.user;
     const { templateType, isActive } = req.query;
 
-    const where = { tenantId };
+    const where = { tenantId, deletedAt: null };
     if (templateType) where.templateType = templateType;
-    if (isActive !== undefined) where.isActive = isActive === "true";
+    if (isActive !== undefined) where.isActive = isActive === 'true';
 
-    const templates = await PdfTemplate.findAll({
+    const templates = await prisma.pdf_templates.findMany({
       where,
-      include: [
-        {
-          model: require("../data").Admin,
-          as: "Creator",
-          attributes: ["id", "username", "fullName"],
+      include: {
+        admins: {
+          select: { adminId: true, username: true, fullName: true },
         },
-      ],
-      order: [["isDefault", "DESC"], ["templateName", "ASC"]],
+      },
+      orderBy: [{ isDefault: 'desc' }, { templateName: 'asc' }],
     });
 
-    res.status(200).json({
-      success: true,
-      data: templates,
-    });
+    res.status(200).json({ success: true, data: templates.map((t) => ({ ...t, Creator: t.admins })) });
   } catch (error) {
-    console.error("Error obteniendo templates:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener templates",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al obtener templates', error: error.message });
   }
 };
 
-/**
- * @route GET /api/pdf/templates/:id
- * @desc Obtiene un template específico
- * @access Private
- */
 const getTemplateById = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const id = Number(req.params.id);
+    const { tenantId } = req.user;
 
-    const template = await PdfTemplate.findOne({
-      where: { id, tenantId },
-      include: [
-        {
-          model: require("../data").Admin,
-          as: "Creator",
-          attributes: ["id", "username", "fullName"],
+    const template = await prisma.pdf_templates.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      include: {
+        admins: {
+          select: { adminId: true, username: true, fullName: true },
         },
-      ],
+      },
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template no encontrado",
-      });
+      return res.status(404).json({ success: false, message: 'Template no encontrado' });
     }
 
-    res.status(200).json({
-      success: true,
-      data: template,
-    });
+    res.status(200).json({ success: true, data: { ...template, Creator: template.admins } });
   } catch (error) {
-    console.error("Error obteniendo template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener template",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al obtener template', error: error.message });
   }
 };
 
-/**
- * @route POST /api/pdf/templates
- * @desc Crea un nuevo template
- * @access Private (SUPER_ADMIN only)
- */
 const createTemplate = async (req, res) => {
   try {
-    const { tenantId, adminId } = req.user; // Obtener tenantId y adminId del token JWT
-
+    const { tenantId, adminId } = req.user;
     const {
       templateType,
       templateName,
@@ -254,78 +179,52 @@ const createTemplate = async (req, res) => {
       isDefault,
     } = req.body;
 
-    // Validaciones
     if (!templateType || !templateName || !htmlTemplate) {
       return res.status(400).json({
         success: false,
-        message: "templateType, templateName y htmlTemplate son requeridos",
+        message: 'templateType, templateName y htmlTemplate son requeridos',
       });
     }
 
-    // Si se marca como default, desmarcar otros defaults del mismo tipo
     if (isDefault) {
-      await PdfTemplate.update(
-        { isDefault: false },
-        {
-          where: {
-            tenantId,
-            templateType,
-            isDefault: true,
-          },
-        }
-      );
+      await prisma.pdf_templates.updateMany({
+        where: { tenantId, templateType, isDefault: true },
+        data: { isDefault: false },
+      });
     }
 
-    const template = await PdfTemplate.create({
-      tenantId,
-      templateType,
-      templateName,
-      htmlTemplate,
-      styles,
-      headerHtml,
-      footerHtml,
-      variables,
-      pageSize: pageSize || "A4",
-      orientation: orientation || "portrait",
-      margins: margins || { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
-      isDefault: isDefault || false,
-      createdBy: adminId,
+    const template = await prisma.pdf_templates.create({
+      data: {
+        tenantId,
+        templateType,
+        templateName,
+        htmlTemplate,
+        styles,
+        headerHtml,
+        footerHtml,
+        variables,
+        pageSize: pageSize || 'A4',
+        orientation: orientation || 'portrait',
+        margins: margins || { top: '20mm', right: '15mm', bottom: '20mm', left: '15mm' },
+        isDefault: isDefault || false,
+        createdBy: adminId,
+      },
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Template creado exitosamente",
-      data: template,
-    });
+    res.status(201).json({ success: true, message: 'Template creado exitosamente', data: template });
   } catch (error) {
-    console.error("Error creando template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al crear template",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al crear template', error: error.message });
   }
 };
 
-/**
- * @route PUT /api/pdf/templates/:id
- * @desc Actualiza un template existente
- * @access Private (SUPER_ADMIN only)
- */
 const updateTemplate = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const id = Number(req.params.id);
+    const { tenantId } = req.user;
 
-    const template = await PdfTemplate.findOne({
-      where: { id, tenantId },
-    });
-
+    const template = await prisma.pdf_templates.findFirst({ where: { id, tenantId, deletedAt: null } });
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template no encontrado",
-      });
+      return res.status(404).json({ success: false, message: 'Template no encontrado' });
     }
 
     const {
@@ -342,133 +241,85 @@ const updateTemplate = async (req, res) => {
       isDefault,
     } = req.body;
 
-    // Si se marca como default, desmarcar otros
     if (isDefault && !template.isDefault) {
-      await PdfTemplate.update(
-        { isDefault: false },
-        {
-          where: {
-            tenantId,
-            templateType: template.templateType,
-            isDefault: true,
-          },
-        }
-      );
-    }
-
-    await template.update({
-      templateName: templateName || template.templateName,
-      htmlTemplate: htmlTemplate || template.htmlTemplate,
-      styles: styles !== undefined ? styles : template.styles,
-      headerHtml: headerHtml !== undefined ? headerHtml : template.headerHtml,
-      footerHtml: footerHtml !== undefined ? footerHtml : template.footerHtml,
-      variables: variables || template.variables,
-      pageSize: pageSize || template.pageSize,
-      orientation: orientation || template.orientation,
-      margins: margins || template.margins,
-      isActive: isActive !== undefined ? isActive : template.isActive,
-      isDefault: isDefault !== undefined ? isDefault : template.isDefault,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Template actualizado exitosamente",
-      data: template,
-    });
-  } catch (error) {
-    console.error("Error actualizando template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al actualizar template",
-      error: error.message,
-    });
-  }
-};
-
-/**
- * @route DELETE /api/pdf/templates/:id
- * @desc Elimina (soft delete) un template
- * @access Private (SUPER_ADMIN only)
- */
-const deleteTemplate = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
-
-    const template = await PdfTemplate.findOne({
-      where: { id, tenantId },
-    });
-
-    if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template no encontrado",
+      await prisma.pdf_templates.updateMany({
+        where: { tenantId, templateType: template.templateType, isDefault: true },
+        data: { isDefault: false },
       });
     }
 
-    await template.destroy(); // Soft delete (paranoid)
+    const updated = await prisma.pdf_templates.update({
+      where: { id },
+      data: {
+        templateName: templateName || template.templateName,
+        htmlTemplate: htmlTemplate || template.htmlTemplate,
+        styles: styles !== undefined ? styles : template.styles,
+        headerHtml: headerHtml !== undefined ? headerHtml : template.headerHtml,
+        footerHtml: footerHtml !== undefined ? footerHtml : template.footerHtml,
+        variables: variables || template.variables,
+        pageSize: pageSize || template.pageSize,
+        orientation: orientation || template.orientation,
+        margins: margins || template.margins,
+        isActive: isActive !== undefined ? isActive : template.isActive,
+        isDefault: isDefault !== undefined ? isDefault : template.isDefault,
+      },
+    });
 
-    res.status(200).json({
-      success: true,
-      message: "Template eliminado exitosamente",
-    });
+    res.status(200).json({ success: true, message: 'Template actualizado exitosamente', data: updated });
   } catch (error) {
-    console.error("Error eliminando template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al eliminar template",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al actualizar template', error: error.message });
   }
 };
 
-/**
- * @route POST /api/pdf/preview
- * @desc Genera preview de un template con datos de prueba
- * @access Private
- */
+const deleteTemplate = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { tenantId } = req.user;
+
+    const template = await prisma.pdf_templates.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!template) {
+      return res.status(404).json({ success: false, message: 'Template no encontrado' });
+    }
+
+    await prisma.pdf_templates.update({ where: { id }, data: { deletedAt: new Date() } });
+    res.status(200).json({ success: true, message: 'Template eliminado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al eliminar template', error: error.message });
+  }
+};
+
 const previewTemplate = async (req, res) => {
   try {
     const { templateId, htmlTemplate, styles, headerHtml, footerHtml, sampleData } = req.body;
-    const { tenantId } = req.user; // Obtener tenantId del token JWT
+    const { tenantId } = req.user;
 
     let template;
-    
     if (templateId) {
-      // Preview de template existente
-      template = await PdfTemplate.findOne({
-        where: { id: templateId, tenantId },
+      template = await prisma.pdf_templates.findFirst({
+        where: { id: Number(templateId), tenantId, deletedAt: null },
       });
 
       if (!template) {
-        return res.status(404).json({
-          success: false,
-          message: "Template no encontrado",
-        });
+        return res.status(404).json({ success: false, message: 'Template no encontrado' });
       }
     } else {
-      // Preview de template temporal (sin guardar)
       if (!htmlTemplate) {
-        return res.status(400).json({
-          success: false,
-          message: "htmlTemplate es requerido para preview temporal",
-        });
+        return res.status(400).json({ success: false, message: 'htmlTemplate es requerido para preview temporal' });
       }
 
       template = {
         htmlTemplate,
-        styles: styles || "",
-        headerHtml: headerHtml || "",
-        footerHtml: footerHtml || "",
-        pageSize: "A4",
-        orientation: "portrait",
-        margins: { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+        styles: styles || '',
+        headerHtml: headerHtml || '',
+        footerHtml: footerHtml || '',
+        pageSize: 'A4',
+        orientation: 'portrait',
+        margins: { top: '20mm', right: '15mm', bottom: '20mm', left: '15mm' },
       };
     }
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
 
-    // Generar PDF preview
     const pdfUrl = await pdfService.generatePdf({
       template,
       data: sampleData || {},
@@ -476,20 +327,9 @@ const previewTemplate = async (req, res) => {
       isPreview: true,
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Preview generado exitosamente",
-      data: {
-        pdfUrl,
-      },
-    });
+    res.status(200).json({ success: true, message: 'Preview generado exitosamente', data: { pdfUrl } });
   } catch (error) {
-    console.error("Error generando preview:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al generar preview",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: 'Error al generar preview', error: error.message });
   }
 };
 

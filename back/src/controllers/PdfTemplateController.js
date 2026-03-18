@@ -1,5 +1,4 @@
-const { PdfTemplate, Admin } = require("../data");
-const { Op } = require("sequelize");
+const prisma = require("../utils/prismaClient");
 
 /**
  * @route GET /api/pdf-templates
@@ -21,24 +20,19 @@ const getAllTemplates = async (req, res) => {
       where.isActive = isActive === 'true';
     }
 
-    const templates = await PdfTemplate.findAll({
-      where,
-      include: [
-        {
-          model: Admin,
-          as: "Creator",
-          attributes: ["adminId", "fullName", "email"],
+    const templates = await prisma.pdf_templates.findMany({
+      where: { ...where, deletedAt: null },
+      include: {
+        admins: {
+          select: { adminId: true, fullName: true, email: true },
         },
-      ],
-      order: [
-        ["isDefault", "DESC"],
-        ["createdAt", "DESC"],
-      ],
+      },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     });
 
     res.json({
       success: true,
-      data: templates,
+      data: templates.map((t) => ({ ...t, Creator: t.admins })),
     });
   } catch (error) {
     console.error("Error al obtener plantillas:", error);
@@ -60,18 +54,13 @@ const getTemplateById = async (req, res) => {
     const { tenantId } = req.user;
     const { id } = req.params;
 
-    const template = await PdfTemplate.findOne({
-      where: {
-        id,
-        tenantId,
-      },
-      include: [
-        {
-          model: Admin,
-          as: "Creator",
-          attributes: ["adminId", "fullName", "email"],
+    const template = await prisma.pdf_templates.findFirst({
+      where: { id: parseInt(id), tenantId, deletedAt: null },
+      include: {
+        admins: {
+          select: { adminId: true, fullName: true, email: true },
         },
-      ],
+      },
     });
 
     if (!template) {
@@ -83,7 +72,7 @@ const getTemplateById = async (req, res) => {
 
     res.json({
       success: true,
-      data: template,
+      data: { ...template, Creator: template.admins },
     });
   } catch (error) {
     console.error("Error al obtener plantilla:", error);
@@ -128,32 +117,29 @@ const createTemplate = async (req, res) => {
 
     // Si se marca como default, quitar el default de otras plantillas del mismo tipo
     if (isDefault) {
-      await PdfTemplate.update(
-        { isDefault: false },
-        {
-          where: {
-            tenantId,
-            templateType,
-          },
-        }
-      );
+      await prisma.pdf_templates.updateMany({
+        where: { tenantId, templateType },
+        data: { isDefault: false },
+      });
     }
 
-    const template = await PdfTemplate.create({
-      tenantId,
-      templateType,
-      templateName,
-      htmlTemplate,
-      styles: styles || null,
-      headerHtml: headerHtml || null,
-      footerHtml: footerHtml || null,
-      variables: variables || {},
-      pageSize: pageSize || "A4",
-      orientation: orientation || "portrait",
-      margins: margins || { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
-      isActive: isActive !== undefined ? isActive : true,
-      isDefault: isDefault || false,
-      createdBy: adminId,
+    const template = await prisma.pdf_templates.create({
+      data: {
+        tenantId,
+        templateType,
+        templateName,
+        htmlTemplate,
+        styles: styles || null,
+        headerHtml: headerHtml || null,
+        footerHtml: footerHtml || null,
+        variables: variables || {},
+        pageSize: pageSize || "A4",
+        orientation: orientation || "portrait",
+        margins: margins || { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+        isActive: isActive !== undefined ? isActive : true,
+        isDefault: isDefault || false,
+        createdBy: adminId,
+      },
     });
 
     res.status(201).json({
@@ -194,11 +180,8 @@ const updateTemplate = async (req, res) => {
       isDefault,
     } = req.body;
 
-    const template = await PdfTemplate.findOne({
-      where: {
-        id,
-        tenantId,
-      },
+    const template = await prisma.pdf_templates.findFirst({
+      where: { id: parseInt(id), tenantId, deletedAt: null },
     });
 
     if (!template) {
@@ -210,37 +193,38 @@ const updateTemplate = async (req, res) => {
 
     // Si se marca como default, quitar el default de otras plantillas del mismo tipo
     if (isDefault && !template.isDefault) {
-      await PdfTemplate.update(
-        { isDefault: false },
-        {
-          where: {
-            tenantId,
-            templateType: template.templateType,
-            id: { [Op.ne]: id },
-          },
-        }
-      );
+      await prisma.pdf_templates.updateMany({
+        where: {
+          tenantId,
+          templateType: template.templateType,
+          id: { not: parseInt(id) },
+        },
+        data: { isDefault: false },
+      });
     }
 
     // Actualizar plantilla
-    await template.update({
-      templateName: templateName || template.templateName,
-      htmlTemplate: htmlTemplate || template.htmlTemplate,
-      styles: styles !== undefined ? styles : template.styles,
-      headerHtml: headerHtml !== undefined ? headerHtml : template.headerHtml,
-      footerHtml: footerHtml !== undefined ? footerHtml : template.footerHtml,
-      variables: variables || template.variables,
-      pageSize: pageSize || template.pageSize,
-      orientation: orientation || template.orientation,
-      margins: margins || template.margins,
-      isActive: isActive !== undefined ? isActive : template.isActive,
-      isDefault: isDefault !== undefined ? isDefault : template.isDefault,
+    const updated = await prisma.pdf_templates.update({
+      where: { id: parseInt(id) },
+      data: {
+        templateName: templateName || template.templateName,
+        htmlTemplate: htmlTemplate || template.htmlTemplate,
+        styles: styles !== undefined ? styles : template.styles,
+        headerHtml: headerHtml !== undefined ? headerHtml : template.headerHtml,
+        footerHtml: footerHtml !== undefined ? footerHtml : template.footerHtml,
+        variables: variables || template.variables,
+        pageSize: pageSize || template.pageSize,
+        orientation: orientation || template.orientation,
+        margins: margins || template.margins,
+        isActive: isActive !== undefined ? isActive : template.isActive,
+        isDefault: isDefault !== undefined ? isDefault : template.isDefault,
+      },
     });
 
     res.json({
       success: true,
       message: "Plantilla actualizada exitosamente",
-      data: template,
+      data: updated,
     });
   } catch (error) {
     console.error("Error al actualizar plantilla:", error);
@@ -262,11 +246,8 @@ const deleteTemplate = async (req, res) => {
     const { tenantId } = req.user;
     const { id } = req.params;
 
-    const template = await PdfTemplate.findOne({
-      where: {
-        id,
-        tenantId,
-      },
+    const template = await prisma.pdf_templates.findFirst({
+      where: { id: parseInt(id), tenantId, deletedAt: null },
     });
 
     if (!template) {
@@ -276,8 +257,11 @@ const deleteTemplate = async (req, res) => {
       });
     }
 
-    // Soft delete (paranoid: true en el modelo)
-    await template.destroy();
+    // Soft delete
+    await prisma.pdf_templates.update({
+      where: { id: parseInt(id) },
+      data: { deletedAt: new Date() },
+    });
 
     res.json({
       success: true,
@@ -304,11 +288,8 @@ const duplicateTemplate = async (req, res) => {
     const { id } = req.params;
     const { templateName } = req.body;
 
-    const originalTemplate = await PdfTemplate.findOne({
-      where: {
-        id,
-        tenantId,
-      },
+    const originalTemplate = await prisma.pdf_templates.findFirst({
+      where: { id: parseInt(id), tenantId, deletedAt: null },
     });
 
     if (!originalTemplate) {
@@ -318,21 +299,23 @@ const duplicateTemplate = async (req, res) => {
       });
     }
 
-    const duplicatedTemplate = await PdfTemplate.create({
-      tenantId,
-      templateType: originalTemplate.templateType,
-      templateName: templateName || `${originalTemplate.templateName} (Copia)`,
-      htmlTemplate: originalTemplate.htmlTemplate,
-      styles: originalTemplate.styles,
-      headerHtml: originalTemplate.headerHtml,
-      footerHtml: originalTemplate.footerHtml,
-      variables: originalTemplate.variables,
-      pageSize: originalTemplate.pageSize,
-      orientation: originalTemplate.orientation,
-      margins: originalTemplate.margins,
-      isActive: false, // La copia empieza inactiva
-      isDefault: false, // La copia no puede ser default
-      createdBy: adminId,
+    const duplicatedTemplate = await prisma.pdf_templates.create({
+      data: {
+        tenantId,
+        templateType: originalTemplate.templateType,
+        templateName: templateName || `${originalTemplate.templateName} (Copia)`,
+        htmlTemplate: originalTemplate.htmlTemplate,
+        styles: originalTemplate.styles,
+        headerHtml: originalTemplate.headerHtml,
+        footerHtml: originalTemplate.footerHtml,
+        variables: originalTemplate.variables,
+        pageSize: originalTemplate.pageSize,
+        orientation: originalTemplate.orientation,
+        margins: originalTemplate.margins,
+        isActive: false, // La copia empieza inactiva
+        isDefault: false, // La copia no puede ser default
+        createdBy: adminId,
+      },
     });
 
     res.status(201).json({
@@ -360,11 +343,8 @@ const setAsDefault = async (req, res) => {
     const { tenantId } = req.user;
     const { id } = req.params;
 
-    const template = await PdfTemplate.findOne({
-      where: {
-        id,
-        tenantId,
-      },
+    const template = await prisma.pdf_templates.findFirst({
+      where: { id: parseInt(id), tenantId, deletedAt: null },
     });
 
     if (!template) {
@@ -375,24 +355,25 @@ const setAsDefault = async (req, res) => {
     }
 
     // Quitar default de otras plantillas del mismo tipo
-    await PdfTemplate.update(
-      { isDefault: false },
-      {
-        where: {
-          tenantId,
-          templateType: template.templateType,
-          id: { [Op.ne]: id },
-        },
-      }
-    );
+    await prisma.pdf_templates.updateMany({
+      where: {
+        tenantId,
+        templateType: template.templateType,
+        id: { not: parseInt(id) },
+      },
+      data: { isDefault: false },
+    });
 
     // Marcar esta como default
-    await template.update({ isDefault: true });
+    const updated = await prisma.pdf_templates.update({
+      where: { id: parseInt(id) },
+      data: { isDefault: true },
+    });
 
     res.json({
       success: true,
       message: "Plantilla marcada como predeterminada",
-      data: template,
+      data: updated,
     });
   } catch (error) {
     console.error("Error al marcar plantilla como predeterminada:", error);

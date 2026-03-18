@@ -1,5 +1,5 @@
 const { Router } = require('express');
-const { Plan } = require('../data');
+const prisma = require('../utils/prismaClient');
 const publicController = require('../controllers/publicController');
 
 const router = Router();
@@ -13,29 +13,29 @@ router.get('/plans', async (req, res) => {
   try {
     console.log('📋 Public Plans - Listando planes públicos');
     
-    const plans = await Plan.findAll({
+    const plans = await prisma.plans.findMany({
       where: {
         isActive: true // Solo planes activos
       },
-      order: [
-        ['sortOrder', 'ASC'],
-        ['priceMonthly', 'ASC']
+      orderBy: [
+        { sortOrder: 'asc' },
+        { priceMonthly: 'asc' }
       ],
-      attributes: [
-        'planId',
-        'name',
-        'description',
-        'priceMonthly',
-        'priceYearly',
-        'currency',
-        'features',
-        'trialDays',
-        'isActive',
-        'isPopular',
-        'sortOrder',
-        'createdAt',
-        'updatedAt'
-      ]
+      select: {
+        planId: true,
+        name: true,
+        description: true,
+        priceMonthly: true,
+        priceYearly: true,
+        currency: true,
+        features: true,
+        trialDays: true,
+        isActive: true,
+        isPopular: true,
+        sortOrder: true,
+        createdAt: true,
+        updatedAt: true,
+      }
     });
 
     console.log(`✅ Public Plans - ${plans.length} planes activos encontrados`);

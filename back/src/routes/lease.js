@@ -17,6 +17,7 @@ const {
   getUpdateStatistics,
   bulkUpdateLeases
 } = require('../controllers');
+const prisma = require('../utils/prismaClient');
 const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 const router = express.Router();
 
@@ -44,11 +45,12 @@ router.post('/bulk-update', bulkUpdateLeases); // 🆕
 // Función simplificada para crear un contrato de prueba
 router.post('/create-test-lease', async (req, res) => {
   try {
-    const { Lease } = require('../data');
+    const { tenantId } = req.user;
     
     console.log('[TEST] Creando contrato de prueba...');
     
-    const testLease = await Lease.create({
+    const testLease = await prisma.Leases.create({
+      data: {
       propertyId: 1,
       landlordId: 1,
       renterId: 2,
@@ -58,10 +60,12 @@ router.post('/create-test-lease', async (req, res) => {
       commission: 4.5,
       totalMonths: 24,
       inventory: 'Inventario de prueba para testing',
-      status: 'active'
+      status: 'active',
+      tenantId,
+      }
     });
 
-    console.log('[TEST] Contrato creado:', testLease.toJSON());
+    console.log('[TEST] Contrato creado:', testLease);
 
     res.json({
       message: 'Contrato de prueba creado exitosamente',
@@ -81,11 +85,10 @@ router.post('/create-test-lease', async (req, res) => {
 router.get('/debug/alerts', async (req, res) => {
   try {
     console.log('[DEBUG] Iniciando debug de alertas de contratos - SIMPLE');
-    
-    const { Lease } = require('../data');
+    const { tenantId } = req.user;
     
     // Obtener contratos sin includes para evitar el problema de asociaciones
-    const leases = await Lease.findAll();
+    const leases = await prisma.Leases.findMany({ where: { tenantId } });
     console.log(`[DEBUG] Encontrados ${leases.length} contratos`);
 
     const now = new Date();

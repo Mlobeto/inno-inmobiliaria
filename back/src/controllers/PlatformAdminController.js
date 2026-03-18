@@ -1,5 +1,6 @@
-const { Tenant, Subscription, Admin, Client, Property, Lease, PaymentReceipt, sequelize } = require('../data');
-const { Op } = require('sequelize');
+const prisma = require('../utils/prismaClient');
+const { invalidateTenantCache } = require('../utils/tenantCache');
+const logger = require('../utils/logger');
 
 /**
  * @route GET /api/platform-admin/dashboard
@@ -8,85 +9,83 @@ const { Op } = require('sequelize');
  */
 exports.getDashboard = async (req, res) => {
   try {
-    // Métricas generales
-    const totalTenants = await Tenant.count();
-    const activeTenants = await Tenant.count({ where: { status: 'active' } });
-    const suspendedTenants = await Tenant.count({ where: { status: 'suspended' } });
-    
-    // Suscripciones activas
-    const activeSubscriptions = await Subscription.count({ 
-      where: { 
-        status: 'active',
-        currentPeriodEnd: { [Op.gt]: new Date() }
-      } 
-    });
+    const now = new Date();
 
-    // Distribución por planes
-    const planDistribution = await Subscription.findAll({
-      where: { status: 'active' },
-      attributes: [
-        'planId',
-        [sequelize.fn('COUNT', sequelize.col('subscriptionId')), 'count']
-      ],
-      group: ['planId']
-    });
+    const [
+      totalTenants,
+      activeTenants,
+      suspendedTenants,
+      activeSubscriptions,
+      planDistributionRaw,
+      mrrAggregate,
+    ] = await Promise.all([
+      prisma.tenants.count(),
+      prisma.tenants.count({ where: { status: 'active' } }),
+      prisma.tenants.count({ where: { status: 'suspended' } }),
+      prisma.subscriptions.count({
+        where: {
+          status: 'active',
+          currentPeriodEnd: { gt: now },
+        },
+      }),
+      prisma.subscriptions.groupBy({
+        by: ['planId'],
+        where: { status: 'active' },
+        _count: { subscriptionId: true },
+      }),
+      prisma.subscriptions.aggregate({
+        where: {
+          status: 'active',
+          currentPeriodEnd: { gt: now },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
 
-    // MRR (Monthly Recurring Revenue) - Suma de precios de planes activos
-    const mrrResult = await Subscription.findAll({
-      where: { 
-        status: 'active',
-        currentPeriodEnd: { [Op.gt]: new Date() }
-      },
-      attributes: [
-        [sequelize.fn('SUM', sequelize.col('amount')), 'totalMRR']
-      ]
-    });
-    const mrr = mrrResult[0]?.dataValues?.totalMRR || 0;
-
-    // ARR (Annual Recurring Revenue)
+    const mrr = Number(mrrAggregate._sum.amount || 0);
     const arr = mrr * 12;
 
-    // Churn rate (cancelaciones último mes)
     const lastMonth = new Date();
     lastMonth.setMonth(lastMonth.getMonth() - 1);
-    
-    const canceledLastMonth = await Subscription.count({
-      where: {
-        status: 'canceled',
-        updatedAt: { [Op.gte]: lastMonth }
-      }
-    });
 
-    const totalTenantsLastMonth = await Tenant.count({
-      where: {
-        createdAt: { [Op.lt]: lastMonth }
-      }
-    });
+    const [canceledLastMonth, totalTenantsLastMonth] = await Promise.all([
+      prisma.subscriptions.count({
+        where: {
+          status: 'canceled',
+          updatedAt: { gte: lastMonth },
+        },
+      }),
+      prisma.tenants.count({
+        where: {
+          createdAt: { lt: lastMonth },
+        },
+      }),
+    ]);
 
-    const churnRate = totalTenantsLastMonth > 0 
+    const churnRate = totalTenantsLastMonth > 0
       ? ((canceledLastMonth / totalTenantsLastMonth) * 100).toFixed(2)
       : 0;
 
-    // Nuevos tenants este mes
     const thisMonth = new Date();
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
 
-    const newTenantsThisMonth = await Tenant.count({
-      where: {
-        createdAt: { [Op.gte]: thisMonth }
-      }
-    });
-
-    // Trial vs Paid
-    const trialTenants = await Subscription.count({
-      where: { 
-        status: 'trialing',
-        currentPeriodEnd: { [Op.gt]: new Date() }
-      }
-    });
+    const [newTenantsThisMonth, trialTenants] = await Promise.all([
+      prisma.tenants.count({ where: { createdAt: { gte: thisMonth } } }),
+      prisma.subscriptions.count({
+        where: {
+          status: 'trialing',
+          currentPeriodEnd: { gt: now },
+        },
+      }),
+    ]);
 
     const paidTenants = activeSubscriptions - trialTenants;
+
+    const planDistribution = planDistributionRaw.map((item) => ({
+      planId: item.planId,
+      count: item._count.subscriptionId,
+    }));
 
     res.status(200).json({
       success: true,
@@ -95,33 +94,33 @@ exports.getDashboard = async (req, res) => {
           total: totalTenants,
           active: activeTenants,
           suspended: suspendedTenants,
-          newThisMonth: newTenantsThisMonth
+          newThisMonth: newTenantsThisMonth,
         },
         subscriptions: {
           active: activeSubscriptions,
           trial: trialTenants,
           paid: paidTenants,
-          planDistribution
+          planDistribution,
         },
         revenue: {
-          mrr: parseFloat(mrr),
-          arr: parseFloat(arr),
-          currency: 'ARS'
+          mrr,
+          arr,
+          currency: 'ARS',
         },
         metrics: {
           churnRate: parseFloat(churnRate),
-          conversionRate: trialTenants > 0 
-            ? ((paidTenants / (paidTenants + trialTenants)) * 100).toFixed(2)
-            : 0
-        }
-      }
+          conversionRate: trialTenants > 0
+            ? parseFloat(((paidTenants / (paidTenants + trialTenants)) * 100).toFixed(2))
+            : 0,
+        },
+      },
     });
   } catch (error) {
-    console.error('Error obteniendo dashboard:', error);
+    logger.error('Error obteniendo dashboard', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al obtener dashboard',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -135,43 +134,48 @@ exports.listTenants = async (req, res) => {
   try {
     const { status, plan, search, page = 1, limit = 20 } = req.query;
 
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const offset = (pageNumber - 1) * limitNumber;
+
     const where = {};
     if (status) where.status = status;
 
-    // Búsqueda por nombre o email
     if (search) {
-      where[Op.or] = [
-        { businessName: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { subdomain: { [Op.iLike]: `%${search}%` } }
+      where.OR = [
+        { businessName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { subdomain: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    const offset = (page - 1) * limit;
-
-    const { rows: tenants, count: total } = await Tenant.findAndCountAll({
-      where,
-      include: [
-        {
-          model: Subscription,
-          as: 'Subscriptions',
-          required: false,
-          where: plan ? { planId: plan } : undefined,
-          order: [['createdAt', 'DESC']],
-          limit: 1 // Solo la suscripción más reciente
+    const [tenants, total] = await Promise.all([
+      prisma.tenants.findMany({
+        where,
+        include: {
+          subscriptions: {
+            where: plan ? { planId: plan } : undefined,
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+          admins: {
+            where: { role: 'SUPER_ADMIN' },
+            select: {
+              adminId: true,
+              username: true,
+              fullName: true,
+              email: true,
+              role: true,
+            },
+            take: 1,
+          },
         },
-        {
-          model: Admin,
-          required: false,
-          attributes: ['adminId', 'username', 'fullName', 'email', 'role'],
-          where: { role: 'SUPER_ADMIN' },
-          limit: 1
-        }
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
-    });
+        take: limitNumber,
+        skip: offset,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.tenants.count({ where }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -179,18 +183,18 @@ exports.listTenants = async (req, res) => {
         tenants,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          page: pageNumber,
+          limit: limitNumber,
+          totalPages: Math.ceil(total / limitNumber),
+        },
+      },
     });
   } catch (error) {
-    console.error('Error listando tenants:', error);
+    logger.error('Error listando tenants', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al listar tenants',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -202,34 +206,38 @@ exports.listTenants = async (req, res) => {
  */
 exports.getTenantDetail = async (req, res) => {
   try {
-    const { tenantId } = req.params;
+    const tenantId = parseInt(req.params.tenantId, 10);
 
-    const tenant = await Tenant.findByPk(tenantId, {
-      include: [
-        {
-          model: Subscription,
-          as: 'Subscriptions',
-          order: [['createdAt', 'DESC']]
+    const tenant = await prisma.tenants.findUnique({
+      where: { tenantId },
+      include: {
+        subscriptions: { orderBy: { createdAt: 'desc' } },
+        admins: {
+          select: {
+            adminId: true,
+            username: true,
+            fullName: true,
+            email: true,
+            role: true,
+            createdAt: true,
+          },
         },
-        {
-          model: Admin,
-          attributes: ['adminId', 'username', 'fullName', 'email', 'role', 'createdAt']
-        }
-      ]
+      },
     });
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: 'Tenant no encontrado'
+        message: 'Tenant no encontrado',
       });
     }
 
-    // Estadísticas de uso del tenant
-    const clientsCount = await Client.count({ where: { tenantId } });
-    const propertiesCount = await Property.count({ where: { tenantId } });
-    const leasesCount = await Lease.count({ where: { tenantId } });
-    const paymentsCount = await PaymentReceipt.count({ where: { tenantId } });
+    const [clientsCount, propertiesCount, leasesCount, paymentsCount] = await Promise.all([
+      prisma.Clients.count({ where: { tenantId } }),
+      prisma.Property.count({ where: { tenantId } }),
+      prisma.Leases.count({ where: { tenantId } }),
+      prisma.PaymentReceipts.count({ where: { tenantId } }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -239,16 +247,16 @@ exports.getTenantDetail = async (req, res) => {
           clients: clientsCount,
           properties: propertiesCount,
           leases: leasesCount,
-          payments: paymentsCount
-        }
-      }
+          payments: paymentsCount,
+        },
+      },
     });
   } catch (error) {
-    console.error('Error obteniendo detalle de tenant:', error);
+    logger.error('Error obteniendo detalle de tenant', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al obtener detalle de tenant',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -260,40 +268,45 @@ exports.getTenantDetail = async (req, res) => {
  */
 exports.updateTenant = async (req, res) => {
   try {
-    const { tenantId } = req.params;
+    const tenantId = parseInt(req.params.tenantId, 10);
     const { businessName, email, phone, address, plan, status, maxAgents, maxProperties, features } = req.body;
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: 'Tenant no encontrado'
+        message: 'Tenant no encontrado',
       });
     }
 
-    await tenant.update({
-      businessName: businessName !== undefined ? businessName : tenant.businessName,
-      email: email !== undefined ? email : tenant.email,
-      phone: phone !== undefined ? phone : tenant.phone,
-      address: address !== undefined ? address : tenant.address,
-      plan: plan !== undefined ? plan : tenant.plan,
-      status: status !== undefined ? status : tenant.status,
-      maxAgents: maxAgents !== undefined ? maxAgents : tenant.maxAgents,
-      maxProperties: maxProperties !== undefined ? maxProperties : tenant.maxProperties,
-      features: features !== undefined ? features : tenant.features
+    const updated = await prisma.tenants.update({
+      where: { tenantId },
+      data: {
+        businessName: businessName !== undefined ? businessName : tenant.businessName,
+        email: email !== undefined ? email : tenant.email,
+        phone: phone !== undefined ? phone : tenant.phone,
+        address: address !== undefined ? address : tenant.address,
+        plan: plan !== undefined ? plan : tenant.plan,
+        status: status !== undefined ? status : tenant.status,
+        maxAgents: maxAgents !== undefined ? maxAgents : tenant.maxAgents,
+        maxProperties: maxProperties !== undefined ? maxProperties : tenant.maxProperties,
+        features: features !== undefined ? features : tenant.features,
+      },
     });
+
+    await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
 
     res.status(200).json({
       success: true,
       message: 'Tenant actualizado exitosamente',
-      data: tenant
+      data: updated,
     });
   } catch (error) {
-    console.error('Error actualizando tenant:', error);
+    logger.error('Error actualizando tenant', { tenantId: req.params.tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al actualizar tenant',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -305,33 +318,34 @@ exports.updateTenant = async (req, res) => {
  */
 exports.suspendTenant = async (req, res) => {
   try {
-    const { tenantId } = req.params;
-    const { reason } = req.body;
+    const tenantId = parseInt(req.params.tenantId, 10);
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: 'Tenant no encontrado'
+        message: 'Tenant no encontrado',
       });
     }
 
-    await tenant.update({
-      status: 'suspended',
-      suspensionReason: reason || 'Suspendido por administrador de plataforma'
+    const updated = await prisma.tenants.update({
+      where: { tenantId },
+      data: { status: 'suspended' },
     });
+
+    await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
 
     res.status(200).json({
       success: true,
       message: 'Tenant suspendido exitosamente',
-      data: tenant
+      data: updated,
     });
   } catch (error) {
-    console.error('Error suspendiendo tenant:', error);
+    logger.error('Error suspendiendo tenant', { tenantId: req.params.tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al suspender tenant',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -343,32 +357,34 @@ exports.suspendTenant = async (req, res) => {
  */
 exports.activateTenant = async (req, res) => {
   try {
-    const { tenantId } = req.params;
+    const tenantId = parseInt(req.params.tenantId, 10);
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: 'Tenant no encontrado'
+        message: 'Tenant no encontrado',
       });
     }
 
-    await tenant.update({
-      status: 'active',
-      suspensionReason: null
+    const updated = await prisma.tenants.update({
+      where: { tenantId },
+      data: { status: 'active' },
     });
+
+    await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
 
     res.status(200).json({
       success: true,
       message: 'Tenant reactivado exitosamente',
-      data: tenant
+      data: updated,
     });
   } catch (error) {
-    console.error('Error reactivando tenant:', error);
+    logger.error('Error reactivando tenant', { tenantId: req.params.tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al reactivar tenant',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -382,24 +398,33 @@ exports.listSubscriptions = async (req, res) => {
   try {
     const { status, planId, page = 1, limit = 20 } = req.query;
 
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const offset = (pageNumber - 1) * limitNumber;
+
     const where = {};
     if (status) where.status = status;
     if (planId) where.planId = planId;
 
-    const offset = (page - 1) * limit;
-
-    const { rows: subscriptions, count: total } = await Subscription.findAndCountAll({
-      where,
-      include: [
-        {
-          model: Tenant,
-          attributes: ['tenantId', 'businessName', 'email', 'status']
-        }
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [['createdAt', 'DESC']]
-    });
+    const [subscriptions, total] = await Promise.all([
+      prisma.subscriptions.findMany({
+        where,
+        include: {
+          tenants: {
+            select: {
+              tenantId: true,
+              businessName: true,
+              email: true,
+              status: true,
+            },
+          },
+        },
+        take: limitNumber,
+        skip: offset,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.subscriptions.count({ where }),
+    ]);
 
     res.status(200).json({
       success: true,
@@ -407,18 +432,18 @@ exports.listSubscriptions = async (req, res) => {
         subscriptions,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(total / limit)
-        }
-      }
+          page: pageNumber,
+          limit: limitNumber,
+          totalPages: Math.ceil(total / limitNumber),
+        },
+      },
     });
   } catch (error) {
-    console.error('Error listando suscripciones:', error);
+    logger.error('Error listando suscripciones', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al listar suscripciones',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -430,12 +455,11 @@ exports.listSubscriptions = async (req, res) => {
  */
 exports.getRevenue = async (req, res) => {
   try {
-    const { period = 'month' } = req.query; // 'month', 'quarter', 'year'
+    const { period = 'month' } = req.query;
 
-    // Calcular fecha de inicio según período
     const now = new Date();
-    let startDate = new Date();
-    
+    const startDate = new Date();
+
     switch (period) {
       case 'month':
         startDate.setMonth(now.getMonth() - 1);
@@ -446,72 +470,82 @@ exports.getRevenue = async (req, res) => {
       case 'year':
         startDate.setFullYear(now.getFullYear() - 1);
         break;
+      default:
+        startDate.setMonth(now.getMonth() - 1);
     }
 
-    // Ingresos por suscripciones en el período
-    const subscriptionRevenue = await Subscription.findAll({
+    const periodSubscriptions = await prisma.subscriptions.findMany({
       where: {
         status: 'active',
-        startDate: { [Op.gte]: startDate }
+        createdAt: { gte: startDate },
       },
-      attributes: [
-        [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('startDate')), 'month'],
-        [sequelize.fn('SUM', sequelize.col('amount')), 'revenue'],
-        [sequelize.fn('COUNT', sequelize.col('subscriptionId')), 'count']
-      ],
-      group: [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('startDate'))],
-      order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('startDate')), 'ASC']]
-    });
-
-    // Total de ingresos en el período
-    const totalRevenue = subscriptionRevenue.reduce(
-      (sum, item) => sum + parseFloat(item.dataValues.revenue || 0), 
-      0
-    );
-
-    // MRR actual
-    const currentMRR = await Subscription.sum('amount', {
-      where: { 
-        status: 'active',
-        endDate: { [Op.gt]: new Date() }
-      }
-    });
-
-    // ARR
-    const arr = (currentMRR || 0) * 12;
-
-    // Revenue por plan
-    const revenueByPlan = await Subscription.findAll({
-      where: { 
-        status: 'active',
-        endDate: { [Op.gt]: new Date() }
+      select: {
+        createdAt: true,
+        amount: true,
+        planId: true,
+        subscriptionId: true,
       },
-      attributes: [
-        'planId',
-        [sequelize.fn('SUM', sequelize.col('amount')), 'revenue'],
-        [sequelize.fn('COUNT', sequelize.col('subscriptionId')), 'count']
-      ],
-      group: ['planId']
+      orderBy: { createdAt: 'asc' },
     });
+
+    const revenueByMonthMap = new Map();
+    for (const sub of periodSubscriptions) {
+      const key = `${sub.createdAt.getFullYear()}-${String(sub.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      const current = revenueByMonthMap.get(key) || { month: key, revenue: 0, count: 0 };
+      current.revenue += Number(sub.amount || 0);
+      current.count += 1;
+      revenueByMonthMap.set(key, current);
+    }
+    const revenueByMonth = Array.from(revenueByMonthMap.values());
+
+    const totalRevenue = revenueByMonth.reduce((sum, item) => sum + item.revenue, 0);
+
+    const [currentMRRAggregate, revenueByPlanRaw] = await Promise.all([
+      prisma.subscriptions.aggregate({
+        where: {
+          status: 'active',
+          currentPeriodEnd: { gt: now },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.subscriptions.groupBy({
+        by: ['planId'],
+        where: {
+          status: 'active',
+          currentPeriodEnd: { gt: now },
+        },
+        _sum: { amount: true },
+        _count: { subscriptionId: true },
+      }),
+    ]);
+
+    const currentMRR = Number(currentMRRAggregate._sum.amount || 0);
+    const arr = currentMRR * 12;
+
+    const revenueByPlan = revenueByPlanRaw.map((item) => ({
+      planId: item.planId,
+      revenue: Number(item._sum.amount || 0),
+      count: item._count.subscriptionId,
+    }));
 
     res.status(200).json({
       success: true,
       data: {
         period,
-        totalRevenue: parseFloat(totalRevenue),
-        currentMRR: parseFloat(currentMRR || 0),
-        arr: parseFloat(arr),
+        totalRevenue,
+        currentMRR,
+        arr,
         currency: 'ARS',
-        revenueByMonth: subscriptionRevenue,
-        revenueByPlan
-      }
+        revenueByMonth,
+        revenueByPlan,
+      },
     });
   } catch (error) {
-    console.error('Error obteniendo revenue:', error);
+    logger.error('Error obteniendo revenue', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al obtener métricas de ingresos',
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -523,75 +557,70 @@ exports.getRevenue = async (req, res) => {
  */
 exports.getMetrics = async (req, res) => {
   try {
-    // Últimos 30 días
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
 
-    // Growth rate (nuevos tenants)
-    const newTenants = await Tenant.count({
-      where: { createdAt: { [Op.gte]: last30Days } }
+    const newTenants = await prisma.tenants.count({
+      where: { createdAt: { gte: last30Days } },
     });
 
     const previousPeriod = new Date(last30Days);
     previousPeriod.setDate(previousPeriod.getDate() - 30);
 
-    const previousTenants = await Tenant.count({
-      where: { 
-        createdAt: { 
-          [Op.gte]: previousPeriod,
-          [Op.lt]: last30Days
-        } 
-      }
+    const previousTenants = await prisma.tenants.count({
+      where: {
+        createdAt: {
+          gte: previousPeriod,
+          lt: last30Days,
+        },
+      },
     });
 
     const growthRate = previousTenants > 0
       ? (((newTenants - previousTenants) / previousTenants) * 100).toFixed(2)
       : 0;
 
-    // Engagement: tenants activos con datos recientes
-    const activeTenantsWithData = await Tenant.count({
-      where: { status: 'active' },
-      include: [
-        {
-          model: Client,
-          as: 'clients',
-          required: true,
-          where: { createdAt: { [Op.gte]: last30Days } }
-        }
-      ],
-      distinct: true
+    const activeTenantsWithClientActivity = await prisma.Clients.findMany({
+      where: { createdAt: { gte: last30Days } },
+      distinct: ['tenantId'],
+      select: { tenantId: true },
     });
 
-    const totalActiveTenants = await Tenant.count({ where: { status: 'active' } });
-    
+    const activeTenantIdsWithData = activeTenantsWithClientActivity
+      .map((item) => item.tenantId)
+      .filter((tenantId) => tenantId !== null && tenantId !== undefined);
+
+    const [activeTenantsWithData, totalActiveTenants] = await Promise.all([
+      prisma.tenants.count({
+        where: {
+          status: 'active',
+          tenantId: { in: activeTenantIdsWithData.length ? activeTenantIdsWithData : [-1] },
+        },
+      }),
+      prisma.tenants.count({ where: { status: 'active' } }),
+    ]);
+
     const engagementRate = totalActiveTenants > 0
       ? ((activeTenantsWithData / totalActiveTenants) * 100).toFixed(2)
       : 0;
 
-    // Average subscription value
-    const avgSubscriptionValue = await Subscription.findOne({
+    const avgSubscriptionValueAggregate = await prisma.subscriptions.aggregate({
       where: { status: 'active' },
-      attributes: [
-        [sequelize.fn('AVG', sequelize.col('amount')), 'avg']
-      ]
+      _avg: { amount: true },
     });
 
-    // Retention rate (tenants activos después de 90 días)
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    const tenantsCreated90DaysAgo = await Tenant.count({
-      where: {
-        createdAt: { [Op.lte]: ninetyDaysAgo }
-      }
-    });
-
-    const tenantsStillActive = await Tenant.count({
-      where: {
-        createdAt: { [Op.lte]: ninetyDaysAgo },
-        status: 'active'
-      }
-    });
+    const [tenantsCreated90DaysAgo, tenantsStillActive] = await Promise.all([
+      prisma.tenants.count({ where: { createdAt: { lte: ninetyDaysAgo } } }),
+      prisma.tenants.count({
+        where: {
+          createdAt: { lte: ninetyDaysAgo },
+          status: 'active',
+        },
+      }),
+    ]);
 
     const retentionRate = tenantsCreated90DaysAgo > 0
       ? ((tenantsStillActive / tenantsCreated90DaysAgo) * 100).toFixed(2)
@@ -603,68 +632,67 @@ exports.getMetrics = async (req, res) => {
         growthRate: parseFloat(growthRate),
         engagementRate: parseFloat(engagementRate),
         retentionRate: parseFloat(retentionRate),
-        avgSubscriptionValue: parseFloat(avgSubscriptionValue?.dataValues?.avg || 0),
+        avgSubscriptionValue: Number(avgSubscriptionValueAggregate._avg.amount || 0),
         newTenants,
         activeTenantsWithData,
-        totalActiveTenants
-      }
+        totalActiveTenants,
+      },
     });
   } catch (error) {
-    console.error('Error obteniendo métricas:', error);
+    logger.error('Error obteniendo métricas', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al obtener métricas',
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-/** * @route GET /api/platform-admin/tenants/check-subdomain/:subdomain
+/**
+ * @route GET /api/platform-admin/tenants/check-subdomain/:subdomain
  * @desc Verificar si un subdomain está disponible
  * @access Private (PLATFORM_ADMIN only)
  */
 exports.checkSubdomainAvailability = async (req, res) => {
   try {
     const { subdomain } = req.params;
-    
-    // Validar formato del subdomain
+
     const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
     if (!subdomainRegex.test(subdomain)) {
       return res.status(400).json({
         success: false,
         available: false,
-        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).'
+        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).',
       });
     }
-    
-    // Verificar si ya existe
-    const existingTenant = await Tenant.findOne({ where: { subdomain } });
-    
+
+    const existingTenant = await prisma.tenants.findFirst({ where: { subdomain } });
+
     if (existingTenant) {
       return res.status(200).json({
         success: true,
         available: false,
-        message: 'Este subdomain ya está en uso'
+        message: 'Este subdomain ya está en uso',
       });
     }
-    
+
     return res.status(200).json({
       success: true,
       available: true,
-      message: 'Subdomain disponible'
+      message: 'Subdomain disponible',
     });
-    
   } catch (error) {
-    console.error('Error verificando subdomain:', error);
+    logger.error('Error verificando subdomain', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al verificar subdomain',
-      error: error.message
+      error: error.message,
     });
   }
 };
 
-/** * @route POST /api/platform-admin/tenants/create-manual
+/**
+ * @route POST /api/platform-admin/tenants/create-manual
  * @desc Crea un tenant manualmente sin pasar por MercadoPago
  * @access Private (PLATFORM_ADMIN only)
  */
@@ -686,113 +714,105 @@ exports.createManualTenant = async (req, res) => {
       adminPassword,
       adminFullName,
       adminEmail,
-      notes,
     } = req.body;
 
-    // Validaciones
     if (!businessName || !email || !subdomain) {
       return res.status(400).json({
         success: false,
-        message: 'businessName, email y subdomain son requeridos'
+        message: 'businessName, email y subdomain son requeridos',
       });
     }
-    
-    // Validar formato del subdomain
+
     const subdomainRegex = /^[a-z0-9]([a-z0-9-]{0,28}[a-z0-9])?$/;
     if (!subdomainRegex.test(subdomain)) {
       return res.status(400).json({
         success: false,
-        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).'
+        message: 'Subdomain inválido. Solo letras minúsculas, números y guiones (no al inicio/fin).',
       });
     }
 
-    // Verificar si el email ya existe
-    const existingTenant = await Tenant.findOne({ where: { email } });
-    if (existingTenant) {
+    const [existingTenantByEmail, existingSubdomain, existingCuit] = await Promise.all([
+      prisma.tenants.findFirst({ where: { email } }),
+      prisma.tenants.findFirst({ where: { subdomain } }),
+      cuit ? prisma.tenants.findFirst({ where: { cuit } }) : Promise.resolve(null),
+    ]);
+
+    if (existingTenantByEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Ya existe un tenant con ese email'
+        message: 'Ya existe un tenant con ese email',
       });
     }
 
-    // Verificar si el subdomain ya existe (si se proporciona)
-    if (subdomain) {
-      const existingSubdomain = await Tenant.findOne({ where: { subdomain } });
-      if (existingSubdomain) {
-        return res.status(400).json({
-          success: false,
-          message: 'El subdominio ya está en uso'
-        });
-      }
+    if (existingSubdomain) {
+      return res.status(400).json({
+        success: false,
+        message: 'El subdominio ya está en uso',
+      });
     }
 
-    // Verificar si el CUIT ya existe
-    if (cuit) {
-      const existingCuit = await Tenant.findOne({ where: { cuit } });
-      if (existingCuit) {
-        return res.status(400).json({
-          success: false,
-          message: 'Ya existe un tenant con ese CUIT'
-        });
-      }
+    if (existingCuit) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe un tenant con ese CUIT',
+      });
     }
 
-    // Generar subdomain si no se proporciona
-    const finalSubdomain = subdomain || businessName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .substring(0, 30);
+    const generatedCuit = cuit || `99-${Math.floor(10000000 + Math.random() * 90000000)}-9`;
+    const normalizedFeatures = Array.isArray(features) ? { modules: features } : features;
 
-    // Crear el tenant
-    const newTenant = await Tenant.create({
-      businessName,
-      email,
-      subdomain: finalSubdomain,
-      cuit,
-      phone: phone || null,
-      address: address || null,
-      plan: plan.toUpperCase(),
-      status: 'ACTIVE',
-      maxAgents,
-      maxProperties,
-      features,
-      notes: notes || 'Tenant creado manualmente por Platform Admin',
+    const newTenant = await prisma.tenants.create({
+      data: {
+        businessName,
+        email,
+        subdomain,
+        cuit: generatedCuit,
+        phone: phone || null,
+        address: address || null,
+        plan: String(plan).toUpperCase(),
+        status: 'active',
+        maxAgents,
+        maxProperties,
+        features: normalizedFeatures,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     });
 
-    // Crear suscripción manual
     const startDate = new Date();
     const endDate = new Date();
-    endDate.setDate(endDate.getDate() + durationDays);
+    endDate.setDate(endDate.getDate() + Number(durationDays));
 
-    const subscription = await Subscription.create({
-      tenantId: newTenant.tenantId,
-      planId: plan.toLowerCase(),
-      status: durationDays > 0 ? 'trialing' : 'active',
-      startDate,
-      endDate,
-      trialEndDate: durationDays > 0 ? endDate : null,
-      amount: 0, // Sin costo para trials manuales
-      currency: 'ARS',
-      paymentMethod: 'manual',
-      mpPreapprovalId: null, // Sin MercadoPago
-      mpPayerId: null,
-      autoRenew: false, // No se renueva automáticamente
+    const subscription = await prisma.subscriptions.create({
+      data: {
+        tenantId: newTenant.tenantId,
+        planId: String(plan).toLowerCase(),
+        status: Number(durationDays) > 0 ? 'trialing' : 'active',
+        paymentProvider: 'manual',
+        trialStart: Number(durationDays) > 0 ? startDate : null,
+        trialEnd: Number(durationDays) > 0 ? endDate : null,
+        currentPeriodStart: startDate,
+        currentPeriodEnd: endDate,
+        billingCycle: 'monthly',
+        amount: 0,
+        currency: 'ARS',
+      },
     });
 
-    // Crear admin inicial si se proporcionan credenciales
     let adminUser = null;
     if (adminUsername && adminPassword) {
       const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-      adminUser = await Admin.create({
-        tenantId: newTenant.tenantId,
-        username: adminUsername,
-        password: hashedPassword,
-        fullName: adminFullName || businessName,
-        email: adminEmail || email,
-        role: 'SUPER_ADMIN',
+      adminUser = await prisma.admins.create({
+        data: {
+          tenantId: newTenant.tenantId,
+          username: adminUsername,
+          password: hashedPassword,
+          fullName: adminFullName || businessName,
+          email: adminEmail || email,
+          role: 'SUPER_ADMIN',
+        },
       });
     }
 
@@ -802,22 +822,24 @@ exports.createManualTenant = async (req, res) => {
       data: {
         tenant: newTenant,
         subscription,
-        admin: adminUser ? {
-          adminId: adminUser.adminId,
-          username: adminUser.username,
-          email: adminUser.email,
-          temporaryPassword: adminPassword, // Solo en respuesta, no se guarda
-        } : null,
-        loginUrl: `https://${finalSubdomain}.innoinmo.com/login`, // Ajustar según tu dominio
+        admin: adminUser
+          ? {
+              adminId: adminUser.adminId,
+              username: adminUser.username,
+              email: adminUser.email,
+              temporaryPassword: adminPassword,
+            }
+          : null,
+        loginUrl: `https://${subdomain}.innoinmo.com/login`,
         expiresAt: endDate,
-      }
+      },
     });
   } catch (error) {
-    console.error('Error creando tenant manual:', error);
+    logger.error('Error creando tenant manual', { error: error.message });
     res.status(500).json({
       success: false,
       message: 'Error al crear tenant',
-      error: error.message
+      error: error.message,
     });
   }
 };

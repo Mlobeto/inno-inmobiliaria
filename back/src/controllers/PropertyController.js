@@ -1,4 +1,5 @@
-const { Client, Property, ClientProperty, AdminSettings } = require("../data");
+const prisma = require('../utils/prismaClient');
+const { logAudit } = require('../utils/audit');
 
 // POST: Crear una propiedad
 exports.createProperty = async (req, res) => {
@@ -63,52 +64,65 @@ exports.createProperty = async (req, res) => {
       // Crear la propiedad
       const { tenantId } = req.user; // Obtener tenantId del token JWT
       
-      const newProperty = await Property.create({
-        tenantId, // Inyectar tenantId
-        address,
-        neighborhood,
-        city,
-        type,
-        typeProperty,
-        price,
-        precioReferencia: precioReferencia || null,
-        images: images || [], // ✅ Opcional, array vacío por defecto
-        comision,
-        escritura,
-        matriculaOPadron: matriculaOPadron || null,
-        frente: frente || null,
-        profundidad: profundidad || null,
-        linkInstagram: linkInstagram || null,
-        linkMaps: linkMaps || null, // ✅ Agregado
-        rooms: parsedRooms,
-        isAvailable: true,
-        description: req.body.description || "",
-        plantType: req.body.plantType || null, // ✅ Cambiado a null
-        plantQuantity: req.body.plantQuantity || null, // ✅ Cambiado a null
-        bathrooms: req.body.bathrooms || null, // ✅ Cambiado a null
-        highlights: req.body.highlights || "",
-        socio: socio || null,
-        inventory: inventory || null,
-        superficieCubierta: superficieCubierta || null,
-        superficieTotal: superficieTotal || null,
-        requisito: req.body.requisito || null
+      const newProperty = await prisma.Property.create({
+        data: {
+          tenantId,
+          address,
+          neighborhood,
+          city,
+          type,
+          typeProperty,
+          price: parseFloat(price),
+          precioReferencia: precioReferencia ? parseFloat(precioReferencia) : null,
+          images: images || [],
+          comision: parseFloat(comision),
+          escritura,
+          matriculaOPadron: matriculaOPadron || null,
+          frente: frente || null,
+          profundidad: profundidad || null,
+          linkInstagram: linkInstagram || null,
+          linkMaps: linkMaps || null,
+          rooms: parsedRooms,
+          isAvailable: true,
+          description: req.body.description || "",
+          plantType: req.body.plantType || null,
+          plantQuantity: req.body.plantQuantity || null,
+          bathrooms: req.body.bathrooms || null,
+          highlights: req.body.highlights || "",
+          socio: socio || null,
+          inventory: inventory || null,
+          superficieCubierta: superficieCubierta || null,
+          superficieTotal: superficieTotal || null,
+          requisito: req.body.requisito || null,
+        }
       });
 
       // Si se proporciona idClient y role, crear la relación
       if (req.body.idClient && req.body.role) {
         console.log(`Creando relación: Cliente ${req.body.idClient} como ${req.body.role} de propiedad ${newProperty.propertyId}`);
         
-        await ClientProperty.create({
-          tenantId, // Agregar tenantId requerido por el modelo
-          clientId: req.body.idClient,
-          propertyId: newProperty.propertyId,
-          role: req.body.role
+        await prisma.ClientProperties.create({
+          data: {
+            tenantId,
+            clientId: req.body.idClient,
+            propertyId: newProperty.propertyId,
+            role: req.body.role,
+          }
         });
 
         console.log('Relación creada exitosamente');
       }
   
       // Responder con la propiedad creada
+      logAudit({
+        tenantId,
+        adminId: req.user.adminId,
+        action: 'CREATE',
+        resource: 'property',
+        resourceId: newProperty.propertyId,
+        newValues: { address: newProperty.address, type: newProperty.type, typeProperty: newProperty.typeProperty, price: newProperty.price },
+        req,
+      });
       res.status(201).json(newProperty);
     } catch (error) {
       console.error("Error al crear propiedad:", error);
@@ -125,13 +139,14 @@ exports.createProperty = async (req, res) => {
 exports.getPropertiesByIdClient = async (req, res) => {
   try {
     const { idClient } = req.params;
-    const client = await Client.findByPk(idClient, {
-      include: Property,
+    const client = await prisma.Clients.findUnique({
+      where: { idClient: parseInt(idClient) },
+      include: { ClientProperties: { include: { Property: true } } },
     });
     if (!client) {
       return res.status(404).json({ error: "Cliente no encontrado" });
     }
-    res.status(200).json(client.Properties);
+    res.status(200).json(client.ClientProperties.map(cp => cp.Property));
   } catch (error) {
     res
       .status(500)
@@ -152,9 +167,7 @@ exports.getPropertiesByType = async (req, res) => {
         .json({ error: 'Tipo inválido. Debe ser "venta" o "alquiler".' });
     }
 
-    const properties = await Property.findAll({ 
-      where: { type, tenantId } // Filtrar por tenant
-    });
+    const properties = await prisma.Property.findMany({ where: { type, tenantId } });
     res.status(200).json(properties);
   } catch (error) {
     res
@@ -200,15 +213,24 @@ exports.updateProperty = async (req, res) => {
       cleanedData.requisito = req.body.requisito || null;
     }
 
-    const updated = await Property.update(cleanedData, { where: { propertyId, tenantId } });
+    const result = await prisma.Property.updateMany({ where: { propertyId: parseInt(propertyId), tenantId }, data: cleanedData });
 
     
-    console.log('[UpdateProperty] Resultado:', updated);
+    console.log('[UpdateProperty] Resultado:', result);
     
-    if (!updated[0]) {
+    if (!result.count) {
       return res.status(404).json({ error: "Propiedad no encontrada" });
     }
     
+    logAudit({
+      tenantId,
+      adminId: req.user.adminId,
+      action: 'UPDATE',
+      resource: 'property',
+      resourceId: propertyId,
+      newValues: cleanedData,
+      req,
+    });
     res.status(200).json({ message: "Propiedad actualizada" });
   } catch (error) {
     console.error('[UpdateProperty] Error:', {
@@ -231,12 +253,18 @@ exports.deleteProperty = async (req, res) => {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { propertyId } = req.params;
     
-    const deleted = await Property.destroy({ 
-      where: { propertyId, tenantId } // Filtrar por tenant
-    });
-    if (!deleted) {
+    const result = await prisma.Property.deleteMany({ where: { propertyId: parseInt(propertyId), tenantId } });
+    if (!result.count) {
       return res.status(404).json({ error: "Propiedad no encontrada" });
     }
+    logAudit({
+      tenantId,
+      adminId: req.user.adminId,
+      action: 'DELETE',
+      resource: 'property',
+      resourceId: propertyId,
+      req,
+    });
     res.status(200).json({ message: "Propiedad eliminada correctamente" });
   } catch (error) {
     res
@@ -259,8 +287,7 @@ exports.togglePublishLanding = async (req, res) => {
     const { isPublishedInLanding } = req.body;
 
     // Verificar que el tenant tenga acceso a landing pages
-    const { Tenant } = require('../data/models');
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     
     if (!tenant?.features?.landingPage) {
       return res.status(403).json({ 
@@ -270,20 +297,20 @@ exports.togglePublishLanding = async (req, res) => {
     }
 
     // Actualizar propiedad
-    const [updated] = await Property.update(
-      { isPublishedInLanding: !!isPublishedInLanding },
-      { where: { propertyId, tenantId } }
-    );
+    const updateResult = await prisma.Property.updateMany({
+      where: { propertyId: parseInt(propertyId), tenantId },
+      data: { isPublishedInLanding: !!isPublishedInLanding },
+    });
 
-    if (!updated) {
+    if (!updateResult.count) {
       return res.status(404).json({ 
         error: 'Propiedad no encontrada' 
       });
     }
 
-    const property = await Property.findOne({ 
-      where: { propertyId, tenantId },
-      attributes: ['propertyId', 'title', 'isPublishedInLanding']
+    const property = await prisma.Property.findFirst({ 
+      where: { propertyId: parseInt(propertyId), tenantId },
+      select: { propertyId: true, address: true, isPublishedInLanding: true },
     });
 
     res.json({
@@ -292,8 +319,8 @@ exports.togglePublishLanding = async (req, res) => {
         : 'Propiedad oculta de landing',
       property: {
         id: property.propertyId,
-        title: property.title,
-        isPublishedInLanding: property.isPublishedInLanding
+        address: property.address,
+        isPublishedInLanding: property.isPublishedInLanding,
       }
     });
 
@@ -342,8 +369,8 @@ exports.getFilteredProperties = async (req, res) => {
     if (neighborhood) where.neighborhood = neighborhood;
     if (priceMin || priceMax) {
       where.price = {};
-      if (priceMin) where.price[Sequelize.Op.gte] = priceMin;
-      if (priceMax) where.price[Sequelize.Op.lte] = priceMax;
+      if (priceMin) where.price.gte = parseFloat(priceMin);
+      if (priceMax) where.price.lte = parseFloat(priceMax);
     }
     if (rooms) where.rooms = rooms;
     if (planType) where.planType = planType;
@@ -362,11 +389,11 @@ exports.getFilteredProperties = async (req, res) => {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     where.tenantId = tenantId; // Filtrar por tenant
     
-    const offset = (page - 1) * limit; // Calcular el offset de la página actual
-    const properties = await Property.findAll({
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const properties = await prisma.Property.findMany({
       where,
-      limit, // Limitar la cantidad de resultados por página
-      offset, // Desplazamiento para la paginación
+      take: parseInt(limit),
+      skip: offset,
     });
 
     res.status(200).json(properties);
@@ -382,22 +409,28 @@ exports.getAllProperties = async (req, res) => {
   try {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     
-    // Obtener todas las propiedades con los clientes relacionados y sus roles
-    const properties = await Property.findAll({
-      where: { tenantId }, // Filtrar por tenant
-      include: [
-        {
-          model: Client,
-          through: {
-            attributes: ['role'], // Incluir solo el campo de rol desde la tabla intermedia
+    const properties = await prisma.Property.findMany({
+      where: { tenantId },
+      include: {
+        ClientProperties: {
+          include: {
+            Clients: {
+              select: { idClient: true, name: true, email: true, mobilePhone: true, cuil: true, provincia: true, direccion: true, ciudad: true },
+            },
           },
-          attributes: ['idClient', 'name', 'email', 'mobilePhone', 'cuil', 'provincia', 'direccion', 'ciudad'], // Campos del cliente
         },
-      ],
+      },
     });
 
-    // Responder con las propiedades obtenidas
-    res.status(200).json(properties);
+    const formatted = properties.map(p => {
+      const { ClientProperties, ...rest } = p;
+      return {
+        ...rest,
+        Clients: ClientProperties.map(cp => ({ ...cp.Clients, ClientProperty: { role: cp.role } })),
+      };
+    });
+
+    res.status(200).json(formatted);
   } catch (error) {
     console.error("Error al obtener propiedades con clientes:", error);
     res.status(500).json({
@@ -420,17 +453,17 @@ exports.getPropertyById = async (req, res) => {
       return res.status(400).json({ error: 'ID de propiedad inválido' });
     }
 
-    const property = await Property.findOne({
-      where: { propertyId: id, tenantId }, // Filtrar por tenant
-      include: [
-        {
-          model: Client,
-          through: {
-            attributes: ['role'],
+    const property = await prisma.Property.findFirst({
+      where: { propertyId: id, tenantId },
+      include: {
+        ClientProperties: {
+          include: {
+            Clients: {
+              select: { idClient: true, name: true, email: true, mobilePhone: true },
+            },
           },
-          attributes: ['idClient', 'name', 'email', 'mobilePhone'],
         },
-      ],
+      },
     });
 
     if (!property) {
@@ -438,8 +471,14 @@ exports.getPropertyById = async (req, res) => {
       return res.status(404).json({ error: 'Propiedad no encontrada' });
     }
 
-    console.log('Propiedad encontrada:', JSON.stringify(property, null, 2));
-    res.status(200).json(property);
+    const { ClientProperties, ...rest } = property;
+    const formatted = {
+      ...rest,
+      Clients: ClientProperties.map(cp => ({ ...cp.Clients, ClientProperty: { role: cp.role } })),
+    };
+
+    console.log('Propiedad encontrada:', JSON.stringify(formatted, null, 2));
+    res.status(200).json(formatted);
   } catch (error) {
     console.error('Error completo:', error);
     res.status(500).json({
@@ -456,14 +495,14 @@ exports.getWhatsAppText = async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
-    const property = await Property.findByPk(id);
+    const property = await prisma.Property.findUnique({ where: { propertyId: parseInt(id) } });
 
     if (!property) {
       return res.status(404).json({ error: 'Propiedad no encontrada' });
     }
 
     // Obtener la plantilla de WhatsApp de las configuraciones del tenant
-    const settings = await AdminSettings.findOne({ where: { tenantId } });
+    const settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     // Plantilla por defecto si no existe una personalizada
     const defaultTemplate = `Gracias por ponerte en contacto con nosotros! Estamos encantados de poder ayudar. 

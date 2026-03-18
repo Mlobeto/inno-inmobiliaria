@@ -1,5 +1,5 @@
 const XLSX = require('xlsx');
-const { Client, Property } = require('../data/index');
+const prisma = require('../utils/prismaClient');
 const catchedAsync = require('../utils/catchedAsync');
 
 // Función para validar CUIL
@@ -122,14 +122,13 @@ const importClients = catchedAsync(async (req, res) => {
           continue;
         }
 
-        // Verificar si ya existe el CUIL o email
-        const existingClient = await Client.findOne({
+        const existingClient = await prisma.Clients.findFirst({
           where: {
-            tenantId, // Filtrar por tenant
-            $or: [
+            tenantId,
+            OR: [
               { cuil: row.cuil },
-              { email: row.email }
-            ]
+              { email: row.email },
+            ],
           }
         });
 
@@ -156,7 +155,9 @@ const importClients = catchedAsync(async (req, res) => {
           linkMaps: row.linkMaps || null
         };
 
-        const newClient = await Client.create(clientData);
+        const newClient = await prisma.Clients.create({
+          data: { ...clientData, createdAt: new Date(), updatedAt: new Date() },
+        });
         
         results.success.push({
           row: rowNumber,
@@ -326,7 +327,7 @@ const importProperties = catchedAsync(async (req, res) => {
           superficieTotal: row.superficieTotal || null
         };
 
-        const newProperty = await Property.create(propertyData);
+        const newProperty = await prisma.Property.create({ data: propertyData });
         
         results.success.push({
           row: rowNumber,

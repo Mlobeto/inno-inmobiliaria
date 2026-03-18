@@ -1,30 +1,29 @@
 const app = require('./src/app.js');
-const { conn } = require('./src/data');
+const prisma = require('./src/utils/prismaClient');
 const { PORT } = require('./src/config/envs.js');
+const logger = require('./src/utils/logger');
 require('dotenv').config();
 
-// Importa la función seed
-const seed = require('./src/scripts/seedData.js'); // Ajusta la ruta si es necesario
-
-// En producción no usamos sync, las tablas ya existen por migraciones
 const startServer = async () => {
   try {
-    // Solo verificar conexión en ambos entornos (las tablas se manejan con migraciones)
-    await conn.authenticate();
-    console.log(`✅ Conexión a base de datos establecida (${process.env.NODE_ENV || 'desarrollo'})`);
-    
-    // Si necesitas sincronizar modelos, descomenta la siguiente línea (solo en desarrollo)
-    // await conn.sync({ alter: false });
-    
-    // Ejecuta el seed antes de levantar el servidor (solo si es necesario)
-    // await seed();
+    // Verificar conexión con Prisma
+    await prisma.$queryRawUnsafe('SELECT 1');
+    logger.info('Database connection established', {
+      environment: process.env.NODE_ENV || 'development',
+    });
 
     app.listen(PORT, () => {
-      console.log(`🚀 listening on port: ${PORT} 🚀`);
-      console.log('Ruta base del proyecto:', __dirname);
+      logger.info('Server started successfully', {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        nodeVersion: process.version,
+      });
     });
   } catch (error) {
-    console.error('❌ Error al iniciar servidor:', error);
+    logger.error('Failed to start server', {
+      error: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   }
 };

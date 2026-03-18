@@ -1,28 +1,28 @@
-const { Sequelize } = require('sequelize');
-
-const db = new Sequelize('InnoInmobiliaria_Dev', 'postgres', '7754', {
-  host: 'localhost',
-  dialect: 'postgres'
-});
+const prisma = require('./src/utils/prismaClient');
 
 const hashedPassword = '$2b$10$sHoY7y2/1tSe5Ac0wIeF3.mmN./a.P.HOpj/0oxickhuMWgERoivi';
 
-db.query('UPDATE admins SET password = ? WHERE username = ?', {
-  replacements: [hashedPassword, 'admin'],
-  type: Sequelize.QueryTypes.UPDATE
-})
-  .then(() => {
-    console.log('✅ Password actualizado correctamente');
-    return db.query('SELECT username, password FROM admins WHERE username = ?', {
-      replacements: ['admin'],
-      type: Sequelize.QueryTypes.SELECT
+async function run() {
+  try {
+    await prisma.admins.updateMany({
+      where: { username: 'admin' },
+      data: { password: hashedPassword },
     });
-  })
-  .then((results) => {
-    console.log('Usuario actualizado:', results[0]);
+
+    const user = await prisma.admins.findFirst({
+      where: { username: 'admin' },
+      select: { username: true, password: true },
+    });
+
+    console.log('✅ Password actualizado correctamente');
+    console.log('Usuario actualizado:', user);
     process.exit(0);
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('Error:', error.message);
     process.exit(1);
-  });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+run();

@@ -1,4 +1,4 @@
-const { Plan } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 /**
  * Controlador de Planes
@@ -8,8 +8,8 @@ const { Plan } = require('../data');
 // Listar todos los planes
 exports.getAllPlans = async (req, res) => {
   try {
-    const plans = await Plan.findAll({
-      order: [['sortOrder', 'ASC'], ['priceMonthly', 'ASC']]
+    const plans = await prisma.plans.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { priceMonthly: 'asc' }],
     });
 
     res.status(200).json({
@@ -32,7 +32,7 @@ exports.getPlanById = async (req, res) => {
   try {
     const { planId } = req.params;
 
-    const plan = await Plan.findByPk(planId);
+    const plan = await prisma.plans.findUnique({ where: { planId } });
 
     if (!plan) {
       return res.status(404).json({
@@ -83,7 +83,7 @@ exports.createPlan = async (req, res) => {
     }
 
     // Verificar que el planId no exista
-    const existingPlan = await Plan.findByPk(planId);
+    const existingPlan = await prisma.plans.findUnique({ where: { planId } });
     if (existingPlan) {
       return res.status(409).json({
         success: false,
@@ -91,20 +91,22 @@ exports.createPlan = async (req, res) => {
       });
     }
 
-    const newPlan = await Plan.create({
-      planId,
-      name,
-      description,
-      priceMonthly,
-      priceYearly,
-      currency: currency || 'ARS',
-      mpPlanId,
-      stripePriceId,
-      features: features || {},
-      trialDays: trialDays || 14,
-      isActive: isActive !== undefined ? isActive : true,
-      isPopular: isPopular || false,
-      sortOrder: sortOrder || 0
+    const newPlan = await prisma.plans.create({
+      data: {
+        planId,
+        name,
+        description,
+        priceMonthly,
+        priceYearly,
+        currency: currency || 'ARS',
+        mpPlanId,
+        stripePriceId,
+        features: features || {},
+        trialDays: trialDays || 14,
+        isActive: isActive !== undefined ? isActive : true,
+        isPopular: isPopular || false,
+        sortOrder: sortOrder || 0,
+      },
     });
 
     console.log('✅ Plan creado:', newPlan.planId);
@@ -128,11 +130,11 @@ exports.createPlan = async (req, res) => {
 exports.updatePlan = async (req, res) => {
   try {
     const { planId } = req.params;
-    const updates = req.body;
+    const updates = { ...req.body };
 
-    const plan = await Plan.findByPk(planId);
+    const existing = await prisma.plans.findUnique({ where: { planId } });
 
-    if (!plan) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: 'Plan no encontrado'
@@ -142,7 +144,7 @@ exports.updatePlan = async (req, res) => {
     // No permitir cambiar el planId
     delete updates.planId;
 
-    await plan.update(updates);
+    const plan = await prisma.plans.update({ where: { planId }, data: updates });
 
     console.log('✅ Plan actualizado:', planId);
 
@@ -166,7 +168,7 @@ exports.deletePlan = async (req, res) => {
   try {
     const { planId } = req.params;
 
-    const plan = await Plan.findByPk(planId);
+    const plan = await prisma.plans.findUnique({ where: { planId } });
 
     if (!plan) {
       return res.status(404).json({
@@ -176,27 +178,23 @@ exports.deletePlan = async (req, res) => {
     }
 
     // Verificar si hay suscripciones activas con este plan
-    const { Subscription } = require('../data');
-    const activeSubscriptions = await Subscription.count({
-      where: {
-        planId,
-        status: ['active', 'trialing']
-      }
+    const activeSubscriptions = await prisma.subscriptions.count({
+      where: { planId, status: { in: ['active', 'trialing'] } },
     });
 
     if (activeSubscriptions > 0) {
       // Solo marcar como inactivo si hay suscripciones activas
-      await plan.update({ isActive: false });
+      const updated = await prisma.plans.update({ where: { planId }, data: { isActive: false } });
       
       return res.status(200).json({
         success: true,
         message: `Plan marcado como inactivo. Hay ${activeSubscriptions} suscripciones activas usando este plan.`,
-        plan
+        plan: updated,
       });
     }
 
     // Si no hay suscripciones activas, permitir eliminación completa
-    await plan.destroy();
+    await prisma.plans.delete({ where: { planId } });
 
     console.log('✅ Plan eliminado:', planId);
 
@@ -219,16 +217,16 @@ exports.togglePlanStatus = async (req, res) => {
   try {
     const { planId } = req.params;
 
-    const plan = await Plan.findByPk(planId);
+    const existing = await prisma.plans.findUnique({ where: { planId } });
 
-    if (!plan) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: 'Plan no encontrado'
       });
     }
 
-    await plan.update({ isActive: !plan.isActive });
+    const plan = await prisma.plans.update({ where: { planId }, data: { isActive: !existing.isActive } });
 
     console.log(`✅ Plan ${plan.isActive ? 'activado' : 'desactivado'}:`, planId);
 

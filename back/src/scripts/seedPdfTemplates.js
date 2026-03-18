@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { PdfTemplate, Tenant } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 /**
  * Script para insertar templates PDF por defecto en todos los tenants
@@ -121,7 +121,7 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null) {
   for (const templateDef of TEMPLATE_DEFINITIONS) {
     try {
       // Verificar si ya existe un template de este tipo para el tenant
-      const existing = await PdfTemplate.findOne({
+      const existing = await prisma.pdf_templates.findFirst({
         where: {
           tenantId,
           templateType: templateDef.templateType,
@@ -137,20 +137,22 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null) {
       const htmlTemplate = await readTemplate(templateDef.fileName);
 
       // Crear el template
-      await PdfTemplate.create({
-        tenantId,
-        templateType: templateDef.templateType,
-        templateName: templateDef.templateName,
-        htmlTemplate,
-        styles: '', // Los estilos están dentro del HTML
-        headerHtml: '',
-        footerHtml: '',
-        variables: templateDef.variables,
-        pageSize: templateDef.pageSize,
-        orientation: templateDef.orientation,
-        isDefault: templateDef.isDefault,
-        isActive: true,
-        createdBy: adminId,
+      await prisma.pdf_templates.create({
+        data: {
+          tenantId,
+          templateType: templateDef.templateType,
+          templateName: templateDef.templateName,
+          htmlTemplate,
+          styles: '',
+          headerHtml: '',
+          footerHtml: '',
+          variables: templateDef.variables,
+          pageSize: templateDef.pageSize,
+          orientation: templateDef.orientation,
+          isDefault: templateDef.isDefault,
+          isActive: true,
+          createdBy: adminId,
+        },
       });
 
       console.log(`   ✅ ${templateDef.templateType} creado exitosamente`);
@@ -168,9 +170,9 @@ async function seedAllTenants() {
     console.log('🚀 Iniciando seed de templates PDF...\n');
 
     // Obtener todos los tenants activos
-    const tenants = await Tenant.findAll({
+    const tenants = await prisma.tenants.findMany({
       where: {
-        status: ['TRIAL', 'ACTIVE'],
+        status: { in: ['TRIAL', 'ACTIVE', 'active'] },
       },
     });
 
@@ -200,7 +202,7 @@ async function seedSpecificTenant(tenantId) {
   try {
     console.log(`🚀 Creando templates para tenant ${tenantId}...\n`);
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId: parseInt(tenantId, 10) } });
     
     if (!tenant) {
       console.error(`❌ Tenant ${tenantId} no encontrado`);

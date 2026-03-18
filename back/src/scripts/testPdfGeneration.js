@@ -1,7 +1,7 @@
 // Cargar variables de entorno
 require('dotenv').config();
 
-const { PdfTemplate, Tenant } = require('../data');
+const prisma = require('../utils/prismaClient');
 const pdfService = require('../services/pdfService');
 
 /**
@@ -168,7 +168,7 @@ async function generateTestPdf(templateType) {
     console.log(`\n📄 Generando PDF de prueba: ${templateType}`);
 
     // Obtener el template
-    const template = await PdfTemplate.findOne({
+    const template = await prisma.pdf_templates.findFirst({
       where: {
         tenantId: 1,
         templateType,
@@ -182,7 +182,7 @@ async function generateTestPdf(templateType) {
     }
 
     // Obtener tenant
-    const tenant = await Tenant.findByPk(1);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId: 1 } });
     if (!tenant) {
       console.error('   ❌ Tenant no encontrado');
       return null;

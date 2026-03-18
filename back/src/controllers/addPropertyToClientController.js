@@ -1,4 +1,4 @@
-const { Client, Property, ClientProperty } = require('../data');
+const prisma = require('../utils/prismaClient');
 
 // POST: Asignar una propiedad a un cliente con rol
 exports.addPropertyToClientWithRole = async (req, res) => {
@@ -15,7 +15,7 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         }
 
         // Buscar al cliente por su idClient
-        let client = idClient ? await Client.findOne({ where: { idClient, tenantId } }) : null;
+        let client = idClient ? await prisma.Clients.findFirst({ where: { idClient: parseInt(idClient), tenantId } }) : null;
 
         // Si no existe, intenta crear el cliente si se envía clientData
         if (!client) {
@@ -23,7 +23,7 @@ exports.addPropertyToClientWithRole = async (req, res) => {
                 return res.status(400).json({ error: 'Cliente no encontrado y no se proporcionaron datos para crearlo.' });
             }
             try {
-                client = await Client.create({ ...clientData, tenantId });
+                client = await prisma.Clients.create({ data: { ...clientData, tenantId } });
             } catch (error) {
                 return res.status(400).json({
                     error: 'Error al crear el cliente',
@@ -33,14 +33,14 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         }
 
         // Buscar la propiedad por ID
-        const property = await Property.findOne({ where: { propertyId, tenantId } });
+        const property = await prisma.Property.findFirst({ where: { propertyId: parseInt(propertyId), tenantId } });
         if (!property) {
             return res.status(404).json({ error: 'Propiedad no encontrada' });
         }
 
         // Verificar si ya existe la relación entre el cliente y la propiedad
-        const existingClientProperty = await ClientProperty.findOne({
-            where: { clientId: client.idClient, propertyId }
+        const existingClientProperty = await prisma.ClientProperties.findFirst({
+            where: { clientId: client.idClient, propertyId: parseInt(propertyId) }
         });
 
         if (existingClientProperty) {
@@ -51,11 +51,13 @@ exports.addPropertyToClientWithRole = async (req, res) => {
         }
 
         // Asociar la propiedad al cliente con el rol
-        await ClientProperty.create({
-            clientId: client.idClient,
-            propertyId: property.propertyId,
-            role: role,
-            tenantId: tenantId // Agregar tenantId obligatorio
+        await prisma.ClientProperties.create({
+            data: {
+                clientId: client.idClient,
+                propertyId: property.propertyId,
+                role: role,
+                tenantId: tenantId,
+            }
         });
 
         // Responder con éxito

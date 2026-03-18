@@ -1,5 +1,4 @@
-const { ClientDocument, Client, Tenant } = require('../data');
-const { Op } = require('sequelize');
+const prisma = require('../utils/prismaClient');
 
 /**
  * Controller para gestionar documentos de clientes
@@ -15,9 +14,8 @@ exports.getAllDocuments = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId } = req.params;
 
-    // Verificar que el cliente pertenece al tenant
-    const client = await Client.findOne({
-      where: { idClient: clientId, tenantId }
+    const client = await prisma.Clients.findFirst({
+      where: { idClient: parseInt(clientId), tenantId }
     });
 
     if (!client) {
@@ -26,16 +24,15 @@ exports.getAllDocuments = async (req, res) => {
       });
     }
 
-    // Obtener todos los documentos del cliente
-    const documents = await ClientDocument.findAll({
+    const documents = await prisma.client_documents.findMany({
       where: {
-        clientId,
-        tenantId
+        client_id: parseInt(clientId),
+        tenant_id: tenantId,
       },
-      order: [
-        ['documentType', 'ASC'],
-        ['isPrimary', 'DESC'],
-        ['createdAt', 'DESC']
+      orderBy: [
+        { document_type: 'asc' },
+        { is_primary: 'desc' },
+        { created_at: 'desc' },
       ]
     });
 
@@ -63,16 +60,13 @@ exports.getDocumentById = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId, documentId } = req.params;
 
-    const document = await ClientDocument.findOne({
+    const document = await prisma.client_documents.findFirst({
       where: {
-        documentId,
-        clientId,
-        tenantId
+        document_id: parseInt(documentId),
+        client_id: parseInt(clientId),
+        tenant_id: tenantId,
       },
-      include: [{
-        model: Client,
-        attributes: ['idClient', 'name', 'email']
-      }]
+      include: { Clients: { select: { idClient: true, name: true, email: true } } }
     });
 
     if (!document) {
@@ -119,9 +113,8 @@ exports.createDocument = async (req, res) => {
       });
     }
 
-    // Verificar que el cliente existe y pertenece al tenant
-    const client = await Client.findOne({
-      where: { idClient: clientId, tenantId }
+    const client = await prisma.Clients.findFirst({
+      where: { idClient: parseInt(clientId), tenantId }
     });
 
     if (!client) {
@@ -131,12 +124,12 @@ exports.createDocument = async (req, res) => {
     }
 
     // Verificar si ya existe un documento con el mismo número y código
-    const existingDoc = await ClientDocument.findOne({
+    const existingDoc = await prisma.client_documents.findFirst({
       where: {
-        clientId,
-        documentCode,
+        client_id: parseInt(clientId),
+        document_code: documentCode,
         number,
-        tenantId
+        tenant_id: tenantId,
       }
     });
 
@@ -144,40 +137,36 @@ exports.createDocument = async (req, res) => {
       return res.status(409).json({
         error: 'Ya existe un documento con este número',
         existingDocument: {
-          documentId: existingDoc.documentId,
-          documentType: existingDoc.documentType,
-          documentCode: existingDoc.documentCode
+          documentId: existingDoc.document_id,
+          documentType: existingDoc.document_type,
+          documentCode: existingDoc.document_code,
         }
       });
     }
 
     // Si se marca como primario, desmarcar otros del mismo tipo
     if (isPrimary) {
-      await ClientDocument.update(
-        { isPrimary: false },
-        {
-          where: {
-            clientId,
-            documentType,
-            tenantId
-          }
-        }
-      );
+      await prisma.client_documents.updateMany({
+        where: { client_id: parseInt(clientId), document_type: documentType, tenant_id: tenantId },
+        data: { is_primary: false },
+      });
     }
 
     // Crear el documento
-    const newDocument = await ClientDocument.create({
-      clientId,
-      tenantId,
-      documentType,
-      country: country || 'AR',
-      documentCode,
-      number,
-      issuedBy,
-      issuedAt,
-      expiresAt,
-      isPrimary: isPrimary || false,
-      metadata: metadata || {}
+    const newDocument = await prisma.client_documents.create({
+      data: {
+        client_id: parseInt(clientId),
+        tenant_id: tenantId,
+        document_type: documentType,
+        country: country || 'AR',
+        document_code: documentCode,
+        number,
+        issued_by: issuedBy,
+        issued_at: issuedAt,
+        expires_at: expiresAt,
+        is_primary: isPrimary || false,
+        metadata: metadata || {},
+      }
     });
 
     console.log(`✅ Documento creado: ${documentCode} ${number} para cliente ${clientId}`);
@@ -188,18 +177,6 @@ exports.createDocument = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al crear documento:', error);
-    
-    // Error de validación de Sequelize
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({
-        error: 'Error de validación',
-        details: error.errors.map(e => ({
-          field: e.path,
-          message: e.message
-        }))
-      });
-    }
-
     return res.status(500).json({ 
       error: 'Error al crear el documento',
       details: error.message 
@@ -225,13 +202,8 @@ exports.updateDocument = async (req, res) => {
       metadata
     } = req.body;
 
-    // Buscar el documento
-    const document = await ClientDocument.findOne({
-      where: {
-        documentId,
-        clientId,
-        tenantId
-      }
+    const document = await prisma.client_documents.findFirst({
+      where: { document_id: parseInt(documentId), client_id: parseInt(clientId), tenant_id: tenantId }
     });
 
     if (!document) {
@@ -241,37 +213,38 @@ exports.updateDocument = async (req, res) => {
     }
 
     // Si se marca como primario, desmarcar otros del mismo tipo
-    if (isPrimary && !document.isPrimary) {
-      await ClientDocument.update(
-        { isPrimary: false },
-        {
-          where: {
-            clientId,
-            documentType: document.documentType,
-            tenantId,
-            documentId: { [Op.ne]: documentId }
-          }
-        }
-      );
+    if (isPrimary && !document.is_primary) {
+      await prisma.client_documents.updateMany({
+        where: {
+          client_id: parseInt(clientId),
+          document_type: document.document_type,
+          tenant_id: tenantId,
+          document_id: { not: parseInt(documentId) },
+        },
+        data: { is_primary: false },
+      });
     }
 
     // Actualizar campos
     const updatedFields = {};
     if (number !== undefined) updatedFields.number = number;
-    if (issuedBy !== undefined) updatedFields.issuedBy = issuedBy;
-    if (issuedAt !== undefined) updatedFields.issuedAt = issuedAt;
-    if (expiresAt !== undefined) updatedFields.expiresAt = expiresAt;
-    if (isPrimary !== undefined) updatedFields.isPrimary = isPrimary;
-    if (isVerified !== undefined) updatedFields.isVerified = isVerified;
+    if (issuedBy !== undefined) updatedFields.issued_by = issuedBy;
+    if (issuedAt !== undefined) updatedFields.issued_at = issuedAt;
+    if (expiresAt !== undefined) updatedFields.expires_at = expiresAt;
+    if (isPrimary !== undefined) updatedFields.is_primary = isPrimary;
+    if (isVerified !== undefined) updatedFields.is_verified = isVerified;
     if (metadata !== undefined) updatedFields.metadata = metadata;
 
-    await document.update(updatedFields);
+    const updated = await prisma.client_documents.update({
+      where: { document_id: parseInt(documentId) },
+      data: updatedFields,
+    });
 
-    console.log(`✅ Documento actualizado: ${document.documentCode} ${document.number}`);
+    console.log(`✅ Documento actualizado: ${document.document_code} ${document.number}`);
 
     return res.status(200).json({
       message: 'Documento actualizado exitosamente',
-      document
+      document: updated
     });
   } catch (error) {
     console.error('Error al actualizar documento:', error);
@@ -291,12 +264,8 @@ exports.deleteDocument = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId, documentId } = req.params;
 
-    const document = await ClientDocument.findOne({
-      where: {
-        documentId,
-        clientId,
-        tenantId
-      }
+    const document = await prisma.client_documents.findFirst({
+      where: { document_id: parseInt(documentId), client_id: parseInt(clientId), tenant_id: tenantId }
     });
 
     if (!document) {
@@ -306,13 +275,13 @@ exports.deleteDocument = async (req, res) => {
     }
 
     // Verificar que no sea el único documento primario
-    if (document.isPrimary) {
-      const otherDocs = await ClientDocument.count({
+    if (document.is_primary) {
+      const otherDocs = await prisma.client_documents.count({
         where: {
-          clientId,
-          documentType: document.documentType,
-          tenantId,
-          documentId: { [Op.ne]: documentId }
+          client_id: parseInt(clientId),
+          document_type: document.document_type,
+          tenant_id: tenantId,
+          document_id: { not: parseInt(documentId) },
         }
       });
 
@@ -325,9 +294,9 @@ exports.deleteDocument = async (req, res) => {
     }
 
     // Soft delete
-    await document.destroy();
+    await prisma.client_documents.delete({ where: { document_id: parseInt(documentId) } });
 
-    console.log(`🗑️ Documento eliminado: ${document.documentCode} ${document.number}`);
+    console.log(`🗑️ Documento eliminado: ${document.document_code} ${document.number}`);
 
     return res.status(200).json({
       message: 'Documento eliminado exitosamente'
@@ -350,12 +319,8 @@ exports.verifyDocument = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId, documentId } = req.params;
 
-    const document = await ClientDocument.findOne({
-      where: {
-        documentId,
-        clientId,
-        tenantId
-      }
+    const document = await prisma.client_documents.findFirst({
+      where: { document_id: parseInt(documentId), client_id: parseInt(clientId), tenant_id: tenantId }
     });
 
     if (!document) {
@@ -364,13 +329,16 @@ exports.verifyDocument = async (req, res) => {
       });
     }
 
-    await document.verify();
+    const updated = await prisma.client_documents.update({
+      where: { document_id: parseInt(documentId) },
+      data: { is_verified: true },
+    });
 
-    console.log(`✅ Documento verificado: ${document.documentCode} ${document.number}`);
+    console.log(`✅ Documento verificado: ${document.document_code} ${document.number}`);
 
     return res.status(200).json({
       message: 'Documento verificado exitosamente',
-      document
+      document: updated
     });
   } catch (error) {
     console.error('Error al verificar documento:', error);
@@ -390,12 +358,8 @@ exports.setPrimaryDocument = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId, documentId } = req.params;
 
-    const document = await ClientDocument.findOne({
-      where: {
-        documentId,
-        clientId,
-        tenantId
-      }
+    const document = await prisma.client_documents.findFirst({
+      where: { document_id: parseInt(documentId), client_id: parseInt(clientId), tenant_id: tenantId }
     });
 
     if (!document) {
@@ -404,13 +368,26 @@ exports.setPrimaryDocument = async (req, res) => {
       });
     }
 
-    await document.setPrimary();
+    // Desmarcar otros del mismo tipo
+    await prisma.client_documents.updateMany({
+      where: {
+        client_id: parseInt(clientId),
+        document_type: document.document_type,
+        tenant_id: tenantId,
+        document_id: { not: parseInt(documentId) },
+      },
+      data: { is_primary: false },
+    });
+    const updated = await prisma.client_documents.update({
+      where: { document_id: parseInt(documentId) },
+      data: { is_primary: true },
+    });
 
-    console.log(`⭐ Documento marcado como primario: ${document.documentCode} ${document.number}`);
+    console.log(`⭐ Documento marcado como primario: ${document.document_code} ${document.number}`);
 
     return res.status(200).json({
       message: 'Documento marcado como primario',
-      document
+      document: updated
     });
   } catch (error) {
     console.error('Error al marcar documento como primario:', error);
@@ -430,12 +407,12 @@ exports.getPrimaryDocument = async (req, res) => {
     const { tenantId } = req.user;
     const { clientId, documentType } = req.params;
 
-    const document = await ClientDocument.findOne({
+    const document = await prisma.client_documents.findFirst({
       where: {
-        clientId,
-        tenantId,
-        documentType,
-        isPrimary: true
+        client_id: parseInt(clientId),
+        tenant_id: tenantId,
+        document_type: documentType,
+        is_primary: true,
       }
     });
 

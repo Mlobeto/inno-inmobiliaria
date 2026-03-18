@@ -14,4 +14,7 @@ config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, '../shared/node_modules'),
 ];
 
+// Soporte para CSS de NativeWind
+config.resolver.sourceExts = [...(config.resolver.sourceExts || []), 'css'];
+
 module.exports = config;

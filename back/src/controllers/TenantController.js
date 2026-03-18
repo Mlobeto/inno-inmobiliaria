@@ -1,5 +1,7 @@
-const { Tenant } = require("../data");
+const prisma = require("../utils/prismaClient");
 const cloudinaryHelper = require("../utils/cloudinaryHelper");
+const { invalidateTenantCache } = require('../utils/tenantCache');
+const logger = require('../utils/logger');
 
 /**
  * @route POST /api/tenant/signature
@@ -27,7 +29,7 @@ const uploadSignature = async (req, res) => {
     }
 
     // Obtener tenant
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
@@ -40,7 +42,7 @@ const uploadSignature = async (req, res) => {
       try {
         await cloudinaryHelper.deleteImage(tenant.signatureUrl);
       } catch (error) {
-        console.warn("No se pudo eliminar la firma anterior:", error.message);
+        logger.warn('No se pudo eliminar la firma anterior de Cloudinary', { tenantId, error: error.message });
       }
     }
 
@@ -58,9 +60,12 @@ const uploadSignature = async (req, res) => {
     );
 
     // Actualizar tenant con la nueva URL
-    await tenant.update({
-      signatureUrl: result.secure_url,
+    await prisma.tenants.update({
+      where: { tenantId },
+      data: { signatureUrl: result.secure_url },
     });
+
+    await invalidateTenantCache(tenantId, tenant.subdomain, tenant.custom_domain);
 
     res.status(200).json({
       success: true,
@@ -70,7 +75,7 @@ const uploadSignature = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error subiendo firma:", error);
+    logger.error('Error subiendo firma digital', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al subir la firma digital",
@@ -88,8 +93,9 @@ const getSignature = async (req, res) => {
   try {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
 
-    const tenant = await Tenant.findByPk(tenantId, {
-      attributes: ["signatureUrl"],
+    const tenant = await prisma.tenants.findUnique({
+      where: { tenantId },
+      select: { signatureUrl: true },
     });
 
     if (!tenant) {
@@ -106,7 +112,7 @@ const getSignature = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error obteniendo firma:", error);
+    logger.error('Error obteniendo firma digital', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al obtener la firma digital",
@@ -124,7 +130,7 @@ const deleteSignature = async (req, res) => {
   try {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
@@ -143,20 +149,23 @@ const deleteSignature = async (req, res) => {
     try {
       await cloudinaryHelper.deleteImage(tenant.signatureUrl);
     } catch (error) {
-      console.warn("No se pudo eliminar de Cloudinary:", error.message);
+      logger.warn('No se pudo eliminar firma de Cloudinary', { tenantId, error: error.message });
     }
 
     // Actualizar tenant
-    await tenant.update({
-      signatureUrl: null,
+    await prisma.tenants.update({
+      where: { tenantId },
+      data: { signatureUrl: null },
     });
+
+    await invalidateTenantCache(tenantId, tenant.subdomain, tenant.custom_domain);
 
     res.status(200).json({
       success: true,
       message: "Firma digital eliminada exitosamente",
     });
   } catch (error) {
-    console.error("Error eliminando firma:", error);
+    logger.error('Error eliminando firma digital', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al eliminar la firma digital",
@@ -174,23 +183,24 @@ const getTenantInfo = async (req, res) => {
   try {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
 
-    const tenant = await Tenant.findByPk(tenantId, {
-      attributes: [
-        "tenantId",
-        "businessName",
-        "cuit",
-        "subdomain",
-        "email",
-        "phone",
-        "address",
-        "logo",
-        "signatureUrl",
-        "plan",
-        "status",
-        "maxAgents",
-        "maxProperties",
-        "features",
-      ],
+    const tenant = await prisma.tenants.findUnique({
+      where: { tenantId },
+      select: {
+        tenantId: true,
+        businessName: true,
+        cuit: true,
+        subdomain: true,
+        email: true,
+        phone: true,
+        address: true,
+        logo: true,
+        signatureUrl: true,
+        plan: true,
+        status: true,
+        maxAgents: true,
+        maxProperties: true,
+        features: true,
+      },
     });
 
     if (!tenant) {
@@ -201,7 +211,7 @@ const getTenantInfo = async (req, res) => {
     }
 
     // Normalizar hasLanding desde landingPage
-    const tenantData = tenant.toJSON();
+    const tenantData = tenant;
     const normalizedFeatures = {
       ...tenantData.features,
       hasLanding: tenantData.features?.landingPage || false
@@ -215,7 +225,7 @@ const getTenantInfo = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error obteniendo info del tenant:", error);
+    logger.error('Error obteniendo info del tenant', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al obtener información del tenant",
@@ -234,7 +244,7 @@ const updateTenantInfo = async (req, res) => {
     const { tenantId } = req.user; // Obtener tenantId del token JWT
     const { businessName, email, phone, address, logo } = req.body;
 
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
       return res.status(404).json({
         success: false,
@@ -242,21 +252,26 @@ const updateTenantInfo = async (req, res) => {
       });
     }
 
-    await tenant.update({
-      businessName: businessName || tenant.businessName,
-      email: email || tenant.email,
-      phone: phone || tenant.phone,
-      address: address || tenant.address,
-      logo: logo || tenant.logo,
+    const updated = await prisma.tenants.update({
+      where: { tenantId },
+      data: {
+        businessName: businessName || tenant.businessName,
+        email: email || tenant.email,
+        phone: phone || tenant.phone,
+        address: address || tenant.address,
+        logo: logo || tenant.logo,
+      },
     });
+
+    await invalidateTenantCache(tenantId, tenant.subdomain, tenant.custom_domain);
 
     res.status(200).json({
       success: true,
       message: "Información actualizada exitosamente",
-      data: tenant,
+      data: updated,
     });
   } catch (error) {
-    console.error("Error actualizando tenant:", error);
+    logger.error('Error actualizando info del tenant', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al actualizar información",
@@ -293,11 +308,8 @@ const checkSubdomainAvailability = async (req, res) => {
     }
 
     // Verificar si el subdominio ya existe (excluyendo el tenant actual)
-    const existingTenant = await Tenant.findOne({
-      where: {
-        subdomain,
-        tenantId: { [require('sequelize').Op.ne]: tenantId }
-      }
+    const existingTenant = await prisma.tenants.findFirst({
+      where: { subdomain, tenantId: { not: tenantId } },
     });
 
     const available = !existingTenant;
@@ -310,7 +322,7 @@ const checkSubdomainAvailability = async (req, res) => {
         : "Este subdominio ya está en uso",
     });
   } catch (error) {
-    console.error("Error verificando subdominio:", error);
+    logger.error('Error verificando disponibilidad de subdominio', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al verificar disponibilidad del subdominio",
@@ -346,7 +358,7 @@ const updateSubdomain = async (req, res) => {
     }
 
     // Obtener tenant
-    const tenant = await Tenant.findByPk(tenantId);
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
 
     if (!tenant) {
       return res.status(404).json({
@@ -359,11 +371,6 @@ const updateSubdomain = async (req, res) => {
     // Las features se guardan directamente en tenant.features al registrar
     const hasLanding = tenant.features?.landingPage || false;
     
-    console.log('🔍 Verificando landing:', {
-      tenantFeatures: tenant.features,
-      hasLanding
-    });
-    
     if (!hasLanding) {
       return res.status(403).json({
         success: false,
@@ -372,11 +379,8 @@ const updateSubdomain = async (req, res) => {
     }
 
     // Verificar si el subdominio ya existe (excluyendo el tenant actual)
-    const existingTenant = await Tenant.findOne({
-      where: {
-        subdomain,
-        tenantId: { [require('sequelize').Op.ne]: tenantId }
-      }
+    const existingTenant = await prisma.tenants.findFirst({
+      where: { subdomain, tenantId: { not: tenantId } },
     });
 
     if (existingTenant) {
@@ -387,18 +391,21 @@ const updateSubdomain = async (req, res) => {
     }
 
     // Actualizar subdominio
-    await tenant.update({ subdomain });
+    const oldSubdomain = tenant.subdomain;
+    await prisma.tenants.update({ where: { tenantId }, data: { subdomain } });
+
+    await invalidateTenantCache(tenantId, oldSubdomain, tenant.custom_domain);
 
     res.status(200).json({
       success: true,
       message: "Subdominio actualizado exitosamente",
       data: {
-        subdomain: tenant.subdomain,
+        subdomain,
         url: `${subdomain}.innoinmobiliaria.com`
       },
     });
   } catch (error) {
-    console.error("Error actualizando subdominio:", error);
+    logger.error('Error actualizando subdominio', { tenantId, error: error.message });
     res.status(500).json({
       success: false,
       message: "Error al actualizar el subdominio",
