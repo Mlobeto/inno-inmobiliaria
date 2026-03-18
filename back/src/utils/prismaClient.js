@@ -19,9 +19,9 @@ let _prisma = null;
 function getPrismaClient() {
   if (_prisma) return _prisma;
 
-  const connectionString = process.env.DB_DEPLOY;
+  const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DB_DEPLOY no está definida en las variables de entorno');
+    throw new Error('DATABASE_URL no está definida en las variables de entorno');
   }
 
   const adapter = new PrismaPg({ connectionString });
