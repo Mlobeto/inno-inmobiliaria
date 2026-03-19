@@ -7,23 +7,6 @@ datasource db {
   provider = "postgresql"
 }
 
-model Admins {
-  adminId   Int       @id @default(autoincrement())
-  tenantId  Int
-  username  String    @unique @db.VarChar(255)
-  password  String    @db.VarChar(255)
-  fullName  String?   @db.VarChar(255)
-  email     String?   @db.VarChar(255)
-  role      String?   @default("AGENT") @db.VarChar(50)
-  deletedAt DateTime? @db.Timestamptz(6)
-  createdAt DateTime  @db.Timestamptz(6)
-  updatedAt DateTime  @db.Timestamptz(6)
-  tenants   tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
-
-  @@index([role], map: "admins_role")
-  @@index([tenantId], map: "admins_tenant_id")
-}
-
 model ClientProperties {
   role       enum_ClientProperties_role
   clientId   Int
@@ -680,7 +663,6 @@ model tenants {
   updatedAt            DateTime               @db.Timestamptz(6)
   deletedAt            DateTime?              @db.Timestamptz(6)
   signatureUrl         String?                @db.VarChar(500)
-  Admins               Admins[]
   ClientProperties     ClientProperties[]
   Clients              Clients[]
   Garantors            Garantors[]

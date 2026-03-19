@@ -11,8 +11,16 @@ function buildStore(prefix) {
     return undefined;
   }
 
+  if (redisClient.status !== 'ready') {
+    logger.warn('Rate limiter usando memoria local (Redis no listo)', {
+      prefix,
+      status: redisClient.status,
+    });
+    return undefined;
+  }
+
   return new RedisStore({
-    client: redisClient,
+    sendCommand: (...args) => redisClient.call(...args),
     prefix,
   });
 }

@@ -11,7 +11,8 @@ function getRedisClient() {
     return redisClient;
   }
 
-  const redisEnabled = (process.env.REDIS_ENABLED ?? 'true').toLowerCase() !== 'false';
+  const defaultRedisEnabled = process.env.NODE_ENV === 'production' ? 'true' : 'false';
+  const redisEnabled = (process.env.REDIS_ENABLED ?? defaultRedisEnabled).toLowerCase() !== 'false';
   if (!redisEnabled) {
     logger.info('Redis deshabilitado por configuración (REDIS_ENABLED=false)');
     return null;
