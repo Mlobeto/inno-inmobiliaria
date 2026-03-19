@@ -10,6 +10,7 @@
     "build": "echo 'No build step needed'",
     "postinstall": "prisma generate",
     "seed": "node seedData.js",
+    "reset:production": "node scripts/reset-production-data-and-seed-admins.js",
     "prisma:pull": "prisma db pull",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
