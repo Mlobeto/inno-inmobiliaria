@@ -10,6 +10,12 @@ function getRedisClient() {
   if (redisClient) {
     return redisClient;
   }
+
+  const redisEnabled = (process.env.REDIS_ENABLED ?? 'true').toLowerCase() !== 'false';
+  if (!redisEnabled) {
+    logger.info('Redis deshabilitado por configuración (REDIS_ENABLED=false)');
+    return null;
+  }
   
   const redisUrl = process.env.REDIS_URL || (process.env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : null);
 
@@ -21,7 +27,8 @@ function getRedisClient() {
   redisClient = new Redis(redisUrl, {
     retryStrategy(times) {
       if (times > 5) {
-        logger.error('Redis no disponible: se detienen reintentos automáticos');
+        const logLevel = process.env.NODE_ENV === 'production' ? 'error' : 'warn';
+        logger[logLevel]('Redis no disponible: se detienen reintentos automáticos');
         return null;
       }
 
@@ -36,7 +43,8 @@ function getRedisClient() {
   });
   
   redisClient.on('error', (error) => {
-    logger.error('Redis connection error', {
+    const logLevel = process.env.NODE_ENV === 'production' ? 'error' : 'warn';
+    logger[logLevel]('Redis connection error', {
       error: error.message,
       stack: error.stack,
     });
