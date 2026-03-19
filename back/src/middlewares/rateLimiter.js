@@ -3,15 +3,26 @@ const { RedisStore } = require('rate-limit-redis');
 const { getRedisClient } = require('../utils/redis');
 const logger = require('../utils/logger');
 
+const redisClient = getRedisClient();
+
+function buildStore(prefix) {
+  if (!redisClient) {
+    logger.warn('Rate limiter usando memoria local (Redis no disponible)', { prefix });
+    return undefined;
+  }
+
+  return new RedisStore({
+    client: redisClient,
+    prefix,
+  });
+}
+
 /**
  * Rate limiter global (por IP)
  * Previene abuso general del API
  */
 const globalLimiter = rateLimit({
-  store: new RedisStore({
-    client: getRedisClient(),
-    prefix: 'rl:global:',
-  }),
+  store: buildStore('rl:global:'),
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 1000, // 1000 requests por IP cada 15 minutos
   message: {
@@ -41,10 +52,7 @@ const globalLimiter = rateLimit({
  * Límites dinámicos según el plan del tenant
  */
 const tenantLimiter = rateLimit({
-  store: new RedisStore({
-    client: getRedisClient(),
-    prefix: 'rl:tenant:',
-  }),
+  store: buildStore('rl:tenant:'),
   windowMs: 15 * 60 * 1000, // 15 minutos
   
   // Límites dinámicos según plan
@@ -104,10 +112,7 @@ const tenantLimiter = rateLimit({
  * (Login, registro, recuperación de contraseña)
  */
 const authLimiter = rateLimit({
-  store: new RedisStore({
-    client: getRedisClient(),
-    prefix: 'rl:auth:',
-  }),
+  store: buildStore('rl:auth:'),
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // Solo 5 intentos cada 15 minutos
   skipSuccessfulRequests: true, // No contar requests exitosos
@@ -138,10 +143,7 @@ const authLimiter = rateLimit({
  * Rate limiter para endpoints de integración (webhooks, etc.)
  */
 const webhookLimiter = rateLimit({
-  store: new RedisStore({
-    client: getRedisClient(),
-    prefix: 'rl:webhook:',
-  }),
+  store: buildStore('rl:webhook:'),
   windowMs: 1 * 60 * 1000, // 1 minuto
   max: 100, // 100 webhooks por minuto
   
@@ -173,10 +175,7 @@ const webhookLimiter = rateLimit({
  * Rate limiter para uploads (más estricto)
  */
 const uploadLimiter = rateLimit({
-  store: new RedisStore({
-    client: getRedisClient(),
-    prefix: 'rl:upload:',
-  }),
+  store: buildStore('rl:upload:'),
   windowMs: 1 * 60 * 1000, // 1 minuto
   max: 10, // Máximo 10 uploads por minuto
   

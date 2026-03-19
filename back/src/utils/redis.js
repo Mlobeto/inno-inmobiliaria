@@ -11,11 +11,21 @@ function getRedisClient() {
     return redisClient;
   }
   
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL || (process.env.NODE_ENV !== 'production' ? 'redis://localhost:6379' : null);
+
+  if (!redisUrl) {
+    logger.warn('Redis deshabilitado: REDIS_URL no está configurada');
+    return null;
+  }
   
   redisClient = new Redis(redisUrl, {
     retryStrategy(times) {
-      const delay = Math.min(times * 50, 2000);
+      if (times > 5) {
+        logger.error('Redis no disponible: se detienen reintentos automáticos');
+        return null;
+      }
+
+      const delay = Math.min(times * 200, 2000);
       return delay;
     },
     maxRetriesPerRequest: 3,
