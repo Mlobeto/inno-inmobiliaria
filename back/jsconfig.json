@@ -2,8 +2,17 @@
   "compilerOptions": {
     "checkJs": false,
     "module": "commonjs",
-    "target": "ES2020"
+    "target": "ES2020",
+    "moduleResolution": "node",
+    "types": ["node"],
+    "skipLibCheck": true
   },
-  "include": ["src/**/*", "scripts/**/*", "index.js", "*.js"],
-  "exclude": ["node_modules", "prisma"]
+  "include": [
+    "src/**/*",
+    "scripts/**/*",
+    "index.js",
+    "*.js",
+    "node_modules/@types/node/index.d.ts"
+  ],
+  "exclude": ["prisma"]
 }

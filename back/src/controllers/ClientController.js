@@ -7,7 +7,41 @@ exports.createClient = async (req, res) => {
         console.log("POST /client - Datos recibidos:", req.body);
         console.log("POST /client - TenantId:", tenantId);
         
-        const { cuil, ...clientData } = req.body;
+        const { cuil, codigoPostal, codigo_postal, ...clientData } = req.body;
+        const normalizedCodigoPostal = codigo_postal ?? codigoPostal;
+        const normalizedEmail = typeof clientData.email === 'string' ? clientData.email.trim().toLowerCase() : clientData.email;
+        if (normalizedEmail !== undefined) {
+            clientData.email = normalizedEmail;
+        }
+
+        const uniqueFilters = [];
+        if (cuil) uniqueFilters.push({ cuil });
+        if (normalizedEmail) uniqueFilters.push({ email: normalizedEmail });
+
+        if (uniqueFilters.length > 0) {
+            const existingClient = await prisma.Clients.findFirst({
+                where: { OR: uniqueFilters },
+                select: {
+                    idClient: true,
+                    tenantId: true,
+                    cuil: true,
+                    email: true,
+                    deletedAt: true,
+                },
+            });
+
+            if (existingClient) {
+                const duplicatedField = existingClient.cuil === cuil ? 'cuil' : 'email';
+                return res.status(409).json({
+                    error: `Ya existe un cliente con ese ${duplicatedField}`,
+                    duplicatedField,
+                    duplicatedValue: duplicatedField === 'cuil' ? cuil : normalizedEmail,
+                    existingClientId: existingClient.idClient,
+                    existingTenantId: existingClient.tenantId,
+                    isSoftDeleted: !!existingClient.deletedAt,
+                });
+            }
+        }
         
         const newClient = await prisma.$transaction(async tx => {
             // 1. Crear el cliente
@@ -15,6 +49,7 @@ exports.createClient = async (req, res) => {
                 data: {
                     ...clientData,
                     cuil,
+                    ...(normalizedCodigoPostal !== undefined ? { codigo_postal: normalizedCodigoPostal } : {}),
                     tenantId,
                     migrated_to_documents: true,
                     createdAt: new Date(),
@@ -55,6 +90,14 @@ exports.createClient = async (req, res) => {
         res.status(201).json(newClient);
     } catch (error) {
         console.error("POST /client - Error al crear cliente:", error);
+
+        if (error?.code === 'P2002') {
+            return res.status(409).json({
+                error: 'Ya existe un cliente con email o CUIL duplicado',
+                details: error.message,
+            });
+        }
+
         res.status(500).json({ error: 'Error al crear el cliente', details: error.message });
     }
 };

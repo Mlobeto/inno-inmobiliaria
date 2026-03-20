@@ -1,8 +1,9 @@
+require('dotenv').config();
+
 const app = require('./src/app.js');
 const prisma = require('./src/utils/prismaClient');
 const { PORT } = require('./src/config/envs.js');
 const logger = require('./src/utils/logger');
-require('dotenv').config();
 
 const startServer = async () => {
   try {
