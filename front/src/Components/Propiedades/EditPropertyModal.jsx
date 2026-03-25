@@ -45,7 +45,9 @@ const EditPropertyModal = ({ property, onClose }) => {
     socio: '',
     plantType: '',
     plantQuantity: '',
-    requisito: ''
+    requisito: '',
+    rentalType: 'TRADICIONAL',
+    minStayDays: '',
   });
   
   const [loading, setLoading] = useState(false);
@@ -78,7 +80,9 @@ const EditPropertyModal = ({ property, onClose }) => {
         socio: property.socio || '',
         plantType: property.plantType || '',
         plantQuantity: property.plantQuantity || '',
-        requisito: property.requisito || ''
+        requisito: property.requisito || '',
+        rentalType: property.rentalType || 'TRADICIONAL',
+        minStayDays: property.minStayDays || '',
       });
     }
   }, [property]);
@@ -217,6 +221,40 @@ const EditPropertyModal = ({ property, onClose }) => {
                     <option value="alquiler">Alquiler</option>
                   </select>
                 </div>
+
+                {formData.type === 'alquiler' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Modalidad de Alquiler
+                    </label>
+                    <select
+                      name="rentalType"
+                      value={formData.rentalType}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="TRADICIONAL">Alquiler Tradicional</option>
+                      <option value="TEMPORAL">Alquiler Temporal (Turismo)</option>
+                    </select>
+                  </div>
+                )}
+
+                {formData.type === 'alquiler' && formData.rentalType === 'TEMPORAL' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estadía Mínima (días)
+                    </label>
+                    <input
+                      type="number"
+                      name="minStayDays"
+                      value={formData.minStayDays}
+                      onChange={handleChange}
+                      min="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Ej: 2"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

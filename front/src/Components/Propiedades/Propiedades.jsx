@@ -1,8 +1,12 @@
-/* eslint-disable no-unused-vars */
 import { useState, useEffect, useMemo } from "react";
 import { useGetAllClientsQuery, useCreatePropertyMutation } from '@shared/redux';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import { toast } from 'react-toastify';
+import {
+  getLegalStatusBadgeConfig,
+  getLegalStatusOptionsByOperationType,
+  isLegalStatusValidForOperationType,
+} from './legalStatus';
 import {
   loadCloudinaryScript,
   openCloudinaryWidget,
@@ -39,7 +43,7 @@ const CreateProperty = () => {
     ciudad: "",
     codigo_postal: "",
     city: "",
-    type: "",
+    operationType: "",
     typeProperty: "",
     price: "",
     precioReferencia: "",
@@ -48,7 +52,7 @@ const CreateProperty = () => {
     comision: "",
     isAvailable: true,
     description: "",
-    escritura: "",
+    legalStatus: "",
     matriculaOPadron: "", // Nuevo campo para matrícula o padrón
     frente: "", // Nuevo campo para frente (solo lotes)
     profundidad: "", // Nuevo campo para profundidad (solo lotes)
@@ -65,10 +69,21 @@ const CreateProperty = () => {
     superficieTotal: "",
     superficieCubierta: "",
     requisito: "",
+    rentalType: "TRADICIONAL",
+    minStayDays: "",
   });
   const [showPdfButton, setShowPdfButton] = useState(false);
-  const [selectedProvincia, setSelectedProvincia] = useState("");
   const [availableCiudades, setAvailableCiudades] = useState([]);
+
+  const legalStatusOptions = useMemo(
+    () => getLegalStatusOptionsByOperationType(formData.operationType),
+    [formData.operationType]
+  );
+
+  const legalStatusBadge = useMemo(
+    () => getLegalStatusBadgeConfig(formData.legalStatus),
+    [formData.legalStatus]
+  );
 
   // Ciudades disponibles basadas en la provincia seleccionada
   useMemo(() => {
@@ -109,9 +124,20 @@ const CreateProperty = () => {
       return;
     }
     
-    // Si cambia el tipo a "alquiler" y el campo requisito está vacío, cargar la plantilla
-    if (name === "type" && value === "alquiler" && !formData.requisito) {
-      const plantillaRequisito = `REQUISITOS PARA ALQUILAR
+    // Si cambia el tipo de operación y el estado legal queda inválido, resetear legalStatus
+    if (name === "operationType") {
+      const shouldResetLegalStatus =
+        formData.legalStatus &&
+        !isLegalStatusValidForOperationType(value, formData.legalStatus);
+
+      const nextState = {
+        ...formData,
+        [name]: processedValue,
+      };
+
+      // Si cambia a alquiler/rent y el campo requisito está vacío, cargar plantilla
+      if (value === "rent" && !formData.requisito) {
+        const plantillaRequisito = `REQUISITOS PARA ALQUILAR
 
 1. Fotocopia D.N.I./ CUIL/CUIT, solicitante/s y garante/s, domicilio y teléfono de los mismos, sino es del dominio del documento electrónico.
 
@@ -139,18 +165,37 @@ Correo electrónico:
 10. No se pide mes de depósito.
 
 11. Reserva con seña 50% del monto del alquiler, validez 7 días hábiles.`;
-      
-      setFormData({
-        ...formData,
-        [name]: processedValue,
-        requisito: plantillaRequisito
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: processedValue,
-      });
+
+        nextState.requisito = plantillaRequisito;
+      }
+
+      if (shouldResetLegalStatus) {
+        nextState.legalStatus = "";
+      }
+
+      setFormData(nextState);
+      return;
     }
+
+    // Compatibilidad temporal por si llega el campo legacy
+    if (name === "type") {
+      const mappedOperationType = value === "venta" ? "sale" : value === "alquiler" ? "rent" : "";
+      const shouldResetLegalStatus =
+        formData.legalStatus &&
+        !isLegalStatusValidForOperationType(mappedOperationType, formData.legalStatus);
+
+      setFormData({
+        ...formData,
+        operationType: mappedOperationType,
+        legalStatus: shouldResetLegalStatus ? "" : formData.legalStatus,
+      });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      [name]: processedValue,
+    });
   };
 
   const handleClientSelect = (e) => {
@@ -173,6 +218,8 @@ Correo electrónico:
       // Preparar datos para el backend (mapear campos nuevos a campos legacy)
       const dataToSend = {
         ...formData,
+        type: formData.operationType === 'sale' ? 'venta' : formData.operationType === 'rent' ? 'alquiler' : '',
+        legalStatus: formData.legalStatus,
         city: formData.ciudad, // Mapear ciudad a city (campo legacy requerido por backend)
         neighborhood: formData.neighborhood || "Sin especificar", // Asegurar que no esté vacío
       };
@@ -194,7 +241,7 @@ Correo electrónico:
         ciudad: "",
         codigo_postal: "",
         city: "",
-        type: "",
+        operationType: "",
         typeProperty: "",
         price: "",
         precioReferencia: "",
@@ -203,7 +250,7 @@ Correo electrónico:
         comision: "",
         isAvailable: true,
         description: "",
-        escritura: "",
+        legalStatus: "",
         matriculaOPadron: "",
         frente: "",
         profundidad: "",
@@ -220,6 +267,8 @@ Correo electrónico:
         superficieTotal: "",
         superficieCubierta: "",
         requisito: "",
+        rentalType: "TRADICIONAL",
+        minStayDays: "",
       });
       
       // Navegar al panel de propiedades
@@ -232,12 +281,12 @@ Correo electrónico:
   };
   
   useEffect(() => {
-    if (formData.type === "venta") {
+    if (formData.operationType === "sale") {
       setShowPdfButton(true); // Muestra el botón si es una propiedad de venta
     } else {
       setShowPdfButton(false); // No muestra el botón si no es de venta
     }
-  }, [formData.type]);
+  }, [formData.operationType]);
 
   if (clientsLoading) {
     return <div>Cargando clientes...</div>;
@@ -409,8 +458,8 @@ Correo electrónico:
                   >
                     <option value="" className="bg-slate-800">Seleccione una provincia</option>
                     {PROVINCIAS_ARGENTINA.map((prov) => (
-                      <option key={prov.id} value={prov.id} className="bg-slate-800">
-                        {prov.nombre}
+                      <option key={prov.id} value={String(prov.id)} className="bg-slate-800">
+                        {prov.name}
                       </option>
                     ))}
                   </select>
@@ -465,21 +514,59 @@ Correo electrónico:
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
-                  <label htmlFor="type" className="block text-slate-300 font-medium mb-2">
+                  <label htmlFor="operationType" className="block text-slate-300 font-medium mb-2">
                     Tipo de Transacción *
                   </label>
                   <select
-                    id="type"
-                    name="type"
-                    value={formData.type}
+                    id="operationType"
+                    name="operationType"
+                    value={formData.operationType}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
                   >
                     <option value="" className="bg-slate-800">Seleccione</option>
-                    <option value="alquiler" className="bg-slate-800">Alquiler</option>
-                    <option value="venta" className="bg-slate-800">Venta</option>
+                    <option value="rent" className="bg-slate-800">Alquiler</option>
+                    <option value="sale" className="bg-slate-800">Venta</option>
                   </select>
                 </div>
+
+                {/* Tipo de alquiler: solo cuando operationType es rent */}
+                {formData.operationType === "rent" && (
+                  <div>
+                    <label htmlFor="rentalType" className="block text-slate-300 font-medium mb-2">
+                      Modalidad de Alquiler *
+                    </label>
+                    <select
+                      id="rentalType"
+                      name="rentalType"
+                      value={formData.rentalType}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                    >
+                      <option value="TRADICIONAL" className="bg-slate-800">Alquiler Tradicional</option>
+                      <option value="TEMPORAL" className="bg-slate-800">Alquiler Temporal (Turismo/Corto plazo)</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Días mínimos: solo para alquiler temporal */}
+                {formData.operationType === "rent" && formData.rentalType === "TEMPORAL" && (
+                  <div>
+                    <label htmlFor="minStayDays" className="block text-slate-300 font-medium mb-2">
+                      Estadía Mínima (días)
+                    </label>
+                    <input
+                      type="number"
+                      id="minStayDays"
+                      name="minStayDays"
+                      value={formData.minStayDays}
+                      onChange={handleChange}
+                      min="1"
+                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                      placeholder="Ej: 2"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="typeProperty" className="block text-slate-300 font-medium mb-2">
@@ -712,23 +799,32 @@ Correo electrónico:
                 </div>
 
                 <div>
-                  <label htmlFor="escritura" className="block text-slate-300 font-medium mb-2">
-                    Estado de Escritura
+                  <label htmlFor="legalStatus" className="block text-slate-300 font-medium mb-2">
+                    Estado Legal *
                   </label>
                   <select
-                    id="escritura"
-                    name="escritura"
-                    value={formData.escritura}
+                    id="legalStatus"
+                    name="legalStatus"
+                    value={formData.legalStatus}
                     onChange={handleChange}
+                    disabled={!formData.operationType}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                    required
                   >
-                    <option value="" className="bg-slate-800">Seleccione</option>
-                    <option value="prescripcion en tramite" className="bg-slate-800">Prescripción en Trámite</option>
-                    <option value="escritura" className="bg-slate-800">Escritura</option>
-                    <option value="prescripcion adjudicada" className="bg-slate-800">Prescripción Adjudicada</option>
-                    <option value="posesion" className="bg-slate-800">Posesión</option>
-                    <option value="sesión de derechos posesorios" className="bg-slate-800">Sesión de Derechos Posesorios</option>
+                    <option value="" className="bg-slate-800">
+                      {formData.operationType ? 'Seleccione estado legal' : 'Primero seleccione tipo de transacción'}
+                    </option>
+                    {legalStatusOptions.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-slate-800">
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
+                  {legalStatusBadge && (
+                    <span className={`mt-2 inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${legalStatusBadge.className}`}>
+                      Riesgo: {legalStatusBadge.label}
+                    </span>
+                  )}
                 </div>
 
                 {/* Campo Matrícula o Padrón */}
@@ -837,7 +933,7 @@ Correo electrónico:
                   </div>
 
                   {/* Campo Requisito - Solo para propiedades en alquiler */}
-                  {formData.type === "alquiler" && (
+                  {formData.operationType === "rent" && (
                     <div>
                       <label htmlFor="requisito" className="block text-slate-300 font-medium mb-2">
                         Requisitos de Alquiler

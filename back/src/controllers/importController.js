@@ -221,8 +221,51 @@ const importProperties = catchedAsync(async (req, res) => {
       });
     }
 
+    const normalizeLegalStatus = (value) => {
+      if (!value || typeof value !== 'string') return null;
+
+      const legacyMap = {
+        escritura: 'DEED',
+        'escritura en tramite': 'DEED_IN_PROCESS',
+        escritura_en_tramite: 'DEED_IN_PROCESS',
+        boleto: 'PURCHASE_AGREEMENT',
+        posesion: 'POSSESSION',
+        cesion_derechos: 'ASSIGNMENT_OF_RIGHTS',
+        'sesión de derechos posesorios': 'ASSIGNMENT_OF_RIGHTS',
+        herencia: 'INHERITANCE_IN_PROCESS',
+        fideicomiso: 'TRUST',
+        usucapion: 'ADVERSE_POSSESSION',
+        'prescripcion en tramite': 'ADVERSE_POSSESSION',
+        regularizacion: 'TITLE_REGULARIZATION',
+        'prescripcion adjudicada': 'TITLE_REGULARIZATION',
+        ph: 'HORIZONTAL_PROPERTY',
+        loteo: 'SUBDIVISION',
+      };
+
+      const normalized = value.toUpperCase();
+      const allowed = [
+        'DEED',
+        'DEED_IN_PROCESS',
+        'PURCHASE_AGREEMENT',
+        'POSSESSION',
+        'ASSIGNMENT_OF_RIGHTS',
+        'INHERITANCE_IN_PROCESS',
+        'TRUST',
+        'ADVERSE_POSSESSION',
+        'TITLE_REGULARIZATION',
+        'HORIZONTAL_PROPERTY',
+        'SUBDIVISION',
+      ];
+
+      if (allowed.includes(normalized)) {
+        return normalized;
+      }
+
+      return legacyMap[value.toLowerCase()] || null;
+    };
+
     // Validar estructura del archivo
-    const requiredColumns = ['address', 'type', 'typeProperty', 'price', 'comision', 'escritura'];
+    const requiredColumns = ['address', 'type', 'typeProperty', 'price', 'comision'];
     const firstRow = data[0];
     const missingColumns = requiredColumns.filter(col => !firstRow.hasOwnProperty(col));
     
@@ -246,7 +289,6 @@ const importProperties = catchedAsync(async (req, res) => {
     // Valores permitidos
     const validTypes = ['venta', 'alquiler'];
     const validTypeProperties = ['casa', 'departamento', 'duplex', 'finca', 'local', 'oficina', 'lote', 'terreno'];
-    const validEscrituras = ['prescripcion en tramite', 'escritura', 'prescripcion adjudicada', 'posesion'];
 
     // Procesar cada fila
     for (let i = 0; i < data.length; i++) {
@@ -277,8 +319,10 @@ const importProperties = catchedAsync(async (req, res) => {
           errors.push('Comisión debe ser un número entre 0 y 100');
         }
 
-        if (!row.escritura || !validEscrituras.includes(row.escritura)) {
-          errors.push(`Escritura debe ser: ${validEscrituras.join(', ')}`);
+        const rowLegalStatus = row.legalStatus || row.escritura;
+        const normalizedRowLegalStatus = normalizeLegalStatus(rowLegalStatus);
+        if (!rowLegalStatus || !normalizedRowLegalStatus) {
+          errors.push('Estado legal inválido. Use legalStatus (o escritura legacy) con un valor permitido.');
         }
 
         if (row.rooms && (isNaN(row.rooms) || Number(row.rooms) < 0)) {
@@ -317,7 +361,7 @@ const importProperties = catchedAsync(async (req, res) => {
           comision: Number(row.comision),
           isAvailable: row.isAvailable !== undefined ? Boolean(row.isAvailable) : true,
           description: row.description || null,
-          escritura: row.escritura,
+          legalStatus: normalizeLegalStatus(row.legalStatus || row.escritura),
           plantType: row.plantType || null,
           plantQuantity: row.plantQuantity ? Number(row.plantQuantity) : null,
           bathrooms: row.bathrooms ? Number(row.bathrooms) : null,

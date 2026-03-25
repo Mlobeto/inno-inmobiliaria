@@ -347,9 +347,11 @@ const CreateClientForm = () => {
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm appearance-none cursor-pointer"
                     required
                   >
-                    <option value="" className="bg-slate-800">Seleccionar provincia</option>
+                    <option value="" className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
+                      Seleccionar provincia
+                    </option>
                     {PROVINCIAS_ARGENTINA.map((prov) => (
-                      <option key={prov.id} value={prov.name} className="bg-slate-800">
+                      <option key={prov.id} value={prov.name} className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
                         {prov.name}
                       </option>
                     ))}
@@ -370,11 +372,11 @@ const CreateClientForm = () => {
                     required
                     disabled={!formData.provincia}
                   >
-                    <option value="" className="bg-slate-800">
+                    <option value="" className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
                       {formData.provincia ? 'Seleccionar ciudad' : 'Primero seleccione provincia'}
                     </option>
                     {cities.map((city, index) => (
-                      <option key={`${city}-${index}`} value={city} className="bg-slate-800">
+                      <option key={`${city}-${index}`} value={city} className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
                         {city}
                       </option>
                     ))}

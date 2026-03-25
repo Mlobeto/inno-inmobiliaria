@@ -19,7 +19,7 @@ const TenantLanding = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
-  const [filter, setFilter] = useState('all'); // all, venta, alquiler
+  const [filter, setFilter] = useState('all'); // all, venta, alquiler, temporal
 
   useEffect(() => {
     const fetchLandingData = async () => {
@@ -45,7 +45,10 @@ const TenantLanding = () => {
 
   const filteredProperties = data?.properties.filter(prop => {
     if (filter === 'all') return true;
-    return prop.type === filter;
+    if (filter === 'venta') return prop.type === 'venta';
+    if (filter === 'alquiler') return prop.type === 'alquiler' && prop.rentalType !== 'TEMPORAL';
+    if (filter === 'temporal') return prop.type === 'alquiler' && prop.rentalType === 'TEMPORAL';
+    return true;
   }) || [];
 
   if (loading) {
@@ -142,36 +145,46 @@ const TenantLanding = () => {
         </div>
 
         {/* Filtros */}
-        <div className="flex justify-center gap-4 mb-8">
+        <div className="flex flex-wrap justify-center gap-3 mb-8">
           <button
             onClick={() => setFilter('all')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'all'
-                ? 'bg-blue-500 text-white'
+                ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
                 : 'bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
-            Todas
+            Todas ({properties.length})
           </button>
           <button
             onClick={() => setFilter('venta')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'venta'
-                ? 'bg-purple-500 text-white'
+                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
                 : 'bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
-            En Venta
+            En Venta ({properties.filter(p => p.type === 'venta').length})
           </button>
           <button
             onClick={() => setFilter('alquiler')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'alquiler'
-                ? 'bg-green-500 text-white'
+                ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
                 : 'bg-white/5 text-slate-300 hover:bg-white/10'
             }`}
           >
-            En Alquiler
+            Alquiler ({properties.filter(p => p.type === 'alquiler' && p.rentalType !== 'TEMPORAL').length})
+          </button>
+          <button
+            onClick={() => setFilter('temporal')}
+            className={`px-6 py-2 rounded-lg font-medium transition ${
+              filter === 'temporal'
+                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+            }`}
+          >
+            Alquiler Temporal ({properties.filter(p => p.type === 'alquiler' && p.rentalType === 'TEMPORAL').length})
           </button>
         </div>
 
@@ -204,10 +217,24 @@ const TenantLanding = () => {
                   )}
                   {/* Badge de tipo */}
                   <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold text-white ${
-                    property.type === 'venta' ? 'bg-purple-500' : 'bg-green-500'
+                    property.type === 'venta'
+                      ? 'bg-purple-500'
+                      : property.rentalType === 'TEMPORAL'
+                        ? 'bg-amber-500'
+                        : 'bg-green-500'
                   }`}>
-                    {property.type === 'venta' ? 'VENTA' : 'ALQUILER'}
+                    {property.type === 'venta'
+                      ? 'VENTA'
+                      : property.rentalType === 'TEMPORAL'
+                        ? 'TEMPORAL'
+                        : 'ALQUILER'}
                   </div>
+                  {/* Badge días mínimos para temporal */}
+                  {property.rentalType === 'TEMPORAL' && property.minStayDays && (
+                    <div className="absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium bg-black/60 text-amber-300">
+                      Min. {property.minStayDays} {property.minStayDays === 1 ? 'día' : 'días'}
+                    </div>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -224,10 +251,10 @@ const TenantLanding = () => {
 
                   {/* Features */}
                   <div className="flex items-center gap-4 text-slate-300 text-sm mb-4">
-                    {property.features.bedrooms > 0 && (
+                    {property.features.rooms > 0 && (
                       <div className="flex items-center gap-1">
                         <IoBedOutline className="w-4 h-4" />
-                        <span>{property.features.bedrooms}</span>
+                        <span>{property.features.rooms}</span>
                       </div>
                     )}
                     {property.features.bathrooms > 0 && (
@@ -236,10 +263,10 @@ const TenantLanding = () => {
                         <span>{property.features.bathrooms}</span>
                       </div>
                     )}
-                    {property.features.surface > 0 && (
+                    {property.features.superficieTotal && (
                       <div className="flex items-center gap-1">
                         <IoExpandOutline className="w-4 h-4" />
-                        <span>{property.features.surface}m²</span>
+                        <span>{property.features.superficieTotal}</span>
                       </div>
                     )}
                   </div>
@@ -247,9 +274,16 @@ const TenantLanding = () => {
                   {/* Price */}
                   <div className="pt-3 border-t border-white/10">
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-emerald-400">
-                        {formatPrice(property.price, property.currency)}
-                      </span>
+                      <div>
+                        <span className="text-2xl font-bold text-emerald-400">
+                          {formatPrice(property.price)}
+                        </span>
+                        {property.type === 'alquiler' && (
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {property.rentalType === 'TEMPORAL' ? 'por noche/estadía' : 'por mes'}
+                          </p>
+                        )}
+                      </div>
                       <span className="text-blue-400 group-hover:translate-x-1 transition-transform">
                         Ver más →
                       </span>

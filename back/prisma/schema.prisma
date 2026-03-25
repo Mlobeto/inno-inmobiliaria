@@ -191,7 +191,7 @@ model Property {
   comision             Decimal                    @db.Decimal
   isAvailable          Boolean?                   @default(true)
   description          String?
-  escritura            enum_Property_escritura
+  legalStatus          enum_Property_legalStatus  @map("escritura")
   matriculaOPadron     String?                    @db.VarChar(255)
   frente               String?                    @db.VarChar(255)
   profundidad          String?                    @db.VarChar(255)
@@ -726,12 +726,18 @@ enum enum_PaymentReceipts_type {
   initial
 }
 
-enum enum_Property_escritura {
-  prescripcion_en_tramite       @map("prescripcion en tramite")
-  escritura
-  prescripcion_adjudicada       @map("prescripcion adjudicada")
-  posesion
-  sesi_n_de_derechos_posesorios @map("sesión de derechos posesorios")
+enum enum_Property_legalStatus {
+  DEED
+  DEED_IN_PROCESS
+  PURCHASE_AGREEMENT
+  POSSESSION
+  ASSIGNMENT_OF_RIGHTS
+  INHERITANCE_IN_PROCESS
+  TRUST
+  ADVERSE_POSSESSION
+  TITLE_REGULARIZATION
+  HORIZONTAL_PROPERTY
+  SUBDIVISION
 }
 
 enum enum_Property_type {

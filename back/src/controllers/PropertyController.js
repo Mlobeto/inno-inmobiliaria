@@ -1,6 +1,66 @@
 const prisma = require('../utils/prismaClient');
 const { logAudit } = require('../utils/audit');
 
+const OPERATION_TYPE_MAP = {
+  venta: 'venta',
+  alquiler: 'alquiler',
+  sale: 'venta',
+  rent: 'alquiler',
+};
+
+const LEGACY_LEGAL_STATUS_MAP = {
+  escritura: 'DEED',
+  'escritura en tramite': 'DEED_IN_PROCESS',
+  escritura_en_tramite: 'DEED_IN_PROCESS',
+  boleto: 'PURCHASE_AGREEMENT',
+  posesion: 'POSSESSION',
+  cesion_derechos: 'ASSIGNMENT_OF_RIGHTS',
+  'sesión de derechos posesorios': 'ASSIGNMENT_OF_RIGHTS',
+  herencia: 'INHERITANCE_IN_PROCESS',
+  fideicomiso: 'TRUST',
+  usucapion: 'ADVERSE_POSSESSION',
+  'prescripcion en tramite': 'ADVERSE_POSSESSION',
+  regularizacion: 'TITLE_REGULARIZATION',
+  'prescripcion adjudicada': 'TITLE_REGULARIZATION',
+  ph: 'HORIZONTAL_PROPERTY',
+  loteo: 'SUBDIVISION',
+};
+
+const VALID_LEGAL_STATUS = new Set([
+  'DEED',
+  'DEED_IN_PROCESS',
+  'PURCHASE_AGREEMENT',
+  'POSSESSION',
+  'ASSIGNMENT_OF_RIGHTS',
+  'INHERITANCE_IN_PROCESS',
+  'TRUST',
+  'ADVERSE_POSSESSION',
+  'TITLE_REGULARIZATION',
+  'HORIZONTAL_PROPERTY',
+  'SUBDIVISION',
+]);
+
+const normalizeOperationType = (value) => {
+  if (!value || typeof value !== 'string') return null;
+  return OPERATION_TYPE_MAP[value.toLowerCase()] || null;
+};
+
+const normalizeLegalStatus = (value) => {
+  if (!value || typeof value !== 'string') return null;
+
+  const upperValue = value.toUpperCase();
+  if (VALID_LEGAL_STATUS.has(upperValue)) {
+    return upperValue;
+  }
+
+  return LEGACY_LEGAL_STATUS_MAP[value.toLowerCase()] || null;
+};
+
+const addLegacyLegalStatus = (property) => ({
+  ...property,
+  escritura: property.legalStatus,
+});
+
 // POST: Crear una propiedad
 exports.createProperty = async (req, res) => {
     try {
@@ -9,33 +69,40 @@ exports.createProperty = async (req, res) => {
         neighborhood,
         city,
         type,
+        operationType,
         typeProperty,
         price,
         precioReferencia,
         images,
         comision,
+        legalStatus,
         escritura,
         matriculaOPadron,
         frente,
         profundidad,
         linkInstagram,
-        linkMaps, // ✅ Agregado
+        linkMaps,
         rooms,
         socio,
         inventory,
         superficieCubierta,
         superficieTotal,
+        rentalType,
+        minStayDays,
       } = req.body;
   
+      const normalizedOperationType = normalizeOperationType(operationType || type);
+      const normalizedLegalStatus = normalizeLegalStatus(legalStatus || escritura);
+
       // Validación básica - solo campos requeridos según el modelo
       if (
         !address ||
         !neighborhood ||
         !city ||
-        !type ||
+        !normalizedOperationType ||
         !typeProperty ||
         !price ||
-        !escritura ||
+        !normalizedLegalStatus ||
         !comision
       ) {
         return res.status(400).json({
@@ -70,13 +137,13 @@ exports.createProperty = async (req, res) => {
           address,
           neighborhood,
           city,
-          type,
+          type: normalizedOperationType,
           typeProperty,
           price: parseFloat(price),
           precioReferencia: precioReferencia ? parseFloat(precioReferencia) : null,
           images: images || [],
           comision: parseFloat(comision),
-          escritura,
+          legalStatus: normalizedLegalStatus,
           matriculaOPadron: matriculaOPadron || null,
           frente: frente || null,
           profundidad: profundidad || null,
@@ -94,6 +161,8 @@ exports.createProperty = async (req, res) => {
           superficieCubierta: superficieCubierta || null,
           superficieTotal: superficieTotal || null,
           requisito: req.body.requisito || null,
+          rentalType: rentalType || 'TRADICIONAL',
+          minStayDays: minStayDays ? parseInt(minStayDays, 10) : null,
         }
       });
 
@@ -123,7 +192,7 @@ exports.createProperty = async (req, res) => {
         newValues: { address: newProperty.address, type: newProperty.type, typeProperty: newProperty.typeProperty, price: newProperty.price },
         req,
       });
-      res.status(201).json(newProperty);
+      res.status(201).json(addLegacyLegalStatus(newProperty));
     } catch (error) {
       console.error("Error al crear propiedad:", error);
       res.status(500).json({
@@ -212,6 +281,29 @@ exports.updateProperty = async (req, res) => {
     if (req.body.requisito !== undefined) {
       cleanedData.requisito = req.body.requisito || null;
     }
+
+    const normalizedOperationType = normalizeOperationType(cleanedData.operationType || cleanedData.type);
+    if ((cleanedData.operationType !== undefined || cleanedData.type !== undefined) && !normalizedOperationType) {
+      return res.status(400).json({
+        error: "Tipo de operación inválido",
+        details: "Use venta/alquiler o sale/rent",
+      });
+    }
+    if (normalizedOperationType) {
+      cleanedData.type = normalizedOperationType;
+    }
+    delete cleanedData.operationType;
+
+    const normalizedLegalStatus = normalizeLegalStatus(cleanedData.legalStatus || cleanedData.escritura);
+    if ((cleanedData.legalStatus !== undefined || cleanedData.escritura !== undefined) && !normalizedLegalStatus) {
+      return res.status(400).json({
+        error: "Estado legal inválido",
+      });
+    }
+    if (normalizedLegalStatus) {
+      cleanedData.legalStatus = normalizedLegalStatus;
+    }
+    delete cleanedData.escritura;
 
     const result = await prisma.Property.updateMany({ where: { propertyId: parseInt(propertyId), tenantId }, data: cleanedData });
 
@@ -347,6 +439,7 @@ exports.getFilteredProperties = async (req, res) => {
       plantQuantity,
       bathrooms,
       escritura,
+      legalStatus,
       comision,
       isAvailable,
       page = 1, // Página por defecto
@@ -376,8 +469,15 @@ exports.getFilteredProperties = async (req, res) => {
     if (planType) where.planType = planType;
     if (plantQuantity) where.plantQuantity = plantQuantity;
     if (bathrooms) where.bathrooms = bathrooms;
-    // Filtro por escritura
-    if (escritura) where.escritura = escritura;
+    const normalizedQueryLegalStatus = normalizeLegalStatus(legalStatus || escritura);
+    if (legalStatus || escritura) {
+      if (!normalizedQueryLegalStatus) {
+        return res.status(400).json({
+          error: "Estado legal inválido en filtros",
+        });
+      }
+      where.legalStatus = normalizedQueryLegalStatus;
+    }
     // Filtro por isAvailable, convirtiendo el string a booleano
     if (typeof isAvailable !== 'undefined') {
       where.isAvailable = isAvailable === 'true';
@@ -396,7 +496,7 @@ exports.getFilteredProperties = async (req, res) => {
       skip: offset,
     });
 
-    res.status(200).json(properties);
+    res.status(200).json(properties.map(addLegacyLegalStatus));
   } catch (error) {
     res.status(500).json({
       error: "Error al filtrar las propiedades",
@@ -426,6 +526,7 @@ exports.getAllProperties = async (req, res) => {
       const { ClientProperties, ...rest } = p;
       return {
         ...rest,
+        escritura: rest.legalStatus,
         Clients: ClientProperties.map(cp => ({ ...cp.Clients, ClientProperty: { role: cp.role } })),
       };
     });
@@ -474,6 +575,7 @@ exports.getPropertyById = async (req, res) => {
     const { ClientProperties, ...rest } = property;
     const formatted = {
       ...rest,
+      escritura: rest.legalStatus,
       Clients: ClientProperties.map(cp => ({ ...cp.Clients, ClientProperty: { role: cp.role } })),
     };
 
@@ -556,7 +658,7 @@ Estamos a tu entera disposición por dudas, precio o consultas.`;
       .replace(/{superficieCubierta}/g, property.superficieCubierta || 'N/A')
       .replace(/{descripcion}/g, propertyDescription)
       .replace(/{destacados}/g, property.highlights || '')
-      .replace(/{escritura}/g, property.escritura || '');
+      .replace(/{escritura}/g, property.legalStatus || '');
 
     // Si es finca, agregar información de plantas
     if (property.typeProperty === 'finca' && property.plantType) {

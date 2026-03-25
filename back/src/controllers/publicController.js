@@ -5,6 +5,18 @@ const prisma = require('../utils/prismaClient');
  * Landing pages de tenants con propiedades publicadas
  */
 
+const PROPERTY_TYPE_LABELS = {
+  casa: 'Casa', departamento: 'Departamento', duplex: 'Duplex',
+  finca: 'Finca', local: 'Local Comercial', lote: 'Lote',
+  oficina: 'Oficina', terreno: 'Terreno',
+};
+
+const buildPropertyTitle = (p) => {
+  const typeName = PROPERTY_TYPE_LABELS[p.typeProperty] || p.typeProperty || 'Propiedad';
+  const location = p.city || p.neighborhood || (p.address ? p.address.split(',')[0] : '');
+  return location ? `${typeName} en ${location}` : typeName;
+};
+
 /**
  * GET /api/public/:subdomain
  * Obtiene datos del tenant y propiedades publicadas en su landing
@@ -78,7 +90,7 @@ exports.getTenantLanding = async (req, res) => {
       tenant: {
         name: tenant.companyName,
         subdomain: tenant.subdomain,
-        logo: companySettings?.company_logo_url_url || null,
+        logo: companySettings?.company_logo_url || null,
         contact: {
           phone: companySettings?.company_phone || null,
           email: companySettings?.company_email || null,
@@ -88,28 +100,28 @@ exports.getTenantLanding = async (req, res) => {
       },
       properties: properties.map(p => ({
         id: p.propertyId,
-        title: p.title,
-        description: p.description?.substring(0, 150) + '...',
+        title: buildPropertyTitle(p),
+        description: p.description ? p.description.substring(0, 150) + '...' : null,
         type: p.type,
+        rentalType: p.rentalType || 'TRADICIONAL',
+        minStayDays: p.minStayDays || null,
+        typeProperty: p.typeProperty,
         price: p.price,
-        currency: p.currency,
         location: {
           address: p.address,
           neighborhood: p.neighborhood,
           city: p.city,
-          province: p.province,
-          country: p.country
         },
         features: {
-          bedrooms: p.bedrooms,
+          rooms: p.rooms,
           bathrooms: p.bathrooms,
-          garages: p.garages,
-          surface: p.surface,
-          coveredSurface: p.coveredSurface
+          superficieTotal: p.superficieTotal,
+          superficieCubierta: p.superficieCubierta,
         },
         images: p.images || [],
         mainImage: (p.images && p.images.length > 0) ? p.images[0] : null,
-        status: p.status
+        isAvailable: p.isAvailable,
+        highlights: p.highlights || null,
       })),
       pagination: {
         total: count,
@@ -187,42 +199,40 @@ exports.getPropertyDetail = async (req, res) => {
     res.json({
       property: {
         id: property.propertyId,
-        title: property.title,
+        title: buildPropertyTitle(property),
         description: property.description,
         type: property.type,
+        rentalType: property.rentalType || 'TRADICIONAL',
+        minStayDays: property.minStayDays || null,
+        typeProperty: property.typeProperty,
         price: property.price,
-        currency: property.currency,
         location: {
           address: property.address,
           neighborhood: property.neighborhood,
           city: property.city,
-          province: property.province,
-          country: property.country,
-          latitude: property.latitude,
-          longitude: property.longitude
         },
         features: {
-          bedrooms: property.bedrooms,
+          rooms: property.rooms,
           bathrooms: property.bathrooms,
-          garages: property.garages,
-          surface: property.surface,
-          coveredSurface: property.coveredSurface,
-          age: property.age,
-          orientation: property.orientation
+          superficieTotal: property.superficieTotal,
+          superficieCubierta: property.superficieCubierta,
+          frente: property.frente,
+          profundidad: property.profundidad,
         },
-        amenities: property.amenities || [],
         images: property.images || [],
-        status: property.status,
-        condition: property.condition
+        isAvailable: property.isAvailable,
+        highlights: property.highlights || null,
+        linkMaps: property.linkMaps || null,
+        linkInstagram: property.linkInstagram || null,
       },
       tenant: {
         name: tenant.companyName,
+        logo: companySettings?.company_logo_url || null,
         contact: {
           phone: companySettings?.company_phone || null,
           email: companySettings?.company_email || null,
           whatsapp: companySettings?.company_whatsapp || null
-        },
-        logo: companySettings?.company_logo || null
+        }
       }
     });
 

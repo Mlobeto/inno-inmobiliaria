@@ -7,7 +7,6 @@ import {
   IoPricetagOutline,
   IoBedOutline,
   IoWaterOutline,
-  IoCarOutline,
   IoExpandOutline,
   IoLogoWhatsapp,
   IoCallOutline,
@@ -60,7 +59,7 @@ const PropertyDetail = () => {
     const message = `Hola! Vi esta propiedad en ${tenant.name}:
 
 📍 ${property.location.address}
-💰 ${formatPrice(property.price, property.currency)}
+💰 ${formatPrice(property.price)}
 🏠 ${property.title}
 
 Me gustaría tener más información.`;
@@ -183,9 +182,17 @@ Me gustaría tener más información.`;
 
                   {/* Type Badge */}
                   <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-sm font-bold text-white ${
-                    property.type === 'venta' ? 'bg-purple-500' : 'bg-green-500'
+                    property.type === 'venta'
+                      ? 'bg-purple-500'
+                      : property.rentalType === 'TEMPORAL'
+                        ? 'bg-amber-500'
+                        : 'bg-green-500'
                   }`}>
-                    {property.type === 'venta' ? 'EN VENTA' : 'EN ALQUILER'}
+                    {property.type === 'venta'
+                      ? 'EN VENTA'
+                      : property.rentalType === 'TEMPORAL'
+                        ? 'ALQUILER TEMPORAL'
+                        : 'EN ALQUILER'}
                   </div>
                 </div>
               ) : (
@@ -231,11 +238,11 @@ Me gustaría tener más información.`;
 
               {/* Features Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                {property.features.bedrooms > 0 && (
+                {property.features.rooms > 0 && (
                   <div className="bg-white/5 rounded-lg p-4 text-center">
                     <IoBedOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{property.features.bedrooms}</p>
-                    <p className="text-sm text-slate-400">Dormitorios</p>
+                    <p className="text-2xl font-bold text-white">{property.features.rooms}</p>
+                    <p className="text-sm text-slate-400">Ambientes</p>
                   </div>
                 )}
                 {property.features.bathrooms > 0 && (
@@ -245,21 +252,30 @@ Me gustaría tener más información.`;
                     <p className="text-sm text-slate-400">Baños</p>
                   </div>
                 )}
-                {property.features.garages > 0 && (
-                  <div className="bg-white/5 rounded-lg p-4 text-center">
-                    <IoCarOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{property.features.garages}</p>
-                    <p className="text-sm text-slate-400">Cocheras</p>
-                  </div>
-                )}
-                {property.features.surface > 0 && (
+                {property.features.superficieCubierta && (
                   <div className="bg-white/5 rounded-lg p-4 text-center">
                     <IoExpandOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{property.features.surface}</p>
-                    <p className="text-sm text-slate-400">m² totales</p>
+                    <p className="text-xl font-bold text-white">{property.features.superficieCubierta}</p>
+                    <p className="text-sm text-slate-400">Sup. Cubierta</p>
+                  </div>
+                )}
+                {property.features.superficieTotal && (
+                  <div className="bg-white/5 rounded-lg p-4 text-center">
+                    <IoExpandOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                    <p className="text-xl font-bold text-white">{property.features.superficieTotal}</p>
+                    <p className="text-sm text-slate-400">Sup. Total</p>
                   </div>
                 )}
               </div>
+
+              {/* Info extra para alquiler temporal */}
+              {property.rentalType === 'TEMPORAL' && property.minStayDays && (
+                <div className="mb-6 p-4 bg-amber-500/10 border border-amber-400/20 rounded-lg">
+                  <p className="text-amber-300 text-sm font-medium">
+                    ⏱ Estadía mínima: {property.minStayDays} {property.minStayDays === 1 ? 'día' : 'días'}
+                  </p>
+                </div>
+              )}
 
               {/* Description */}
               {property.description && (
@@ -271,20 +287,11 @@ Me gustaría tener más información.`;
                 </div>
               )}
 
-              {/* Amenities */}
-              {property.amenities && property.amenities.length > 0 && (
+              {/* Destacados */}
+              {property.highlights && (
                 <div className="pt-6 border-t border-white/10">
-                  <h2 className="text-xl font-bold text-white mb-3">Comodidades</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {property.amenities.map((amenity, idx) => (
-                      <span 
-                        key={idx}
-                        className="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm"
-                      >
-                        {amenity}
-                      </span>
-                    ))}
-                  </div>
+                  <h2 className="text-xl font-bold text-white mb-3">Puntos Destacados</h2>
+                  <p className="text-slate-300 leading-relaxed">{property.highlights}</p>
                 </div>
               )}
             </div>
@@ -300,10 +307,12 @@ Me gustaría tener más información.`;
                   <span className="text-sm font-medium">Precio</span>
                 </div>
                 <p className="text-4xl font-bold text-white mb-1">
-                  {formatPrice(property.price, property.currency)}
+                  {formatPrice(property.price)}
                 </p>
                 {property.type === 'alquiler' && (
-                  <p className="text-sm text-emerald-300">Por mes</p>
+                  <p className="text-sm text-emerald-300">
+                    {property.rentalType === 'TEMPORAL' ? 'por noche/estadía' : 'por mes'}
+                  </p>
                 )}
               </div>
 
