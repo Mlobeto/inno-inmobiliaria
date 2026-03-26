@@ -177,11 +177,14 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
           {/* Fecha de expiración */}
           <div className="bg-gray-50 rounded-lg p-4">
             <p className="text-sm text-gray-600">
-              ⏰ <strong>Expira el:</strong> {new Date(createdTenant.expiresAt).toLocaleDateString('es-AR', {
-                day: '2-digit',
-                month: 'long',
-                year: 'numeric',
-              })}
+              ⏰ <strong>Expira el:</strong>{' '}
+              {createdTenant.expiresAt
+                ? new Date(createdTenant.expiresAt).toLocaleDateString('es-AR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                : '♾️ Permanente (sin vencimiento)'}
             </p>
           </div>
         </div>

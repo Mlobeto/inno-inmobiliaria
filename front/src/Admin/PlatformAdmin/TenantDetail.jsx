@@ -140,7 +140,7 @@ const TenantDetail = () => {
                 <div>
                   <p className="text-sm text-gray-600">Subdomain</p>
                   <a
-                    href={`https://${tenant.subdomain}.innoinmo.com`}
+                    href={`https://inno-inmobiliaria.vercel.app/${tenant.subdomain}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-semibold text-blue-600 hover:underline"

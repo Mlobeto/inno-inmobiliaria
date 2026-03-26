@@ -831,7 +831,7 @@ exports.createManualTenant = async (req, res) => {
               temporaryPassword: adminPassword,
             }
           : null,
-        loginUrl: `https://${subdomain}.innoinmo.com/login`,
+        loginUrl: `${process.env.FRONTEND_URL || 'https://inno-inmobiliaria.vercel.app'}/${subdomain}/login`,
         expiresAt: endDate,
       },
     });
