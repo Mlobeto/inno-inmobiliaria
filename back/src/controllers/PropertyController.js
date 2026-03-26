@@ -178,6 +178,8 @@ exports.createProperty = async (req, res) => {
             clientId: req.body.idClient,
             propertyId: newProperty.propertyId,
             role: req.body.role,
+            createdAt: new Date(),
+            updatedAt: new Date(),
           }
         });
 
