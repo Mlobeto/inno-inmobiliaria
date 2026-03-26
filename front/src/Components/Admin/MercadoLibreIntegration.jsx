@@ -213,7 +213,7 @@ const MercadoLibreIntegration = () => {
             <p className="font-medium mb-1">Requisitos</p>
             <ul className="list-disc list-inside space-y-1 text-gray-600 ml-2">
               <li>Tener una cuenta activa en MercadoLibre Argentina</li>
-              <li>Completar los datos de tu inmobiliaria en "Datos Generales"</li>
+              <li>Completar los datos de tu inmobiliaria en &quot;Datos Generales&quot;</li>
               <li>Las publicaciones pueden tener costos según el tipo de aviso</li>
             </ul>
           </div>
@@ -223,7 +223,7 @@ const MercadoLibreIntegration = () => {
         {!connectionStatus?.connected && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
             <p className="text-sm text-blue-800">
-              <strong>Nota:</strong> Al hacer clic en "Conectar Cuenta", serás redirigido a MercadoLibre 
+              <strong>Nota:</strong> Al hacer clic en &quot;Conectar Cuenta&quot;, serás redirigido a MercadoLibre 
               para autorizar el acceso. Una vez autorizado, podrás publicar tus propiedades.
             </p>
           </div>
@@ -240,7 +240,7 @@ const MercadoLibreIntegration = () => {
           <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
             <li>Ve a tu listado de <strong>Propiedades</strong></li>
             <li>Selecciona la propiedad que deseas publicar</li>
-            <li>Haz clic en el botón <strong>"Publicar en ML"</strong></li>
+            <li>Haz clic en el botón <strong>&quot;Publicar en ML&quot;</strong></li>
             <li>La propiedad se publicará automáticamente en tu cuenta de MercadoLibre</li>
           </ol>
         </div>

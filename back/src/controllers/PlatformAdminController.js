@@ -850,6 +850,23 @@ exports.createManualTenant = async (req, res) => {
       });
     }
 
+    // Pre-poblar company settings con los datos provistos en la creación
+    await prisma.admin_settings.create({
+      data: {
+        tenant_id: newTenant.tenantId,
+        company_name: businessName,
+        company_email: email,
+        company_phone: phone || '',
+        company_address: address || '',
+        company_cuit: generatedCuit,
+        company_registration: '',
+        company_city: '',
+        company_province: '',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
     res.status(201).json({
       success: true,
       message: 'Tenant creado exitosamente',

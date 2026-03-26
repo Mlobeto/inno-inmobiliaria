@@ -92,7 +92,7 @@ const tenancyMiddleware = async (req, res, next) => {
     }
 
     // Verificar que el tenant está activo
-    if (tenant.status !== 'ACTIVE' && tenant.status !== 'TRIAL') {
+    if (tenant.status !== 'active' && tenant.status !== 'trialing') {
       logger.warn('Tenant not active', {
         tenantId,
         status: tenant.status,

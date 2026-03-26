@@ -53,7 +53,6 @@ const ProfileCompletionGuard = ({ children }) => {
       const requiredFields = [
         'company_name',
         'company_cuit',
-        'company_registration',
         'company_address',
         'company_phone',
         'company_email'
