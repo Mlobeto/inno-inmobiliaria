@@ -22,6 +22,11 @@ const LoginAdmin = () => {
       // Ejecutar login mutation
       const result = await login({ username, password }).unwrap();
       
+      console.log('🔐 Login exitoso - Respuesta completa:', result);
+      console.log('🔐 Admin data:', result.admin);
+      console.log('🔐 Token:', result.token);
+      console.log('🔐 isPlatformAdmin:', result.isPlatformAdmin);
+
       // Guardar credenciales en Redux
       dispatch(setCredentials({
         token: result.token,
