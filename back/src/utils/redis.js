@@ -78,6 +78,8 @@ async function closeRedis() {
  */
 async function getJson(key) {
   const redis = getRedisClient();
+  if (!redis) return null;
+
   const value = await redis.get(key);
   
   if (!value) {
@@ -97,6 +99,8 @@ async function getJson(key) {
  */
 async function setJson(key, value, ttlSeconds = null) {
   const redis = getRedisClient();
+  if (!redis) return null;
+
   const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
   
   if (ttlSeconds) {
@@ -111,7 +115,8 @@ async function setJson(key, value, ttlSeconds = null) {
  */
 async function invalidatePattern(pattern) {
   const redis = getRedisClient();
-  
+  if (!redis) return 0;
+
   // SCAN es más eficiente que KEYS en producción
   const keys = [];
   let cursor = '0';
@@ -141,7 +146,8 @@ async function invalidatePattern(pattern) {
  */
 async function incrementWithTTL(key, ttlSeconds = 60) {
   const redis = getRedisClient();
-  
+  if (!redis) return null;
+
   const multi = redis.multi();
   multi.incr(key);
   multi.expire(key, ttlSeconds);
