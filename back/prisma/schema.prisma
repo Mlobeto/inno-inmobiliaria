@@ -206,8 +206,8 @@ model Property {
   superficieCubierta   String?                    @db.VarChar(255)
   superficieTotal      String?                    @db.VarChar(255)
   whatsappTemplate     String?                    @default("Gracias por ponerte en contacto con Quintero Lobeto Propiedades! Estamos encantados de poder ayudar. \n\n{descripcion}\n\nTe comento que estamos en lanzamiento de ofertas y este es el primero!\n\nPrecio: AR$ {precio}\nUbicación: {direccion}\n\nEstamos a tu entera disposición por dudas, precio o consultas.")
-  createdAt            DateTime                   @db.Timestamptz(6)
-  updatedAt            DateTime                   @db.Timestamptz(6)
+  createdAt            DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime                   @default(now()) @updatedAt @db.Timestamptz(6)
   deletedAt            DateTime?                  @db.Timestamptz(6)
   tenantId             Int
   agentId              Int?

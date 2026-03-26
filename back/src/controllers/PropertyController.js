@@ -163,6 +163,8 @@ exports.createProperty = async (req, res) => {
           requisito: req.body.requisito || null,
           rentalType: rentalType || 'TRADICIONAL',
           minStayDays: minStayDays ? parseInt(minStayDays, 10) : null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }
       });
 
