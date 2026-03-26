@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useGetAllClientsQuery, useCreatePropertyMutation } from '@shared/redux';
+import { useGetAllClientsQuery, useCreatePropertyMutation, useGetCurrentTenantQuery } from '@shared/redux';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import { toast } from 'react-toastify';
 import {
@@ -85,6 +85,8 @@ const CreateProperty = () => {
   // RTK Query hooks
   const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useGetAllClientsQuery();
   const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
+  const { data: tenantData } = useGetCurrentTenantQuery();
+  const tenantSubdomain = tenantData?.data?.subdomain || tenantData?.subdomain || 'default';
   
   const [formData, setFormData] = useState({
     address: "",
@@ -154,7 +156,7 @@ const CreateProperty = () => {
           ...prevFormData,
           images: [...prevFormData.images, uploadedImageUrl],
         }));
-      });
+      }, `inno-saas/${tenantSubdomain}/properties`);
     } catch (error) {
       console.error("Error al cargar el script de Cloudinary:", error);
     }

@@ -220,11 +220,7 @@ const CompanySettings = () => {
     try {
       await loadCloudinaryScript();
       
-      // Obtener información del tenant del usuario actual
-      // eslint-disable-next-line no-unused-vars
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      const tenantId = user.tenantId || 'default';
+      const subdomain = tenantInfo.subdomain || 'default';
       
       // Usar la función específica para logos con carpeta separada por tenant
       openCloudinaryWidgetForLogo((uploadedImageUrl) => {
@@ -233,7 +229,7 @@ const CompanySettings = () => {
           company_logo_url: uploadedImageUrl,
         }));
         toast.success('Logo subido exitosamente');
-      }, `tenant-${tenantId}`);
+      }, `inno-saas/${subdomain}`);
     } catch (error) {
       console.error("Error al cargar el widget de Cloudinary:", error);
       toast.error('Error al cargar el widget de imágenes');
