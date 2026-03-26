@@ -28,6 +28,57 @@ import {
 
 import AutorizacionVentaPdf from "../PdfTemplates/AutorizacionVentaPdf";
 
+const PLANTILLA_TRADICIONAL = `REQUISITOS PARA ALQUILAR
+
+1. Fotocopia D.N.I./ CUIL/CUIT, solicitante/s y garante/s, domicilio y teléfono de los mismos, sino es del dominio del documento electrónico.
+
+2. Fotocopia de los últimos tres recibos de sueldo, y certificado de trabajo, si es autónomo justificación de ingresos, esta puede hacer por un Contador y debe pasar por el Colegio Profesional de Ciencias Económicas, para ser certificada.
+
+3. Tipos de garantía: Cantidad: 1 - con recibos de sueldo o certificación de ingresos.
+   • Recibo de sueldo no inferior al tercio del monto del alquiler Garante:
+
+DNI:
+Domicilio:
+Correo electrónico:
+
+4. Los garantes firman el contrato ante escribano para que les certifique la firma, y cuando firme ante escribano deberá ser legalizado por el colegio de Escribanos.
+
+5. Monto del alquiler mensual: 1º Cuatrimestre $$$$$$$$$$ Para los cuatrimestres siguientes de locación el precio será actualizado conforme el índice de precio al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC).
+
+6. Honorarios de contratos ante escribano y favor de firma inmobiliaria: Igual al monto del alquiler
+
+7. Período de locación: 2 años
+
+8. Certificado de firma ante escribano público.
+
+9. Sellado en rentas provincial
+
+10. No se pide mes de depósito.
+
+11. Reserva con seña 50% del monto del alquiler, validez 7 días hábiles.`;
+
+const PLANTILLA_TEMPORAL = `REQUISITOS PARA ALQUILER TEMPORAL
+
+1. Fotocopia D.N.I./ CUIL/CUIT del/los solicitante/s.
+
+2. Estadía mínima según lo indicado en la publicación.
+
+3. Pago anticipado: 100% del monto total al momento de la reserva.
+
+4. Depósito de garantía: equivalente a una noche de alojamiento, reintegrable al finalizar la estadía sin daños.
+
+5. Reserva con seña del 50% del monto total, validez 48 horas hábiles.
+
+6. Check-in / Check-out: según horarios acordados con la inmobiliaria.
+
+7. No se permiten mascotas salvo acuerdo previo.
+
+8. Capacidad máxima de personas según lo indicado en la publicación.
+
+9. Prohibido realizar eventos o fiestas en la propiedad.
+
+10. El precio no incluye servicios (electricidad, gas, internet) salvo que se indique lo contrario.`;
+
 const CreateProperty = () => {
   const navigate = useNavigate();
   
@@ -137,35 +188,9 @@ const CreateProperty = () => {
 
       // Si cambia a alquiler/rent y el campo requisito está vacío, cargar plantilla
       if (value === "rent" && !formData.requisito) {
-        const plantillaRequisito = `REQUISITOS PARA ALQUILAR
-
-1. Fotocopia D.N.I./ CUIL/CUIT, solicitante/s y garante/s, domicilio y teléfono de los mismos, sino es del dominio del documento electrónico.
-
-2. Fotocopia de los últimos tres recibos de sueldo, y certificado de trabajo, si es autónomo justificación de ingresos, esta puede hacer por un Contador y debe pasar por el Colegio Profesional de Ciencias Económicas, para ser certificada.
-
-3. Tipos de garantía: Cantidad: 1 - con recibos de sueldo o certificación de ingresos.
-   • Recibo de sueldo no inferior al tercio del monto del alquiler Garante:
-
-DNI:
-Domicilio:
-Correo electrónico:
-
-4. Los garantes firman el contrato ante escribano para que les certifique la firma, y cuando firme ante escribano deberá ser legalizado por el colegio de Escribanos.
-
-5. Monto del alquiler mensual: 1º Cuatrimestre $$$$$$$$$$ Para los cuatrimestres siguientes de locación el precio será actualizado conforme el índice de precio al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC).
-
-6. Honorarios de contratos ante escribano y favor de firma inmobiliaria: Igual al monto del alquiler
-
-7. Período de locación: 2 años
-
-8. Certificado de firma ante escribano público.
-
-9. Sellado en rentas provincial
-
-10. No se pide mes de depósito.
-
-11. Reserva con seña 50% del monto del alquiler, validez 7 días hábiles.`;
-
+        const plantillaRequisito = formData.rentalType === "TEMPORAL"
+          ? PLANTILLA_TEMPORAL
+          : PLANTILLA_TRADICIONAL;
         nextState.requisito = plantillaRequisito;
       }
 
@@ -188,6 +213,16 @@ Correo electrónico:
         ...formData,
         operationType: mappedOperationType,
         legalStatus: shouldResetLegalStatus ? "" : formData.legalStatus,
+      });
+      return;
+    }
+
+    // Si cambia la modalidad de alquiler, actualizar la plantilla de requisitos
+    if (name === "rentalType" && formData.operationType === "rent") {
+      setFormData({
+        ...formData,
+        rentalType: value,
+        requisito: value === "TEMPORAL" ? PLANTILLA_TEMPORAL : PLANTILLA_TRADICIONAL,
       });
       return;
     }
