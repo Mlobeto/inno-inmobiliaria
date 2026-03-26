@@ -10,25 +10,49 @@ exports.getSettings = async (req, res) => {
     let settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
     console.log('🔍 getSettings - settings found:', settings ? 'Yes' : 'No');
     
-    // Si no existe, crear con valores por defecto
+    // Si no existe, crear con valores del tenant (para tenants creados manualmente)
     if (!settings) {
       console.log('🔍 getSettings - Creating new settings...');
+      const tenant = await prisma.tenants.findFirst({
+        where: { tenantId },
+        select: { businessName: true, email: true, phone: true, address: true, cuit: true },
+      });
       settings = await prisma.admin_settings.create({
         data: {
           tenant_id: tenantId,
-          company_name: 'Mi Inmobiliaria',
-          company_address: '',
+          company_name: tenant?.businessName || 'Mi Inmobiliaria',
+          company_email: tenant?.email || '',
+          company_phone: tenant?.phone || '',
+          company_address: tenant?.address || '',
+          company_cuit: tenant?.cuit || '',
           company_city: '',
           company_province: '',
-          company_phone: '',
-          company_email: '',
           company_registration: '',
-          company_cuit: '',
           createdAt: new Date(),
           updatedAt: new Date(),
         }
       });
       console.log('🔍 getSettings - New settings created:', settings.id);
+    } else if (!settings.company_email && !settings.company_phone && !settings.company_address) {
+      // Registro existe pero está vacío (creado antes del fix): rellenar con datos del tenant
+      const tenant = await prisma.tenants.findFirst({
+        where: { tenantId },
+        select: { businessName: true, email: true, phone: true, address: true, cuit: true },
+      });
+      if (tenant) {
+        settings = await prisma.admin_settings.update({
+          where: { id: settings.id },
+          data: {
+            company_name: settings.company_name === 'Mi Inmobiliaria' ? (tenant.businessName || settings.company_name) : settings.company_name,
+            company_email: tenant.email || '',
+            company_phone: tenant.phone || '',
+            company_address: tenant.address || '',
+            company_cuit: settings.company_cuit || tenant.cuit || '',
+            updatedAt: new Date(),
+          },
+        });
+        console.log('🔍 getSettings - Settings backfilled from tenant data');
+      }
     }
 
     res.status(200).json(settings);
