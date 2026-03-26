@@ -377,6 +377,7 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
                 <option value="basic">Basic</option>
                 <option value="professional">Professional</option>
                 <option value="enterprise">Enterprise</option>
+                <option value="lifetime">Lifetime (Permanente)</option>
               </select>
             </div>
             
@@ -384,15 +385,21 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Duración (días)
               </label>
-              <input
-                type="number"
-                name="durationDays"
-                value={formData.durationDays}
-                onChange={handleChange}
-                min="1"
-                max="365"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
+              {formData.plan === 'lifetime' ? (
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 text-sm">
+                  ♾️ Permanente (sin vencimiento)
+                </div>
+              ) : (
+                <input
+                  type="number"
+                  name="durationDays"
+                  value={formData.durationDays}
+                  onChange={handleChange}
+                  min="1"
+                  max="36500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              )}
             </div>
             
             <div>

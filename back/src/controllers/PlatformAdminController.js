@@ -780,20 +780,21 @@ exports.createManualTenant = async (req, res) => {
     });
 
     const startDate = new Date();
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + Number(durationDays));
+    const isLifetime = String(plan).toLowerCase() === 'lifetime';
+    const endDate = isLifetime ? null : new Date();
+    if (!isLifetime) endDate.setDate(endDate.getDate() + Number(durationDays));
 
     const subscription = await prisma.subscriptions.create({
       data: {
         tenantId: newTenant.tenantId,
         planId: String(plan).toLowerCase(),
-        status: Number(durationDays) > 0 ? 'trialing' : 'active',
+        status: 'active',
         paymentProvider: 'manual',
-        trialStart: Number(durationDays) > 0 ? startDate : null,
-        trialEnd: Number(durationDays) > 0 ? endDate : null,
+        trialStart: null,
+        trialEnd: null,
         currentPeriodStart: startDate,
         currentPeriodEnd: endDate,
-        billingCycle: 'monthly',
+        billingCycle: isLifetime ? 'lifetime' : 'monthly',
         amount: 0,
         currency: 'ARS',
       },
