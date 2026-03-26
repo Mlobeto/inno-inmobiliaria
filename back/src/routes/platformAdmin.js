@@ -26,6 +26,7 @@ router.get('/tenants/:tenantId', platformAdminController.getTenantDetail);
 router.put('/tenants/:tenantId', platformAdminController.updateTenant);
 router.post('/tenants/:tenantId/suspend', platformAdminController.suspendTenant);
 router.post('/tenants/:tenantId/activate', platformAdminController.activateTenant);
+router.delete('/tenants/:tenantId', platformAdminController.deleteTenant);
 
 /**
  * Gestión de suscripciones

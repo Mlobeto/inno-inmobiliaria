@@ -112,6 +112,19 @@ export const platformAdminApi = baseApi.injectEndpoints({
       ],
     }),
 
+    deleteTenant: builder.mutation({
+      query: (tenantId) => ({
+        url: `/platform-admin/tenants/${tenantId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, tenantId) => [
+        { type: 'Tenants', id: tenantId },
+        { type: 'Tenants', id: 'LIST' },
+        'Dashboard',
+        'Metrics',
+      ],
+    }),
+
     // ============================================
     // 💳 SUSCRIPCIONES
     // ============================================
@@ -219,6 +232,7 @@ export const {
   useUpdateTenantMutation,
   useSuspendTenantMutation,
   useActivateTenantMutation,
+  useDeleteTenantMutation,
   
   // Subscriptions
   useListSubscriptionsQuery,

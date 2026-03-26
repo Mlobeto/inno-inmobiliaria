@@ -390,6 +390,39 @@ exports.activateTenant = async (req, res) => {
 };
 
 /**
+ * @route DELETE /api/platform-admin/tenants/:tenantId
+ * @desc Elimina un tenant permanentemente
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.deleteTenant = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tenant no encontrado',
+      });
+    }
+
+    await prisma.tenants.delete({ where: { tenantId } });
+
+    res.status(200).json({
+      success: true,
+      message: 'Tenant eliminado exitosamente',
+    });
+  } catch (error) {
+    logger.error('Error eliminando tenant', { tenantId: req.params.tenantId, error: error.message });
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar tenant',
+      error: error.message,
+    });
+  }
+};
+
+/**
  * @route GET /api/platform-admin/subscriptions
  * @desc Lista todas las suscripciones de la plataforma
  * @access Private (PLATFORM_ADMIN only)

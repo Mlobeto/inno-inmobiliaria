@@ -49,6 +49,7 @@ export {
   useUpdateTenantMutation,
   useSuspendTenantMutation,
   useActivateTenantMutation,
+  useDeleteTenantMutation,
   useListSubscriptionsQuery,
   useListPlansQuery,
   useGetPlanQuery,
