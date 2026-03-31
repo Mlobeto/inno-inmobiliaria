@@ -106,10 +106,12 @@ const Panel = () => {
     navigate('/login');
   };
 
-  // Mostrar tips modal automáticamente si no se ha ocultado
+  // Mostrar tips modal automáticamente solo si nunca se ha visto antes
   useEffect(() => {
     const hideTips = localStorage.getItem('hideTipsModal');
     if (!hideTips && currentUser) {
+      // Marcar como visto de inmediato para que no vuelva a abrirse automáticamente
+      localStorage.setItem('hideTipsModal', 'true');
       // Mostrar después de 1 segundo para dar tiempo a que cargue el panel
       const timer = setTimeout(() => {
         setShowTipsModal(true);

@@ -7,13 +7,12 @@ import {
   IoCheckmarkCircleOutline,
   IoPersonAddOutline,
   IoHomeOutline,
-  IoDocumentTextOutline,
-  IoBusinessOutline
+  IoDocumentTextOutline
+ 
 } from 'react-icons/io5';
 
 const TipsModal = ({ isOpen, onClose }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
 
   const tips = [
     {
@@ -87,9 +86,6 @@ const TipsModal = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handleClose = () => {
-    if (dontShowAgain) {
-      localStorage.setItem('hideTipsModal', 'true');
-    }
     onClose();
   };
 
@@ -188,23 +184,6 @@ const TipsModal = ({ isOpen, onClose }) => {
 
         {/* Footer */}
         <div className="bg-slate-900/50 border-t border-white/10 p-6">
-          {/* Checkbox "No mostrar de nuevo" */}
-          {currentStep === tips.length - 1 && (
-            <div className="mb-4">
-              <label className="flex items-center space-x-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={dontShowAgain}
-                  onChange={(e) => setDontShowAgain(e.target.checked)}
-                  className="w-5 h-5 rounded border-2 border-slate-600 bg-slate-800 checked:bg-blue-600 checked:border-blue-600 focus:ring-2 focus:ring-blue-500/50 transition-all cursor-pointer"
-                />
-                <span className="text-slate-300 text-sm group-hover:text-white transition-colors">
-                  No volver a mostrar estos tips automáticamente
-                </span>
-              </label>
-            </div>
-          )}
-
           {/* Botones de navegación */}
           <div className="flex items-center justify-between">
             <button
