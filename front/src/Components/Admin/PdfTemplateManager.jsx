@@ -416,6 +416,78 @@ table { width: 100%; }
         footer: `<div style="text-align: center; padding: 10px; font-size: 10px; color: #666; border-top: 1px solid #ccc;">
   Página {{pageNumber}} de {{totalPages}}
 </div>`
+      },
+      CONTRATO_ALQUILER_TEMPORARIO: {
+        html: `<div style="font-family: Arial, sans-serif; padding: 40px; line-height: 1.6;">
+  <h1 style="text-align: center; color: #2c3e50;">CONTRATO DE LOCACIÓN TEMPORARIA</h1>
+  
+  <p style="text-align: right; margin-top: 20px;">
+    En {{ciudad}}, a los {{dia}} días del mes de {{mes}} de {{anio}}
+  </p>
+  
+  <h3>PARTES:</h3>
+  <p><strong>LOCADOR:</strong> {{propietario.nombre}}, DNI {{propietario.dni}}, con domicilio en {{propietario.domicilio}}</p>
+  <p><strong>LOCATARIO:</strong> {{inquilino.nombre}}, DNI {{inquilino.dni}}, proveniente de {{inquilino.ciudadOrigen}}, Tel: {{inquilino.telefono}}</p>
+  
+  <h3>PRIMERA - OBJETO:</h3>
+  <p>El LOCADOR da en locación temporaria al LOCATARIO el inmueble ubicado en
+  <strong>{{propiedad.direccion}}, {{propiedad.ciudad}}, {{propiedad.provincia}}</strong>,
+  con destino exclusivo de turismo y recreación, conforme al Art. 1199 del Código Civil y Comercial.</p>
+  
+  <h3>SEGUNDA - PLAZO Y FECHAS:</h3>
+  <p>El período de locación será de <strong>{{contrato.cantidadDias}} días</strong>, comenzando el
+  <strong>{{contrato.fechaInicio}}</strong> a las {{contrato.horaIngreso}} hs. y finalizando el
+  <strong>{{contrato.fechaFin}}</strong> a las {{contrato.horaEgreso}} hs.</p>
+  
+  <h3>TERCERA - PRECIO Y FORMA DE PAGO:</h3>
+  <p>El precio total convenido es de <strong>{{contrato.montoTotal}}</strong>
+  ({{contrato.montoPorDia}} por día), pagadero en su totalidad al momento del ingreso a la propiedad.</p>
+  
+  <h3>CUARTA - DEPÓSITO DE GARANTÍA:</h3>
+  <p>El LOCATARIO entrega en concepto de depósito de garantía la suma de <strong>{{contrato.deposito}}</strong>,
+  el cual será reintegrado al egreso previa verificación del estado del inmueble e inventario.</p>
+  
+  <h3>QUINTA - CAPACIDAD MÁXIMA:</h3>
+  <p>La propiedad será ocupada por un máximo de <strong>{{inquilino.cantPersonas}} personas</strong>.
+  Queda expresamente prohibido el ingreso de mayor cantidad de personas sin autorización escrita del LOCADOR.</p>
+  
+  <h3>SEXTA - SERVICIOS INCLUIDOS:</h3>
+  <p>{{contrato.serviciosIncluidos}}</p>
+  
+  <h3>SÉPTIMA - REGLAS Y CONDICIONES:</h3>
+  <p>{{contrato.reglas}}</p>
+  
+  <h3>OCTAVA - INVENTARIO:</h3>
+  <p>El inmueble se entrega con el mobiliario y equipamiento detallado en el inventario adjunto, el cual
+  el LOCATARIO declara haber recibido en perfectas condiciones al momento del ingreso.</p>
+  
+  <div style="margin-top: 60px;">
+    <div style="display: flex; justify-content: space-between;">
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px;">
+          <strong>Firma Locador</strong><br/>
+          {{propietario.nombre}}
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px;">
+          <strong>Firma Locatario</strong><br/>
+          {{inquilino.nombre}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`,
+        styles: `body { font-family: Arial, sans-serif; }
+h1 { color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 10px; }
+h3 { color: #27ae60; margin-top: 20px; }
+p { margin: 10px 0; text-align: justify; }`,
+        header: `<div style="text-align: center; padding: 10px; border-bottom: 1px solid #ccc;">
+  <strong>{{empresa.nombre}}</strong> &mdash; Tel: {{empresa.telefono}} &mdash; {{empresa.email}}
+</div>`,
+        footer: `<div style="text-align: center; font-size: 10px; color: #666; padding: 10px; border-top: 1px solid #ccc;">
+  Página {{pageNumber}} de {{totalPages}} — {{empresa.direccion}}
+</div>`
       }
     };
     
@@ -717,6 +789,8 @@ table { width: 100%; }
               value={formData.htmlTemplate}
               onChange={(value) => setFormData({ ...formData, htmlTemplate: value })}
               templateType={formData.templateType}
+              pageSize={formData.pageSize}
+              orientation={formData.orientation}
             />
           </div>
         </div>

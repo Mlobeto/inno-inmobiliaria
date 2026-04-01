@@ -985,7 +985,7 @@ const CreateProperty = () => {
                         placeholder="Requisitos específicos para esta propiedad..."
                       />
                       <p className="text-slate-400 text-xs mt-1">
-                        Deja en blanco para usar la plantilla por defecto
+                        Si no modificas usarás la plantilla por defecto
                       </p>
                     </div>
                   )}

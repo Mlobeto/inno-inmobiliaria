@@ -437,8 +437,8 @@ const getTemplateTypes = async (req, res) => {
         ]
       },
       {
-        value: "ACTUALIZACION_RENTA",
-        label: "Actualización de Renta",
+        value: "ACTUALIZACION_ALQUILER",
+        label: "Actualización de Alquiler",
         description: "Documento de actualización de monto de alquiler",
         variables: [
           "landlord.name", "landlord.cuil",
@@ -446,6 +446,22 @@ const getTemplateTypes = async (req, res) => {
           "property.address", "property.city",
           "lease.rentAmount", "newRentAmount", "porcentajeAumento",
           "updateDate", "periodo"
+        ]
+      },
+      {
+        value: "CONTRATO_ALQUILER_TEMPORARIO",
+        label: "Contrato de Alquiler Temporario",
+        description: "Contrato de locación temporaria para turismo/temporada (Art. 1199 CCyCN)",
+        variables: [
+          "propietario.nombre", "propietario.dni", "propietario.domicilio",
+          "inquilino.nombre", "inquilino.dni", "inquilino.ciudadOrigen",
+          "inquilino.telefono", "inquilino.cantPersonas",
+          "property.address", "property.city", "property.province",
+          "contrato.fechaInicio", "contrato.fechaFin", "contrato.cantidadDias",
+          "contrato.montoTotal", "contrato.montoPorDia", "contrato.deposito",
+          "contrato.horaIngreso", "contrato.horaEgreso",
+          "contrato.serviciosIncluidos", "contrato.reglas",
+          "inmobiliaria.businessName", "inmobiliaria.phone", "inmobiliaria.email"
         ]
       }
     ];

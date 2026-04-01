@@ -6,7 +6,17 @@ import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import { IoHelpCircleOutline } from 'react-icons/io5';
 
-const VisualPdfEditor = ({ value, onChange, templateType }) => {
+// Dimensiones de página estándar en milímetros
+const PAGE_DIMENSIONS = {
+  A4:     { width: 210,   height: 297,   label: 'A4' },
+  Letter: { width: 215.9, height: 279.4, label: 'Carta (Letter)' },
+  Legal:  { width: 215.9, height: 355.6, label: 'Legal' },
+};
+
+// 1 mm = 3.7795 px a 96 dpi
+const MM_TO_PX = 3.7795;
+
+const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orientation = 'portrait' }) => {
   const quillRef = useRef(null);
 
   // Iniciar tour solo la primera vez
@@ -220,6 +230,38 @@ const VisualPdfEditor = ({ value, onChange, templateType }) => {
           { label: 'Fecha notificación', value: '{{fechaNotificacion}}' },
         ],
       },
+      CONTRATO_ALQUILER_TEMPORARIO: {
+        contrato: [
+          { label: 'Fecha inicio', value: '{{contrato.fechaInicio}}' },
+          { label: 'Fecha fin', value: '{{contrato.fechaFin}}' },
+          { label: 'Cantidad de días', value: '{{contrato.cantidadDias}}' },
+          { label: 'Monto total', value: '{{contrato.montoTotal}}' },
+          { label: 'Monto por día', value: '{{contrato.montoPorDia}}' },
+          { label: 'Depósito de garantía', value: '{{contrato.deposito}}' },
+          { label: 'Hora de ingreso', value: '{{contrato.horaIngreso}}' },
+          { label: 'Hora de egreso', value: '{{contrato.horaEgreso}}' },
+          { label: 'Servicios incluidos', value: '{{contrato.serviciosIncluidos}}' },
+          { label: 'Reglas de la propiedad', value: '{{contrato.reglas}}' },
+        ],
+        propietario: [
+          { label: 'Nombre propietario', value: '{{propietario.nombre}}' },
+          { label: 'DNI propietario', value: '{{propietario.dni}}' },
+          { label: 'Domicilio propietario', value: '{{propietario.domicilio}}' },
+        ],
+        inquilino: [
+          { label: 'Nombre inquilino', value: '{{inquilino.nombre}}' },
+          { label: 'DNI inquilino', value: '{{inquilino.dni}}' },
+          { label: 'Ciudad de origen', value: '{{inquilino.ciudadOrigen}}' },
+          { label: 'Teléfono', value: '{{inquilino.telefono}}' },
+          { label: 'Cant. de personas', value: '{{inquilino.cantPersonas}}' },
+        ],
+        propiedad: [
+          { label: 'Dirección', value: '{{propiedad.direccion}}' },
+          { label: 'Ciudad', value: '{{propiedad.ciudad}}' },
+          { label: 'Provincia', value: '{{propiedad.provincia}}' },
+          { label: 'Descripción', value: '{{propiedad.descripcion}}' },
+        ],
+      },
     };
 
     return {
@@ -229,6 +271,18 @@ const VisualPdfEditor = ({ value, onChange, templateType }) => {
   };
 
   const variables = getAvailableVariables();
+
+  // Calcular dimensiones de página para la simulación visual
+  const baseSize = PAGE_DIMENSIONS[pageSize] || PAGE_DIMENSIONS.A4;
+  const pageDims = orientation === 'landscape'
+    ? { ...baseSize, width: baseSize.height, height: baseSize.width }
+    : baseSize;
+  const pageWidthPx = Math.round(pageDims.width * MM_TO_PX);
+  const mTop    = Math.round(20 * MM_TO_PX); // 76px — margen superior
+  const mBottom = Math.round(20 * MM_TO_PX); // 76px — margen inferior
+  const mLeft   = Math.round(15 * MM_TO_PX); // 57px — margen izquierdo
+  const mRight  = Math.round(15 * MM_TO_PX); // 57px — margen derecho
+  const editorScopeClass = `pdf-pg-${pageSize.toLowerCase()}-${orientation}`;
 
   // Configuración del editor Quill
   const modules = useMemo(() => ({
@@ -315,24 +369,79 @@ const VisualPdfEditor = ({ value, onChange, templateType }) => {
         </div>
       </div>
 
-      {/* Editor visual */}
-      <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
-        <ReactQuill
-          ref={quillRef}
-          theme="snow"
-          value={value}
-          onChange={onChange}
-          modules={modules}
-          formats={formats}
-          placeholder="Escribe tu plantilla aquí... Usa los botones de arriba para insertar variables."
-          style={{ height: '500px' }}
-        />
+      {/* Editor visual — simulación de hoja PDF */}
+      <style>{`
+        .${editorScopeClass} .ql-editor {
+          padding: ${mTop}px ${mRight}px ${mBottom}px ${mLeft}px !important;
+          min-height: 500px;
+          background-image:
+            linear-gradient(to bottom, rgba(147,197,253,0.18) ${mTop}px, transparent ${mTop}px),
+            linear-gradient(to top,   rgba(147,197,253,0.18) ${mBottom}px, transparent ${mBottom}px),
+            linear-gradient(to right, rgba(147,197,253,0.18) ${mLeft}px,  transparent ${mLeft}px),
+            linear-gradient(to left,  rgba(147,197,253,0.18) ${mRight}px, transparent ${mRight}px);
+          background-color: white;
+        }
+        .${editorScopeClass} .ql-toolbar.ql-snow {
+          background: #f3f4f6;
+          border-radius: 0;
+        }
+        .${editorScopeClass} .ql-container.ql-snow {
+          border-top: none;
+        }
+      `}</style>
+
+      <div style={{ background: '#4b5563', padding: '16px', borderRadius: '8px' }}>
+        {/* Barra de información de página */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '10px',
+          flexWrap: 'wrap',
+          color: '#e5e7eb',
+          fontSize: '11px',
+          fontFamily: 'monospace',
+          marginBottom: '12px',
+        }}>
+          <span>📄 <strong>{pageDims.label}</strong></span>
+          <span style={{ color: '#6b7280' }}>—</span>
+          <span>{Math.round(pageDims.width)}mm × {Math.round(pageDims.height)}mm</span>
+          <span style={{ color: '#6b7280' }}>|</span>
+          <span>{orientation === 'portrait' ? '⬜ Vertical' : '🔲 Horizontal'}</span>
+          <span style={{ color: '#6b7280' }}>|</span>
+          <span style={{ color: '#93c5fd' }}>Márgenes: ↕ 20mm · ↔ 15mm</span>
+        </div>
+
+        {/* Hoja de papel */}
+        <div style={{
+          width: `${pageWidthPx}px`,
+          maxWidth: '100%',
+          margin: '0 auto',
+          boxShadow: '0 4px 30px rgba(0,0,0,0.55), 0 0 0 1px rgba(0,0,0,0.2)',
+        }}>
+          <div className={editorScopeClass}>
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={value}
+              onChange={onChange}
+              modules={modules}
+              formats={formats}
+              placeholder="Escribe tu plantilla aquí... Usa los botones de arriba para insertar variables."
+            />
+          </div>
+        </div>
+
+        {/* Leyenda */}
+        <p style={{ textAlign: 'center', marginTop: '8px', fontSize: '10px', color: '#9ca3af' }}>
+          Las zonas azules indican los márgenes · El borde de la hoja representa el tamaño {pageDims.label}
+        </p>
       </div>
 
       {/* Ayuda */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm">
         <p className="text-yellow-900">
-          💡 <strong>Tip:</strong> Las variables (como <code className="bg-yellow-100 px-1 rounded">{'{{empresa.nombre}}'}</code>) 
+          💡 <strong>Tip:</strong> Las variables (como <code className="bg-yellow-100 px-1 rounded">{'{{empresa.nombre}}'}</code>)
           se reemplazarán automáticamente con los datos reales al generar el PDF.
         </p>
       </div>
@@ -344,7 +453,8 @@ VisualPdfEditor.propTypes = {
   value: PropTypes.string.isRequired,
   onChange: PropTypes.func.isRequired,
   templateType: PropTypes.string,
-  onInsertVariable: PropTypes.func,
+  pageSize: PropTypes.string,
+  orientation: PropTypes.string,
 };
 
 export default VisualPdfEditor;
