@@ -28,7 +28,7 @@ exports.getTenantLanding = async (req, res) => {
 
     const tenant = await prisma.tenants.findFirst({
       where: { subdomain: subdomain.toLowerCase() },
-      select: { tenantId: true, companyName: true, subdomain: true, features: true }
+      select: { tenantId: true, businessName: true, subdomain: true, features: true }
     });
 
     if (!tenant) {
@@ -88,7 +88,7 @@ exports.getTenantLanding = async (req, res) => {
     // 6. Formatear respuesta
     res.json({
       tenant: {
-        name: tenant.companyName,
+        name: tenant.businessName,
         subdomain: tenant.subdomain,
         logo: companySettings?.company_logo_url || null,
         contact: {
@@ -150,7 +150,7 @@ exports.getPropertyDetail = async (req, res) => {
 
     const tenant = await prisma.tenants.findFirst({
       where: { subdomain: subdomain.toLowerCase() },
-      select: { tenantId: true, companyName: true, features: true }
+      select: { tenantId: true, businessName: true, features: true }
     });
 
     if (!tenant) {
@@ -226,7 +226,7 @@ exports.getPropertyDetail = async (req, res) => {
         linkInstagram: property.linkInstagram || null,
       },
       tenant: {
-        name: tenant.companyName,
+        name: tenant.businessName,
         logo: companySettings?.company_logo_url || null,
         contact: {
           phone: companySettings?.company_phone || null,
