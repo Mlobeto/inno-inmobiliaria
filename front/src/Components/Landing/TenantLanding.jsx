@@ -26,7 +26,7 @@ const TenantLanding = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/public/${subdomain}`
+          `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/public/${subdomain}`
         );
         setData(response.data);
         setError(null);

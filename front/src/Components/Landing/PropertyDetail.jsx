@@ -29,7 +29,7 @@ const PropertyDetail = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_API_BASE_URL}/public/${subdomain}/property/${propertyId}`
+          `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/public/${subdomain}/property/${propertyId}`
         );
         setData(response.data);
         setError(null);
