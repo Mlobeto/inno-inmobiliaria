@@ -279,6 +279,22 @@ exports.updateTenant = async (req, res) => {
       });
     }
 
+    // Si se cambió el plan, sincronizar features/límites desde la BD de planes
+    let resolvedFeatures = features !== undefined ? features : tenant.features;
+    let resolvedMaxAgents = maxAgents !== undefined ? maxAgents : tenant.maxAgents;
+    let resolvedMaxProperties = maxProperties !== undefined ? maxProperties : tenant.maxProperties;
+
+    if (plan !== undefined && plan !== tenant.plan) {
+      const planRecord = await prisma.plans.findFirst({
+        where: { planId: plan.toLowerCase(), isActive: true },
+      });
+      if (planRecord) {
+        resolvedFeatures = planRecord.features ?? resolvedFeatures;
+        resolvedMaxAgents = planRecord.maxUsers ?? resolvedMaxAgents;
+        resolvedMaxProperties = planRecord.maxProperties ?? resolvedMaxProperties;
+      }
+    }
+
     const updated = await prisma.tenants.update({
       where: { tenantId },
       data: {
@@ -288,9 +304,9 @@ exports.updateTenant = async (req, res) => {
         address: address !== undefined ? address : tenant.address,
         plan: plan !== undefined ? plan : tenant.plan,
         status: status !== undefined ? status : tenant.status,
-        maxAgents: maxAgents !== undefined ? maxAgents : tenant.maxAgents,
-        maxProperties: maxProperties !== undefined ? maxProperties : tenant.maxProperties,
-        features: features !== undefined ? features : tenant.features,
+        maxAgents: resolvedMaxAgents,
+        maxProperties: resolvedMaxProperties,
+        features: resolvedFeatures,
       },
     });
 
