@@ -792,7 +792,18 @@ exports.createManualTenant = async (req, res) => {
     }
 
     const generatedCuit = cuit || `99-${Math.floor(10000000 + Math.random() * 90000000)}-9`;
-    const normalizedFeatures = Array.isArray(features) ? { modules: features } : features;
+
+    // Buscar el plan en la BD para usar sus features reales
+    const planRecord = await prisma.plans.findFirst({
+      where: { planId: String(plan).toLowerCase(), isActive: true },
+    });
+
+    const resolvedFeatures = planRecord?.features
+      ? planRecord.features
+      : Array.isArray(features) ? { modules: features } : features;
+
+    const resolvedMaxAgents = planRecord?.maxUsers ?? maxAgents;
+    const resolvedMaxProperties = planRecord?.maxProperties ?? maxProperties;
 
     const newTenant = await prisma.tenants.create({
       data: {
@@ -804,9 +815,9 @@ exports.createManualTenant = async (req, res) => {
         address: address || null,
         plan: String(plan).toUpperCase(),
         status: 'active',
-        maxAgents,
-        maxProperties,
-        features: normalizedFeatures,
+        maxAgents: resolvedMaxAgents,
+        maxProperties: resolvedMaxProperties,
+        features: resolvedFeatures,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
