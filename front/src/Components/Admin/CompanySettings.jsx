@@ -79,6 +79,37 @@ const CompanySettings = () => {
     return cuitRegex.test(cuit);
   };
 
+  // Auto-formato para CUIT/CUIL: XX-XXXXXXXX-X
+  const formatCuit = (raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 10) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
+  };
+
+  const handleCuitChange = (e) => {
+    const formatted = formatCuit(e.target.value);
+    setSettings(prev => ({ ...prev, company_cuit: formatted }));
+    // Limpiar error mientras escribe
+    if (validationErrors.company_cuit) {
+      setValidationErrors(prev => ({ ...prev, company_cuit: undefined }));
+    }
+  };
+
+  const handleIibbChange = (e) => {
+    const formatted = formatCuit(e.target.value);
+    setSettings(prev => ({ ...prev, company_ingresos_brutos: formatted }));
+  };
+
+  // Auto-formato para fecha: DD-MM-YYYY
+  const handleDateChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 2) formatted = `${digits.slice(0, 2)}-${digits.slice(2)}`;
+    if (digits.length > 4) formatted = `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+    setSettings(prev => ({ ...prev, company_inicio_actividad: formatted }));
+  };
+
   // Cargar configuración actual
   useEffect(() => {
     loadSettings();
@@ -645,14 +676,15 @@ const CompanySettings = () => {
                 type="text"
                 name="company_cuit"
                 value={settings.company_cuit}
-                onChange={handleChange}
+                onChange={handleCuitChange}
                 onBlur={handleBlur}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition ${
                   validationErrors.company_cuit 
                     ? 'border-red-300 focus:ring-red-500' 
                     : 'border-gray-300 focus:ring-blue-500'
                 }`}
-                placeholder="XX-XXXXXXXX-X"
+                placeholder="20-12345678-9"
+                inputMode="numeric"
               />
               {validationErrors.company_cuit && (
                 <div className="flex items-center space-x-1 mt-2 text-red-600 text-sm">
@@ -911,9 +943,10 @@ const CompanySettings = () => {
                   type="text"
                   name="company_ingresos_brutos"
                   value={settings.company_ingresos_brutos}
-                  onChange={handleChange}
+                  onChange={handleIibbChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="XX-XXXXXXXX-X"
+                  placeholder="20-12345678-9"
+                  inputMode="numeric"
                 />
               </div>
 
@@ -927,9 +960,10 @@ const CompanySettings = () => {
                   type="text"
                   name="company_inicio_actividad"
                   value={settings.company_inicio_actividad}
-                  onChange={handleChange}
+                  onChange={handleDateChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  placeholder="DD-MM-YYYY"
+                  placeholder="DD-MM-AAAA"
+                  inputMode="numeric"
                 />
               </div>
             </div>
