@@ -72,6 +72,7 @@ const CompanySettings = () => {
   });
   const [subdomainAvailable, setSubdomainAvailable] = useState(null);
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
+  const [dragOverField, setDragOverField] = useState(null);
 
   // Función para validar CUIT
   const validateCUIT = (cuit) => {
@@ -99,6 +100,35 @@ const CompanySettings = () => {
   const handleIibbChange = (e) => {
     const formatted = formatCuit(e.target.value);
     setSettings(prev => ({ ...prev, company_ingresos_brutos: formatted }));
+  };
+
+  // Drag & drop de variables sobre textareas
+  const handleVarDragStart = (e, variable) => {
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', variable);
+  };
+
+  const handleTextareaDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  };
+
+  const handleTextareaDrop = (e, fieldName) => {
+    e.preventDefault();
+    setDragOverField(null);
+    const variable = e.dataTransfer.getData('text/plain');
+    if (!variable) return;
+    const textarea = e.target;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? textarea.value.length;
+    const current = settings[fieldName] || '';
+    const newValue = current.substring(0, start) + variable + current.substring(end);
+    setSettings(prev => ({ ...prev, [fieldName]: newValue }));
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.selectionStart = start + variable.length;
+      textarea.selectionEnd = start + variable.length;
+    });
   };
 
   // Auto-formato para fecha: DD-MM-YYYY
@@ -1160,25 +1190,36 @@ const CompanySettings = () => {
                   <p className="text-sm font-mono text-blue-900">
                     <span className="font-semibold">Variables disponibles:</span>
                   </p>
-                  <div className="grid grid-cols-2 gap-2 mt-2 text-sm font-mono text-blue-800">
-                    <span>{"{precio}"}</span>
-                    <span>{"{direccion}"}</span>
-                    <span>{"{ciudad}"}</span>
-                    <span>{"{barrio}"}</span>
-                    <span>{"{tipo}"}</span>
-                    <span>{"{habitaciones}"}</span>
-                    <span>{"{baños}"}</span>
-                    <span>{"{superficieTotal}"}</span>
-                    <span>{"{descripcion}"}</span>
+                  <p className="text-xs text-blue-600 mt-2 mb-1">↓ Arrastrá una variable al editor de abajo</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {["{precio}","{direccion}","{ciudad}","{barrio}","{tipo}","{habitaciones}","{baños}","{superficieTotal}","{descripcion}"].map(v => (
+                      <span
+                        key={v}
+                        draggable
+                        onDragStart={(e) => handleVarDragStart(e, v)}
+                        className="cursor-grab active:cursor-grabbing select-none px-2 py-1 text-sm font-mono text-blue-800 bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 transition-colors"
+                        title="Arrastrá al editor"
+                      >
+                        {v}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <textarea
                   name="whatsapp_template"
                   value={settings.whatsapp_template}
                   onChange={handleChange}
+                  onDragOver={handleTextareaDragOver}
+                  onDragEnter={() => setDragOverField('whatsapp_template')}
+                  onDragLeave={() => setDragOverField(null)}
+                  onDrop={(e) => handleTextareaDrop(e, 'whatsapp_template')}
                   rows={10}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                  placeholder="Escribe tu plantilla de mensaje aquí..."
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent font-mono text-sm transition-colors ${
+                    dragOverField === 'whatsapp_template'
+                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Escribe tu plantilla de mensaje aquí... o arrastrá variables desde arriba."
                 />
               </div>
 
@@ -1195,18 +1236,36 @@ const CompanySettings = () => {
                   <p className="text-sm font-mono text-blue-900">
                     <span className="font-semibold">Variables disponibles:</span>
                   </p>
-                  <div className="grid grid-cols-2 gap-2 mt-2 text-sm font-mono text-blue-800">
-                    <span>{"{address}"}</span>
-                    <span>{"{price}"}</span>
+                  <p className="text-xs text-blue-600 mt-2 mb-1">↓ Arrastrá una variable al editor de abajo</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {["{address}","{price}"].map(v => (
+                      <span
+                        key={v}
+                        draggable
+                        onDragStart={(e) => handleVarDragStart(e, v)}
+                        className="cursor-grab active:cursor-grabbing select-none px-2 py-1 text-sm font-mono text-blue-800 bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 transition-colors"
+                        title="Arrastrá al editor"
+                      >
+                        {v}
+                      </span>
+                    ))}
                   </div>
                 </div>
                 <textarea
                   name="requisitos_template"
                   value={settings.requisitos_template}
                   onChange={handleChange}
+                  onDragOver={handleTextareaDragOver}
+                  onDragEnter={() => setDragOverField('requisitos_template')}
+                  onDragLeave={() => setDragOverField(null)}
+                  onDrop={(e) => handleTextareaDrop(e, 'requisitos_template')}
                   rows={15}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                  placeholder="Escribe tu plantilla de requisitos aquí..."
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent font-mono text-sm transition-colors ${
+                    dragOverField === 'requisitos_template'
+                      ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  placeholder="Escribe tu plantilla de requisitos aquí... o arrastrá variables desde arriba."
                 />
               </div>
 
