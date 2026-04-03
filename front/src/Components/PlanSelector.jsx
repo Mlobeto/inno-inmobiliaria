@@ -25,7 +25,8 @@ const PlanSelector = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const { data: plansData, isLoading: loadingPlans } = useGetPublicPlansQuery();
-  const plans = plansData?.plans || [];
+  // Excluir lifetime: solo lo activa el dueño de la plataforma, no es elegible por el usuario
+  const plans = (plansData?.plans || []).filter(p => p.planId !== 'lifetime');
 
   const handleSelectPlan = (plan) => {
     setSelectedPlan(plan);

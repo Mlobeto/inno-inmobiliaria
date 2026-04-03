@@ -9,9 +9,9 @@ function LandingPlans() {
 
   const plans = plansData?.plans || [];
 
-  // Filtrar solo planes activos y ordenados
+  // Filtrar solo planes activos y ordenados (excluir lifetime: solo lo activa el dueño de la plataforma)
   const activePlans = plans
-    .filter(plan => plan.isActive)
+    .filter(plan => plan.isActive && plan.planId !== 'lifetime')
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const formatPrice = (price) => {
@@ -204,6 +204,12 @@ function LandingPlans() {
                     <li className="flex items-center gap-2 text-sm">
                       <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
                       <span>Integración Mercado Libre</span>
+                    </li>
+                  )}
+                  {plan.features.electronicInvoicing && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>Facturación electrónica AFIP/ARCA</span>
                     </li>
                   )}
                   {(plan.features.soportePrioritario || plan.features.prioritySupport) && (
