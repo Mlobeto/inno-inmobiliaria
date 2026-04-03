@@ -71,6 +71,7 @@ router.use("/pdf-templates", authMiddleware, requireTenantScope, tenancyMiddlewa
 router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./tenant")); // Tenant management and signature
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
+router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
 
 module.exports = router;

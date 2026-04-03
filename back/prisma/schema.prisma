@@ -681,6 +681,10 @@ model tenants {
   commissions          commissions[]
   pdf_templates        pdf_templates[]
   subscriptions        subscriptions[]
+  TenantFiscalProfile  TenantFiscalProfile?
+  ElectronicInvoice    ElectronicInvoice[]
+  ElectronicInvoiceItem ElectronicInvoiceItem[]
+  FiscalAuditLog       FiscalAuditLog[]
 
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
@@ -755,4 +759,133 @@ enum enum_Property_typeProperty {
   oficina
   lote
   terreno
+}
+
+// ============================================================
+// MÓDULO: FACTURACIÓN ELECTRÓNICA ARCA/AFIP
+// ============================================================
+
+model TenantFiscalProfile {
+  id                   Int       @id @default(autoincrement())
+  tenantId             Int       @unique
+  cuit                 String    @db.VarChar(13)
+  businessName         String    @db.VarChar(255)
+  ivaCondition         String    @db.VarChar(50)
+  grossIncomeCondition String?   @db.VarChar(100)
+  pointOfSale          Int
+  environment          String    @default("homologacion") @db.VarChar(20)
+
+  // Certificado AFIP (PEM público, no sensible)
+  certificatePem       String?
+
+  // Clave privada cifrada con el mismo mecanismo que tokens de ML
+  privateKeyEncrypted  String?
+  privateKeyIv         String?   @db.VarChar(32)
+  privateKeyAuthTag    String?   @db.VarChar(32)
+  privateKeySalt       String?   @db.VarChar(128)
+
+  certificateExpiresAt DateTime? @db.Timestamptz(6)
+  wsaaStatus           String    @default("pending") @db.VarChar(50)
+  arcaServiceStatus    String    @default("pending") @db.VarChar(50)
+  isReadyToInvoice     Boolean   @default(false)
+
+  // draft | csr_generated | certificate_uploaded | service_linked | wsaa_verified | ready
+  onboardingStatus     String    @default("draft") @db.VarChar(50)
+
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants              tenants             @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  ElectronicInvoice    ElectronicInvoice[]
+
+  @@index([tenantId], map: "idx_fiscal_profile_tenant")
+}
+
+model ElectronicInvoice {
+  id                  Int       @id @default(autoincrement())
+  tenantId            Int
+  fiscalProfileId     Int
+
+  customerName        String    @db.VarChar(255)
+  customerDocType     Int       // 80=CUIT, 86=CUIL, 96=DNI, 99=consumidor final
+  customerDocNumber   String    @db.VarChar(20)
+
+  invoiceType         Int       // 1=FC-A, 6=FC-B, 11=FC-C, 3=NC-A, 8=NC-B, 13=NC-C
+  pointOfSale         Int
+  invoiceNumber       Int?
+  concept             Int       // 1=productos, 2=servicios, 3=ambos
+
+  currency            String    @default("PES") @db.VarChar(3)
+  exchangeRate        Decimal   @default(1) @db.Decimal(10, 4)
+  netAmount           Decimal   @db.Decimal(12, 2)
+  taxAmount           Decimal   @db.Decimal(12, 2)
+  totalAmount         Decimal   @db.Decimal(12, 2)
+
+  // Fechas de servicio (obligatorio si concept = 2 o 3)
+  serviceFromDate     String?   @db.VarChar(8) // YYYYMMDD
+  serviceToDate       String?   @db.VarChar(8) // YYYYMMDD
+  dueDate             String?   @db.VarChar(8) // YYYYMMDD
+
+  cae                 String?   @db.VarChar(14)
+  caeExpiresAt        DateTime? @db.Timestamptz(6)
+
+  // draft | pending_authorization | authorized | rejected | cancelled
+  arcaStatus          String    @default("draft") @db.VarChar(50)
+  authorizationError  String?
+
+  rawRequestSnapshot  Json?
+  rawResponseSnapshot Json?
+
+  issuedAt            DateTime? @db.Timestamptz(6)
+  createdBy           Int?
+
+  createdAt           DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants             tenants             @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  fiscalProfile       TenantFiscalProfile @relation(fields: [fiscalProfileId], references: [id])
+  items               ElectronicInvoiceItem[]
+
+  @@index([tenantId], map: "idx_einvoice_tenant")
+  @@index([fiscalProfileId], map: "idx_einvoice_fiscal_profile")
+  @@index([cae], map: "idx_einvoice_cae")
+  @@index([arcaStatus], map: "idx_einvoice_status")
+  @@index([invoiceType, pointOfSale, tenantId], map: "idx_einvoice_type_pos_tenant")
+}
+
+model ElectronicInvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  tenantId    Int
+  description String  @db.VarChar(500)
+  quantity    Decimal @db.Decimal(10, 2)
+  unitPrice   Decimal @db.Decimal(12, 2)
+  subtotal    Decimal @db.Decimal(12, 2)
+  taxRate     Decimal @db.Decimal(5, 2)
+
+  invoice     ElectronicInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenants     tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([invoiceId], map: "idx_einvoice_item_invoice")
+  @@index([tenantId], map: "idx_einvoice_item_tenant")
+}
+
+model FiscalAuditLog {
+  id           Int      @id @default(autoincrement())
+  tenantId     Int
+  action       String   @db.VarChar(100)
+  entityType   String   @db.VarChar(50)
+  entityId     String?  @db.VarChar(50)
+  requestData  Json?
+  responseData Json?
+  status       String   @db.VarChar(20)
+  errorMessage String?
+  createdBy    Int?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  tenants      tenants @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId], map: "idx_fiscal_audit_tenant")
+  @@index([entityType, entityId], map: "idx_fiscal_audit_entity")
+  @@index([createdAt], map: "idx_fiscal_audit_created")
 }
