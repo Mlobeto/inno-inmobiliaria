@@ -28,6 +28,7 @@ import PropertyDetail from "./Components/Landing/PropertyDetail";
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
 
+import CreateLeaseForm from "./Components/Contratos/CreateLeaseForm";
 import PaymentList from "./Components/Pagos/PaymentList";
 import PaymentReport from "./Components/Pagos/PaymentReport";
 import PanelInformes from "./Components/Admin/PanelInformes";
@@ -72,6 +73,7 @@ function App() {
 
       <Route path="/cliente" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
       <Route path="/contratoAlquiler" element={<ProtectedRoute><Listado mode="lease" /></ProtectedRoute>} />
+      <Route path="/crearContrato" element={<ProtectedRoute><CreateLeaseForm /></ProtectedRoute>} />
       
       <Route path="/sale" element={<ProtectedRoute><Listado mode="sale" /></ProtectedRoute>} />
 

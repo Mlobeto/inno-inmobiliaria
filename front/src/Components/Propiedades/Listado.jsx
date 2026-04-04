@@ -623,12 +623,14 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                       if (onSelectProperty) {
                         console.log("Llamando a onSelectProperty...");
                         onSelectProperty(property);
+                      } else if (mode === "lease") {
+                        console.log("Navegando a /crearContrato...");
+                        navigate('/crearContrato', { state: { property } });
                       } else {
                         console.log("Abriendo modal interno...");
-                        // Si no, usar el modal interno
+                        // Para venta, usar el modal interno
                         setSelectedProperty(property);
-                        if (mode === "lease") setShowCreateModal(true);
-                        if (mode === "sale") setShowSaleModal(true);
+                        setShowSaleModal(true);
                       }
                     }}
                     className={`w-full flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] shadow-lg ${

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from "react-redux";
 import { useGetAllClientsQuery } from "@shared/redux";
@@ -27,6 +28,9 @@ import {
 
 const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const propertyFromRoute = location?.state?.property;
   const property = useSelector((state) => state.property);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -317,18 +321,30 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     }
   };
 
-  // Preseleccionar propiedad cuando viene desde el listado externo
+  // Preseleccionar propiedad cuando viene desde el listado externo o navegación directa
   useEffect(() => {
-    if (preselectedProperty) {
-      handlePropertySelect(preselectedProperty);
+    const propToLoad = preselectedProperty || propertyFromRoute;
+    if (propToLoad) {
+      handlePropertySelect(propToLoad);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else if (propertyFromRoute) {
+      navigate('/contratoAlquiler');
+    } else {
+      setFormData(prev => ({ ...prev, propertyId: "" }));
+      setLeaseCreated(null);
+    }
+  };
+
   return (
-    <div className={isModal ? "" : "min-h-screen"}>
-      {/* Mostrar Listado si no hay propiedad seleccionada */}
+    <div className={isModal ? "" : "min-h-screen"}>      
+      {/* Mostrar spinner o Listado interno si no hay propiedad seleccionada */}
       {!formData.propertyId ? (
-        isModal ? (
+        (isModal || propertyFromRoute) ? (
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mr-3"></div>
             <span className="text-white">Cargando propiedad...</span>
@@ -350,10 +366,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                 </h2>
               </div>
               <button
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, propertyId: "" }));
-                  setLeaseCreated(null);
-                }}
+                onClick={handleClose}
                 className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
               >
                 <IoCloseOutline className="w-6 h-6" />
@@ -856,8 +869,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         if (onClose) {
                           onClose();
                         } else {
-                          setFormData(prev => ({ ...prev, propertyId: "" }));
-                          setLeaseCreated(null);
+                          navigate('/contratoAlquiler');
                         }
                       }}
                       className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl font-medium transition-all duration-300"
