@@ -310,7 +310,7 @@ const SubscriptionManager = () => {
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {plans.filter(plan => plan.isActive).map((plan) => (
+            {plans.filter(plan => plan.isActive && plan.planId !== 'lifetime').map((plan) => (
               <div
                 key={plan.planId}
                 className={`bg-white/5 rounded-xl p-6 border transition-all ${
