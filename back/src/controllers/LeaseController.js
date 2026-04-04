@@ -187,7 +187,7 @@ exports.savePdf = async (req, res) => {
 exports.createLease = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { propertyId, landlordId, renterId, startDate, rentAmount, updateFrequency, commission, totalMonths, inventory } = req.body;
+    const { propertyId, landlordId, renterId, startDate, rentAmount, updateFrequency, commission, totalMonths, inventory, garantiaType, seguroCaucionCompania, seguroCaucionDatos } = req.body;
 
     if (!propertyId || !landlordId || !renterId || !startDate || !rentAmount || !totalMonths || !inventory) {
       return res.status(400).json({
@@ -206,6 +206,9 @@ exports.createLease = async (req, res) => {
       commission: commission ? parseFloat(commission) : null,
       totalMonths: parseInt(totalMonths, 10),
       inventory,
+      garantiaType: garantiaType || null,
+      seguroCaucionCompania: garantiaType === 'seguro_caucion' ? (seguroCaucionCompania || null) : null,
+      seguroCaucionDatos: garantiaType === 'seguro_caucion' ? (seguroCaucionDatos || null) : null,
       tenantId,
     };
 

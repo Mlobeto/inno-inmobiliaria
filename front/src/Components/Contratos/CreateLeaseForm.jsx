@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useGetAllClientsQuery } from "@shared/redux";
 import {
@@ -52,6 +52,11 @@ const CreateLeaseForm = () => {
     commission: "",
     totalMonths: "",
     inventory: "",
+    garantiaType: "",
+    seguroCaucionCompania: "",
+    seguroCaucionPoliza: "",
+    seguroCaucionVigencia: "",
+    seguroCaucionNotas: "",
     guarantor1Name: "",
     guarantor1Cuil: "",
     guarantor1Direccion: "",
@@ -137,16 +142,27 @@ const CreateLeaseForm = () => {
       }
 
       // Crear el contrato de alquiler
+      const seguroDatos = formData.garantiaType === 'seguro_caucion'
+        ? JSON.stringify({
+            poliza: formData.seguroCaucionPoliza,
+            vigencia: formData.seguroCaucionVigencia,
+            notas: formData.seguroCaucionNotas,
+          })
+        : null;
+
       const leaseData = {
         propertyId: formData.propertyId,
         landlordId: formData.landlordId,
-        renterId: formData.locatarioId, // Backend espera renterId, no tenantId
+        renterId: formData.locatarioId,
         startDate: formData.startDate,
         rentAmount: parseFloat(formData.rentAmount),
         updateFrequency: formData.updateFrequency,
         commission: parseFloat(formData.commission),
         totalMonths: parseInt(formData.totalMonths),
         inventory: formData.inventory,
+        garantiaType: formData.garantiaType || null,
+        seguroCaucionCompania: formData.seguroCaucionCompania || null,
+        seguroCaucionDatos: seguroDatos,
       };
 
       console.log("Intentando crear contrato con datos:", leaseData);
@@ -188,7 +204,7 @@ const CreateLeaseForm = () => {
           });
         }
 
-        if (guarantorsData.length > 0) {
+        if (formData.garantiaType === 'garantes' && guarantorsData.length > 0) {
           console.log("Creando garantes:", guarantorsData);
           await dispatch(createGarantorsForLease(createdLease.leaseId, guarantorsData));
         }
@@ -485,14 +501,100 @@ const CreateLeaseForm = () => {
                     </div>
                   </div>
 
-                  {/* Información de garantes */}
+                  {/* Tipo de garantía */}
                   <div className="space-y-6">
                     <h3 className="text-xl font-semibold text-white border-b border-white/10 pb-3 flex items-center">
                       <IoShieldCheckmarkOutline className="w-6 h-6 mr-2 text-green-400" />
-                      Información de Garantes
+                      Tipo de Garantía
                     </h3>
 
-                    {/* Garante 1 */}
+                    {/* Selector */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ ...p, garantiaType: 'garantes' }))}
+                        className={`py-4 px-6 rounded-xl border-2 font-semibold transition-all duration-200 flex flex-col items-center gap-2 ${
+                          formData.garantiaType === 'garantes'
+                            ? 'border-green-400 bg-green-500/20 text-green-300'
+                            : 'border-white/20 bg-white/5 text-white/70 hover:border-white/40'
+                        }`}
+                      >
+                        <IoShieldCheckmarkOutline className="w-7 h-7" />
+                        <span>Garantes</span>
+                        <span className="text-xs font-normal opacity-70">Personas que avalan el contrato</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(p => ({ ...p, garantiaType: 'seguro_caucion' }))}
+                        className={`py-4 px-6 rounded-xl border-2 font-semibold transition-all duration-200 flex flex-col items-center gap-2 ${
+                          formData.garantiaType === 'seguro_caucion'
+                            ? 'border-blue-400 bg-blue-500/20 text-blue-300'
+                            : 'border-white/20 bg-white/5 text-white/70 hover:border-white/40'
+                        }`}
+                      >
+                        <IoDocumentTextOutline className="w-7 h-7" />
+                        <span>Seguro de Caución</span>
+                        <span className="text-xs font-normal opacity-70">Póliza de seguro como garantía</span>
+                      </button>
+                    </div>
+
+                    {/* Formulario Seguro de Caución */}
+                    {formData.garantiaType === 'seguro_caucion' && (
+                      <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-6 space-y-4">
+                        <h4 className="text-lg font-medium text-blue-300">Datos del Seguro de Caución</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Compañía aseguradora *</label>
+                            <input
+                              type="text"
+                              name="seguroCaucionCompania"
+                              value={formData.seguroCaucionCompania}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              placeholder="Ej: Sancor Seguros, Zurich..."
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Número de póliza</label>
+                            <input
+                              type="text"
+                              name="seguroCaucionPoliza"
+                              value={formData.seguroCaucionPoliza}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              placeholder="Número de póliza"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-300">Vigencia hasta</label>
+                            <input
+                              type="date"
+                              name="seguroCaucionVigencia"
+                              value={formData.seguroCaucionVigencia}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <label className="text-sm font-medium text-slate-300">Observaciones</label>
+                            <textarea
+                              name="seguroCaucionNotas"
+                              value={formData.seguroCaucionNotas}
+                              onChange={handleInputChange}
+                              rows={3}
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                              placeholder="Datos adicionales del seguro, condiciones, etc."
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Formulario Garantes */}
+                    {formData.garantiaType === 'garantes' && (
+                      <>
+                        {/* Garante 1 */}
                     <div className="bg-white/5 rounded-xl p-6 space-y-4">
                       <h4 className="text-lg font-medium text-white">Garante 1</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -633,6 +735,8 @@ const CreateLeaseForm = () => {
                         )}
                       </div>
                     </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Botón de envío */}
@@ -706,6 +810,11 @@ const CreateLeaseForm = () => {
                           commission: "",
                           totalMonths: "",
                           inventory: "",
+                          garantiaType: "",
+                          seguroCaucionCompania: "",
+                          seguroCaucionPoliza: "",
+                          seguroCaucionVigencia: "",
+                          seguroCaucionNotas: "",
                           guarantor1Name: "",
                           guarantor1Cuil: "",
                           guarantor1Direccion: "",
