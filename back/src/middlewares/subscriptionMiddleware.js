@@ -32,8 +32,22 @@ async function checkSubscription(req, res, next) {
       });
     }
 
-    // Verificar si expiró
+    // Verificar si expiró o si debe cancelarse al final del período
     const now = new Date();
+
+    // Cancelación diferida: el usuario pidió cancelar al final del período
+    if (subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
+      await prisma.subscriptions.update({
+        where: { subscriptionId: subscription.subscriptionId },
+        data: { status: 'canceled', canceledAt: now },
+      });
+      return res.status(403).json({
+        success: false,
+        error: 'Tu suscripción fue cancelada al vencer el período',
+        code: 'SUBSCRIPTION_CANCELED'
+      });
+    }
+
     if (subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
       await prisma.subscriptions.update({
         where: { subscriptionId: subscription.subscriptionId },

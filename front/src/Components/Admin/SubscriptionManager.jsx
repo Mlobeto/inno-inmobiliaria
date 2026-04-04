@@ -50,10 +50,10 @@ const SubscriptionManager = () => {
       console.log('📋 Planes array:', plansResponse.data?.plans);
       setPlans(plansResponse.data?.plans || []);
 
-      // Cargar historial de pagos (si existe endpoint)
+      // Cargar historial de pagos
       try {
-        const paymentsResponse = await axios.get(`${API_URL}/subscriptions/payments`, { headers });
-        setPaymentHistory(paymentsResponse.data);
+        const paymentsResponse = await axios.get(`${API_URL}/subscriptions/payment-history`, { headers });
+        setPaymentHistory(paymentsResponse.data?.payments || []);
       } catch (error) {
         console.log('No se pudo cargar historial de pagos:', error);
       }
@@ -63,6 +63,26 @@ const SubscriptionManager = () => {
       console.error('Error al cargar datos de suscripción:', error);
       toast.error('Error al cargar información de la suscripción');
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateSubscription = async (planId) => {
+    if (!window.confirm('¿Querés suscribirte a este plan?')) return;
+    setIsChangingPlan(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `${API_URL}/subscriptions/create-subscription`,
+        { planId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Redirigir a MercadoPago para completar el pago
+      window.location.href = response.data.subscriptionUrl;
+    } catch (error) {
+      console.error('Error al crear suscripción:', error);
+      toast.error(error.response?.data?.error || 'Error al crear la suscripción');
+    } finally {
+      setIsChangingPlan(false);
     }
   };
 
@@ -344,7 +364,14 @@ const SubscriptionManager = () => {
                 </ul>
 
                 <button
-                  onClick={() => handleChangePlan(plan.planId)}
+                  onClick={() => {
+                    const noActiveSub = !subscription || ['incomplete', 'canceled', 'past_due'].includes(subscription?.status);
+                    if (noActiveSub) {
+                      handleCreateSubscription(plan.planId);
+                    } else {
+                      handleChangePlan(plan.planId);
+                    }
+                  }}
                   disabled={subscription?.planId === plan.planId || isChangingPlan}
                   className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
                     subscription?.planId === plan.planId
@@ -352,7 +379,11 @@ const SubscriptionManager = () => {
                       : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }`}
                 >
-                  {subscription?.planId === plan.planId ? 'Plan Actual' : 'Seleccionar'}
+                  {subscription?.planId === plan.planId
+                    ? 'Plan Actual'
+                    : (!subscription || ['incomplete', 'canceled', 'past_due'].includes(subscription?.status))
+                      ? 'Suscribirse'
+                      : 'Cambiar a este plan'}
                 </button>
               </div>
             ))}

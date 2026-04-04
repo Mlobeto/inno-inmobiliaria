@@ -636,6 +636,7 @@ model subscriptions {
   updatedAt            DateTime  @default(now()) @db.Timestamp(6)
   plans                plans     @relation(fields: [planId], references: [planId], onUpdate: NoAction)
   tenants              tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  subscription_payment_logs subscription_payment_logs[]
 
   @@unique([tenantId, status], map: "idx_subscriptions_active_per_tenant", where: raw("((status)::text = ANY ((ARRAY['trialing'::character varying, 'active'::character varying])::text[]))"))
   @@index([currentPeriodEnd], map: "idx_subscriptions_period_end")
@@ -685,6 +686,7 @@ model tenants {
   ElectronicInvoice    ElectronicInvoice[]
   ElectronicInvoiceItem ElectronicInvoiceItem[]
   FiscalAuditLog       FiscalAuditLog[]
+  subscription_payment_logs subscription_payment_logs[]
 
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
@@ -888,4 +890,28 @@ model FiscalAuditLog {
   @@index([tenantId], map: "idx_fiscal_audit_tenant")
   @@index([entityType, entityId], map: "idx_fiscal_audit_entity")
   @@index([createdAt], map: "idx_fiscal_audit_created")
+}
+
+model subscription_payment_logs {
+  id               Int           @id @default(autoincrement())
+  subscriptionId   String        @db.Uuid
+  tenantId         Int
+  mpPaymentId      String?       @db.VarChar(100)
+  mpPreapprovalId  String?       @db.VarChar(100)
+  status           String        @db.VarChar(20)
+  amount           Decimal?      @db.Decimal(10, 2)
+  currency         String        @default("ARS") @db.VarChar(3)
+  periodStart      DateTime?     @db.Timestamp(6)
+  periodEnd        DateTime?     @db.Timestamp(6)
+  rawData          Json?
+  createdAt        DateTime      @default(now()) @db.Timestamp(6)
+
+  subscriptions    subscriptions @relation(fields: [subscriptionId], references: [subscriptionId], onDelete: Cascade)
+  tenants          tenants       @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([subscriptionId], map: "idx_payment_logs_subscription")
+  @@index([tenantId], map: "idx_payment_logs_tenant")
+  @@index([mpPaymentId], map: "idx_payment_logs_mp_payment")
+  @@index([status], map: "idx_payment_logs_status")
+  @@index([createdAt], map: "idx_payment_logs_created")
 }

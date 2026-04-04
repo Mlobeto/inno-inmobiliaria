@@ -23,7 +23,7 @@ class SubscriptionController {
   async getPlans(req, res) {
     try {
       const plans = await prisma.plans.findMany({
-        where: { isActive: true },
+        where: { isActive: true, planId: { not: 'lifetime' } },
         orderBy: { sortOrder: 'asc' }
       });
       
@@ -67,8 +67,22 @@ class SubscriptionController {
         });
       }
       
-      // Verificar si expiró
+      // Verificar expiración y cancelación diferida
       const now = new Date();
+
+      // Cancelación al final del período: el usuario pidió no renovar
+      if (subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
+        await prisma.subscriptions.update({
+          where: { subscriptionId: subscription.subscriptionId },
+          data: { status: 'canceled', canceledAt: now },
+        });
+        return res.json({
+          success: true,
+          subscription: null,
+          message: 'Suscripción cancelada al vencer el período'
+        });
+      }
+
       if (subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
         await prisma.subscriptions.update({
           where: { subscriptionId: subscription.subscriptionId },
@@ -134,14 +148,6 @@ class SubscriptionController {
         });
       }
 
-      // Verificar que el plan tenga ID de MercadoPago
-      if (!plan.mpPlanId) {
-        return res.status(400).json({
-          success: false,
-          error: 'El plan no está configurado en MercadoPago. Contacta al administrador.'
-        });
-      }
-      
       // Crear suscripción (preapproval) en MercadoPago
       const preapprovalData = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
@@ -290,27 +296,48 @@ class SubscriptionController {
           preapprovalId: payment.preapproval_id
         });
         
-        if (payment.status === 'approved' && payment.preapproval_id) {
+        if (payment.preapproval_id) {
           // Buscar suscripción por mpSubscriptionId
           const subscription = await prisma.subscriptions.findFirst({
             where: { mpSubscriptionId: payment.preapproval_id }
           });
-          
+
           if (subscription) {
-            // Actualizar con información del último pago
-            await prisma.subscriptions.update({
-              where: { subscriptionId: subscription.subscriptionId },
-              data: {
-                status: 'active',
-                mpPaymentId: payment.id.toString(),
-                mpPayerId: payment.payer?.id?.toString(),
-                currentPeriodStart: new Date(),
-                currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                amount: payment.transaction_amount,
-              }
-            });
-            
-            console.log('✅ Pago aplicado a suscripción:', subscription.subscriptionId);
+            if (payment.status === 'approved') {
+              // Obtener next_payment_date real del preapproval
+              let nextPaymentDate = null;
+              try {
+                const preapproval = await preApprovalClient.get({ id: payment.preapproval_id });
+                nextPaymentDate = preapproval?.next_payment_date ? new Date(preapproval.next_payment_date) : null;
+              } catch (_) { /* fallback: +30 días */ }
+
+              const periodStart = new Date();
+              const periodEnd = nextPaymentDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+              await prisma.subscriptions.update({
+                where: { subscriptionId: subscription.subscriptionId },
+                data: {
+                  status: 'active',
+                  cancelAtPeriodEnd: false,
+                  mpPaymentId: payment.id.toString(),
+                  mpPayerId: payment.payer?.id?.toString(),
+                  currentPeriodStart: periodStart,
+                  currentPeriodEnd: periodEnd,
+                  amount: payment.transaction_amount,
+                }
+              });
+
+              await logPayment(prisma, subscription, payment, 'approved', periodStart, periodEnd);
+              console.log('✅ Pago aprobado aplicado a suscripción:', subscription.subscriptionId);
+
+            } else if (payment.status === 'rejected') {
+              await prisma.subscriptions.update({
+                where: { subscriptionId: subscription.subscriptionId },
+                data: { status: 'past_due' }
+              });
+              await logPayment(prisma, subscription, payment, 'rejected', null, null);
+              console.log('⚠️ Pago rechazado, suscripción marcada como past_due:', subscription.subscriptionId);
+            }
           }
         }
       }
@@ -433,12 +460,35 @@ class SubscriptionController {
         });
       }
       
-      // Actualizar plan
+      // Actualizar preapproval en MercadoPago si la suscripción está activa
+      if (subscription.mpSubscriptionId && subscription.status === 'active') {
+        try {
+          const newAmount = billingCycle === 'yearly'
+            ? Math.round(parseFloat(newPlan.priceYearly) / 12)
+            : parseFloat(newPlan.priceMonthly);
+          await preApprovalClient.update({
+            id: subscription.mpSubscriptionId,
+            body: {
+              reason: `Suscripción ${newPlan.name} - Inno Inmobiliaria`,
+              auto_recurring: { transaction_amount: newAmount },
+            },
+          });
+          console.log('✅ Preapproval actualizado en MP:', subscription.mpSubscriptionId);
+        } catch (mpError) {
+          console.error('⚠️ Error actualizando preapproval en MP (continuando):', mpError.message);
+          // No bloqueamos: la BD se actualiza igual y la siguiente renovación usará el monto nuevo
+        }
+      }
+
+      // Actualizar plan en BD
       await prisma.subscriptions.update({
         where: { subscriptionId: subscription.subscriptionId },
         data: {
           planId: newPlanId,
           billingCycle,
+          amount: billingCycle === 'yearly'
+            ? Math.round(parseFloat(newPlan.priceYearly) / 12)
+            : parseFloat(newPlan.priceMonthly),
         }
       });
 
@@ -473,19 +523,19 @@ class SubscriptionController {
     try {
       const { tenantId } = req.user;
       const { planId = 'basic' } = req.body;
-      
+
       // Verificar si ya tuvo trial
       const hadTrial = await prisma.subscriptions.findFirst({
         where: { tenantId }
       });
-      
+
       if (hadTrial) {
         return res.status(400).json({
           success: false,
           error: 'Ya has usado tu período de prueba'
         });
       }
-      
+
       // Buscar plan
       const plan = await prisma.plans.findUnique({ where: { planId } });
       if (!plan || !plan.isActive) {
@@ -494,12 +544,12 @@ class SubscriptionController {
           error: 'Plan no válido'
         });
       }
-      
+
       // Calcular fechas del trial
       const trialStart = new Date();
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + plan.trialDays);
-      
+
       // Crear suscripción en trial
       const subscription = await prisma.subscriptions.create({
         data: {
@@ -521,7 +571,7 @@ class SubscriptionController {
         where: { subscriptionId: subscription.subscriptionId },
         include: { plans: true },
       });
-      
+
       res.json({
         success: true,
         message: `Trial de ${plan.trialDays} días iniciado`,
@@ -538,6 +588,82 @@ class SubscriptionController {
       });
     }
   }
+
+  /**
+   * Historial de pagos del tenant
+   * GET /api/subscriptions/payment-history
+   */
+  async getPaymentHistory(req, res) {
+    try {
+      const { tenantId } = req.user;
+      const { page = 1, limit = 20 } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const [logs, total] = await Promise.all([
+        prisma.subscription_payment_logs.findMany({
+          where: { tenantId },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: parseInt(limit),
+          select: {
+            id: true,
+            mpPaymentId: true,
+            status: true,
+            amount: true,
+            currency: true,
+            periodStart: true,
+            periodEnd: true,
+            createdAt: true,
+          },
+        }),
+        prisma.subscription_payment_logs.count({ where: { tenantId } }),
+      ]);
+
+      res.json({
+        success: true,
+        logs,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      });
+    } catch (error) {
+      console.error('Error obteniendo historial de pagos:', error);
+      res.status(500).json({ success: false, error: 'Error al obtener el historial de pagos' });
+    }
+  }
+}
+
+/**
+ * Persiste un evento de pago en subscription_payment_logs.
+ * Silencia errores para no afectar el flujo principal.
+ */
+async function logPayment(prisma, subscription, payment, status, periodStart, periodEnd) {
+  try {
+    await prisma.subscription_payment_logs.create({
+      data: {
+        subscriptionId: subscription.subscriptionId,
+        tenantId: subscription.tenantId,
+        mpPaymentId: payment.id?.toString(),
+        mpPreapprovalId: payment.preapproval_id?.toString(),
+        status,
+        amount: payment.transaction_amount ?? null,
+        currency: payment.currency_id ?? 'ARS',
+        periodStart: periodStart ?? null,
+        periodEnd: periodEnd ?? null,
+        rawData: {
+          paymentId: payment.id,
+          paymentStatus: payment.status,
+          paymentStatusDetail: payment.status_detail,
+          paymentMethodId: payment.payment_method_id,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('[logPayment] Error guardando log de pago (no crítico):', err.message);
+  }
 }
 
 const controller = new SubscriptionController();
@@ -550,5 +676,6 @@ module.exports = {
   cancelSubscription: controller.cancelSubscription.bind(controller),
   changePlan: controller.changePlan.bind(controller),
   startTrial: controller.startTrial.bind(controller),
+  getPaymentHistory: controller.getPaymentHistory.bind(controller),
   handleMercadoPagoWebhook: controller.handleMercadoPagoWebhook.bind(controller)
 };

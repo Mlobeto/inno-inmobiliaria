@@ -284,7 +284,7 @@ const Panel = () => {
             Bienvenido, {currentUser?.username || 'Usuario'}
           </h1>
           <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-            Gestiona todos los aspectos de tu inmobiliaria desde un solo lugar
+            Automatiza tu inmobiliaria desde un solo lugar
           </p>
           {currentUser?.email && (
             <p className="text-slate-400 text-sm mt-2">{currentUser.email}</p>

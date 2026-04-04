@@ -17,6 +17,7 @@ router.use(authMiddleware);
 router.use(tenancyMiddleware);
 
 router.get('/current', SubscriptionController.getCurrentSubscription);
+router.get('/payment-history', SubscriptionController.getPaymentHistory);
 router.post('/create-subscription', SubscriptionController.createSubscription);
 router.post('/cancel', SubscriptionController.cancelSubscription);
 router.post('/change-plan', SubscriptionController.changePlan);

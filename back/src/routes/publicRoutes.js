@@ -15,7 +15,8 @@ router.get('/plans', async (req, res) => {
     
     const plans = await prisma.plans.findMany({
       where: {
-        isActive: true // Solo planes activos
+        isActive: true,
+        planId: { not: 'lifetime' },
       },
       orderBy: [
         { sortOrder: 'asc' },

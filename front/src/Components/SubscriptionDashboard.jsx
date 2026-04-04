@@ -1,4 +1,5 @@
-import  { useState } from 'react';
+import  { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   useGetCurrentSubscriptionQuery, 
   useGetPlansQuery,
@@ -37,9 +38,17 @@ const SubscriptionDashboard = () => {
 
   const [cancelSubscription, { isLoading: canceling }] = useCancelSubscriptionMutation();
   const [changePlan, { isLoading: changingPlan }] = useChangePlanMutation();
+  const navigate = useNavigate();
 
   const subscription = subscriptionData?.subscription;
   const plans = plansData?.plans || [];
+
+  // Si no hay suscripción activa, redirigir a /plans después de que cargue la consulta
+  useEffect(() => {
+    if (!loadingSubscription && subscriptionData && !subscription) {
+      navigate('/plans', { replace: true });
+    }
+  }, [loadingSubscription, subscription, subscriptionData, navigate]);
 
   // Handlers
   const handleCancelSubscription = async (immediately = false) => {
@@ -81,25 +90,11 @@ const SubscriptionDashboard = () => {
     );
   }
 
-  // Sin suscripción
+  // Sin suscripción: el useEffect redirige, mostramos spinner mientras navega
   if (!subscription) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-          <IoWarning className="text-yellow-500 text-5xl mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            No tienes una suscripción activa
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Para utilizar GestiónProp necesitas seleccionar un plan
-          </p>
-          <a 
-            href="/#planes" 
-            className="inline-block bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
-          >
-            Ver Planes Disponibles
-          </a>
-        </div>
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
