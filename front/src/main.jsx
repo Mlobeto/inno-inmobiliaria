@@ -11,8 +11,7 @@ import 'react-quill/dist/quill.snow.css';
 import 'driver.js/dist/driver.css';
 import { restoreSession } from '@shared/redux';
 
-axios.defaults.baseURL = "http://localhost:3001/api";
-//axios.defaults.baseURL = "https://qlinmobiliaria.onrender.com";
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 // Configurar interceptor para incluir token en todas las peticiones
 axios.interceptors.request.use(

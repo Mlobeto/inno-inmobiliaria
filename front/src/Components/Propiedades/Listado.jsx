@@ -81,7 +81,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     const fetchTenantInfo = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/admin/tenant`, {
+        const response = await axios.get(`${import.meta.env.VITE_API_URL}/admin/tenant`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const tenant = response.data?.data || response.data;
