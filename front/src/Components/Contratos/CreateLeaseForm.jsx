@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from "react-redux";
 import { useGetAllClientsQuery } from "@shared/redux";
 import {
@@ -24,7 +25,7 @@ import {
   IoCloseOutline,
 } from "react-icons/io5";
 
-const CreateLeaseForm = () => {
+const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const dispatch = useDispatch();
   const property = useSelector((state) => state.property);
   const [isLoading, setIsLoading] = useState(false);
@@ -316,18 +317,32 @@ const CreateLeaseForm = () => {
     }
   };
 
+  // Preseleccionar propiedad cuando viene desde el listado externo
+  useEffect(() => {
+    if (preselectedProperty) {
+      handlePropertySelect(preselectedProperty);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className="min-h-screen">
+    <div className={isModal ? "" : "min-h-screen"}>
       {/* Mostrar Listado si no hay propiedad seleccionada */}
       {!formData.propertyId ? (
-        <Listado mode="lease" onSelectProperty={handlePropertySelect} />
+        isModal ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mr-3"></div>
+            <span className="text-white">Cargando propiedad...</span>
+          </div>
+        ) : (
+          <Listado mode="lease" onSelectProperty={handlePropertySelect} />
+        )
       ) : (
         // Modal overlay con formulario
         formData.propertyId && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header del modal */}
-            <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-6 flex items-center justify-between">
+        <div className={isModal ? "" : "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"}>
+          <div className={isModal ? "" : "bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"}>
+            {/* Header del modal - solo en modo standalone */}
+            {!isModal && <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-6 flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <IoDocumentTextOutline className="w-6 h-6 text-blue-400" />
                 <h2 className="text-2xl font-bold text-white">
@@ -343,7 +358,7 @@ const CreateLeaseForm = () => {
               >
                 <IoCloseOutline className="w-6 h-6" />
               </button>
-            </div>
+            </div>}
 
             {/* Contenido del modal */}
             <div className="p-6">
@@ -838,8 +853,12 @@ const CreateLeaseForm = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setFormData(prev => ({ ...prev, propertyId: "" }));
-                        setLeaseCreated(null);
+                        if (onClose) {
+                          onClose();
+                        } else {
+                          setFormData(prev => ({ ...prev, propertyId: "" }));
+                          setLeaseCreated(null);
+                        }
                       }}
                       className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl font-medium transition-all duration-300"
                     >
@@ -855,6 +874,12 @@ const CreateLeaseForm = () => {
       )}
     </div>
   );
+};
+
+CreateLeaseForm.propTypes = {
+  preselectedProperty: PropTypes.object,
+  isModal: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default CreateLeaseForm;
