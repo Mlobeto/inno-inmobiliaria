@@ -12,7 +12,7 @@ import {
 } from "../../redux/Actions/actions";
 import Listado from "../Propiedades/Listado";
 import Swal from "sweetalert2";
-import ContratoAlquiler from "../PdfTemplates/ContratoAlquiler";
+import ContratoEditor from "./ContratoEditor";
 import {
   IoDocumentTextOutline,
   IoBusinessOutline,
@@ -31,6 +31,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const propertyFromRoute = location?.state?.property;
+  // eslint-disable-next-line no-unused-vars
   const property = useSelector((state) => state.property);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -796,88 +797,11 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                   </div>
                 </form>
               ) : (
-                /* Vista del contrato creado */
-                <div className="text-center space-y-6">
-                  <div className="mb-6">
-                    <IoDocumentTextOutline className="w-16 h-16 text-green-400 mx-auto mb-4" />
-                    <h3 className="text-2xl font-bold text-white mb-2">¡Contrato Creado Exitosamente!</h3>
-                    <p className="text-slate-400">El contrato de alquiler ha sido generado correctamente</p>
-                  </div>
-                  
-                  <ContratoAlquiler
-                    lease={leaseCreated}
-                    propertyData={property}
-                    guarantor1Data={{
-                      name: formData.guarantor1Name,
-                      cuil: formData.guarantor1Cuil,
-                      direccion: formData.guarantor1Direccion,
-                      description: formData.guarantor1Description,
-                      certificationEntity: formData.guarantor1CertificationEntity,
-                    }}
-                    guarantor2Data={{
-                      name: formData.guarantor2Name,
-                      cuil: formData.guarantor2Cuil,
-                      direccion: formData.guarantor2Direccion,
-                      description: formData.guarantor2Description,
-                      certificationEntity: formData.guarantor2CertificationEntity,
-                    }}
-                  />
-                  
-                  <div className="flex gap-4 justify-center pt-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({
-                          propertyId: "",
-                          locador: "",
-                          locatario: "",
-                          locatarioId: "",
-                          startDate: "",
-                          rentAmount: "",
-                          updateFrequency: "",
-                          commission: "",
-                          totalMonths: "",
-                          inventory: "",
-                          garantiaType: "",
-                          seguroCaucionCompania: "",
-                          seguroCaucionPoliza: "",
-                          seguroCaucionVigencia: "",
-                          seguroCaucionNotas: "",
-                          guarantor1Name: "",
-                          guarantor1Cuil: "",
-                          guarantor1Direccion: "",
-                          guarantor1Description: "",
-                          guarantor1CertificationEntity: "",
-                          guarantor2Name: "",
-                          guarantor2Cuil: "",
-                          guarantor2Direccion: "",
-                          guarantor2Description: "",
-                          guarantor2CertificationEntity: "",
-                        });
-                        setLeaseCreated(null);
-                        setPdfData(null);
-                        setFilteredClients([]);
-                        setShowClientList(false);
-                      }}
-                      className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl font-medium transition-all duration-300"
-                    >
-                      Crear Nuevo Contrato
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onClose) {
-                          onClose();
-                        } else {
-                          navigate('/contratoAlquiler');
-                        }
-                      }}
-                      className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white rounded-xl font-medium transition-all duration-300"
-                    >
-                      Volver al Listado
-                    </button>
-                  </div>
-                </div>
+                /* Vista del contrato creado: abrir editor directamente */
+                <ContratoEditor
+                  lease={leaseCreated}
+                  onClose={() => navigate('/contratoAlquiler')}
+                />
               )}
             </div>
           </div>
