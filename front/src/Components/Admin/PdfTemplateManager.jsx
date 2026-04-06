@@ -66,7 +66,7 @@ const PdfTemplateManager = ({ embedded = false }) => {
     : templates;
 
   // Función para obtener plantilla de ejemplo según el tipo
-  const getExampleTemplate = (templateType) => {
+  const getExampleTemplate = (templateType, propertyPurpose = '') => {
     const examples = {
       CONTRATO_ALQUILER: {
         html: `<div style="font-family: Arial, sans-serif; padding: 40px; line-height: 1.6;">
@@ -77,8 +77,8 @@ const PdfTemplateManager = ({ embedded = false }) => {
   </p>
   
   <h3>PARTES:</h3>
-  <p><strong>LOCADOR:</strong> {{propietario.nombre}}, DNI {{propietario.dni}}, con domicilio en {{propietario.domicilio}}</p>
-  <p><strong>LOCATARIO:</strong> {{inquilino.nombre}}, DNI {{inquilino.dni}}, con domicilio en {{inquilino.domicilio}}</p>
+  <p><strong>LOCADOR:</strong> {{propietario.nombre}}, CUIL/CUIT {{propietario.cuil}}, con domicilio en {{propietario.domicilio}}, tel. {{propietario.telefono}}</p>
+  <p><strong>LOCATARIO:</strong> {{inquilino.nombre}}, CUIL/CUIT {{inquilino.cuil}}, con domicilio en {{inquilino.domicilio}}, tel. {{inquilino.telefono}}</p>
   
   <h3>PRIMERA - OBJETO:</h3>
   <p>El LOCADOR da en locación al LOCATARIO el inmueble ubicado en {{propiedad.direccion}}, {{propiedad.ciudad}}, Provincia de {{propiedad.provincia}}.</p>
@@ -427,8 +427,8 @@ table { width: 100%; }
   </p>
   
   <h3>PARTES:</h3>
-  <p><strong>LOCADOR:</strong> {{propietario.nombre}}, DNI {{propietario.dni}}, con domicilio en {{propietario.domicilio}}</p>
-  <p><strong>LOCATARIO:</strong> {{inquilino.nombre}}, DNI {{inquilino.dni}}, proveniente de {{inquilino.ciudadOrigen}}, Tel: {{inquilino.telefono}}</p>
+  <p><strong>LOCADOR:</strong> {{propietario.nombre}}, CUIL/CUIT {{propietario.cuil}}, con domicilio en {{propietario.domicilio}}</p>
+  <p><strong>LOCATARIO:</strong> {{inquilino.nombre}}, CUIL/CUIT {{inquilino.cuil}}, proveniente de {{inquilino.ciudadOrigen}}, tel. {{inquilino.telefono}}</p>
   
   <h3>PRIMERA - OBJETO:</h3>
   <p>El LOCADOR da en locación temporaria al LOCATARIO el inmueble ubicado en
@@ -489,10 +489,159 @@ p { margin: 10px 0; text-align: justify; }`,
         footer: `<div style="text-align: center; font-size: 10px; color: #666; padding: 10px; border-top: 1px solid #ccc;">
   Página {{pageNumber}} de {{totalPages}} — {{empresa.direccion}}
 </div>`
+      },
+      CONTRATO_ALQUILER_COMERCIAL: {
+        html: `<div style="font-family: Arial, sans-serif; padding: 40px; line-height: 1.7;">
+  <h1 style="text-align: center; color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 15px;">
+    CONTRATO DE LOCACIÓN DE LOCAL COMERCIAL
+  </h1>
+
+  <p style="text-align: right; margin-top: 20px; color: #666;">
+    En {{ciudad}}, a los {{dia}} días del mes de {{mes}} de {{anio}}
+  </p>
+
+  <p style="text-align: justify; margin-top: 30px;">
+    Entre el Sr./Sra. <strong>{{propietario.nombre}}</strong>, CUIL/CUIT <strong>{{propietario.cuil}}</strong>,
+    con domicilio en {{propietario.domicilio}}, de la ciudad de {{propietario.ciudad}},
+    correo electrónico {{propietario.email}}, teléfono {{propietario.telefono}},
+    en adelante denominado <strong>"EL LOCADOR"</strong>, por una parte, y por la otra el Sr./Sra.
+    <strong>{{inquilino.nombre}}</strong>, CUIL/CUIT <strong>{{inquilino.cuil}}</strong>,
+    con domicilio en {{inquilino.domicilio}}, {{inquilino.ciudad}}, {{inquilino.provincia}},
+    correo electrónico {{inquilino.email}}, teléfono {{inquilino.telefono}},
+    en adelante denominado <strong>"EL LOCATARIO"</strong>, convienen en celebrar el presente
+    contrato de locación, sujeto a las siguientes cláusulas y condiciones:
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">PRIMERA: OBJETO.</h3>
+  <p style="text-align: justify;">
+    Por el presente contrato, el LOCADOR cede el uso del inmueble sito en
+    <strong>{{propiedad.direccion}}, {{propiedad.ciudad}}, {{propiedad.provincia}}</strong>,
+    por lo que, en contraprestación, EL LOCATARIO se obliga a pagar al LOCADOR en calidad de renta
+    el monto referido en la cláusula Nº4, en la forma y oportunidad convenidas.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">SEGUNDA: DESTINO DE LA LOCACIÓN.</h3>
+  <p style="text-align: justify;">
+    Las partes convienen que el inmueble referido en la cláusula primera será destinado a fines
+    comerciales. El inmueble tiene Superficie cubierta: <strong>{{propiedad.superficieCubierta}} m²</strong>,
+    Superficie total: <strong>{{propiedad.superficieTotal}} m²</strong>,
+    con <strong>{{propiedad.habitaciones}}</strong> local(es) y
+    <strong>{{propiedad.banos}}</strong> baño(s).
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">TERCERA: PLAZO DEL CONTRATO.</h3>
+  <p style="text-align: justify;">
+    Las partes convienen fijar un plazo de duración determinada de
+    <strong>{{contrato.plazoMeses}} meses</strong>, computados a partir del
+    <strong>{{contrato.fechaInicio}}</strong> y hasta el día <strong>{{contrato.fechaFin}}</strong>.
+    Es obligación del LOCATARIO restituir al término de la locación el inmueble desocupado y en buen
+    estado conforme a los arts. 1206 y 1207 del CCCN.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">CUARTA: PRECIO - MORA.</h3>
+  <p style="text-align: justify;">
+    El precio del alquiler se fija de común acuerdo entre las partes en la suma de
+    <strong>{{contrato.montoMensual}}</strong> para el primer cuatrimestre de la locación.<br/><br/>
+    Para los cuatrimestres subsiguientes, el precio será actualizado cada cuatro (4) meses aplicando
+    el Índice de Precios al Consumidor (IPC) publicado por el INDEC, mediante capitalización compuesta
+    de las variaciones mensuales del IPC de los cuatro meses inmediatos anteriores conforme a la Ley
+    N° 27.551.<br/><br/>
+    EL LOCATARIO abonará el alquiler en efectivo, por adelantado, del 1° al día
+    {{contrato.diaVencimiento}} de cada mes.<br/><br/>
+    La falta de pago producirá un interés equivalente al uno por ciento (1%) diario. La falta de pago
+    de un (1) solo canon mensual constituirá mora automática sin necesidad de interpelación previa.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">QUINTA: MODIFICACIONES.</h3>
+  <p style="text-align: justify;">
+    EL LOCATARIO tiene expresamente prohibido efectuar mejoras o modificaciones que alteren la
+    estructura del inmueble sin autorización previa y por escrito del LOCADOR. De autorizarse la
+    realización de mejoras, estas quedan a beneficio del inmueble sin derecho a indemnización alguna.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">SEXTA: IMPUESTOS Y SERVICIOS.</h3>
+  <p style="text-align: justify;">
+    EL LOCATARIO debe pagar los servicios de luz y cualquier otro servicio domiciliario.
+    Serán a cargo del LOCADOR las cargas que graven el inmueble (Impuesto Municipal, Impuesto Provincial).
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">SÉPTIMA: INCUMPLIMIENTO.</h3>
+  <p style="text-align: justify;">
+    En caso de mora o de cualquier otro incumplimiento del LOCATARIO, el LOCADOR podrá pedir el
+    cumplimiento del contrato o resolverlo y solicitar el inmediato desalojo (art. 1086 CCCN).
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">OCTAVA: IRRESPONSABILIDAD.</h3>
+  <p style="text-align: justify;">
+    El LOCADOR no se responsabiliza por daños a personas o cosas en el inmueble como consecuencia de
+    inundaciones, filtraciones, incendios, ruinas, desperfectos de cualquier tipo o caso fortuito.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">NOVENA: RESOLUCIÓN ANTICIPADA.</h3>
+  <p style="text-align: justify;">
+    El LOCATARIO podrá resolver este contrato sin expresión de causa luego de transcurridos los
+    primeros seis (6) meses, notificando con un (1) mes de anticipación. Si la resolución fuere
+    durante el primer año, abonará como indemnización un mes y medio (1,5) de alquiler. Transcurrido
+    el primer año, podrá rescindir con tres (3) meses de preaviso sin pagar indemnización.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">DÉCIMA: INTRANSFERIBILIDAD.</h3>
+  <p style="text-align: justify;">
+    El LOCATARIO no podrá subarrendar, permutar, prestar ni ceder en todo o en parte el inmueble,
+    ni transferir los derechos del presente contrato. Su incumplimiento es causal de rescisión.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">DÉCIMA PRIMERA: RENOVACIÓN.</h3>
+  <p style="text-align: justify;">
+    Este contrato no puede ser prorrogado ni renovado sin previo acuerdo escrito de las partes
+    acerca de las nuevas condiciones del arrendamiento.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">DÉCIMA SEGUNDA: COMPETENCIA Y JURISDICCIÓN.</h3>
+  <p style="text-align: justify;">
+    Las partes renuncian al fuero federal y se someten a la jurisdicción de la justicia ordinaria
+    de {{ciudad}} para cualquier cuestión derivada del presente.
+  </p>
+
+  <h3 style="color: #2c3e50; margin-top: 25px;">DÉCIMA TERCERA: FIRMA Y EJEMPLARES.</h3>
+  <p style="text-align: justify;">
+    El impuesto de sello provincial será abonado íntegramente por EL LOCATARIO. Leído, las partes
+    declaran su conformidad y firman tres (3) ejemplares de un mismo tenor y a un solo efecto,
+    en {{ciudad}}, el {{dia}} de {{mes}} de {{anio}}.
+  </p>
+
+  <div style="margin-top: 80px;">
+    <div style="display: flex; justify-content: space-between;">
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px;">
+          <strong>Firma Locador</strong><br/>
+          {{propietario.nombre}}
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px;">
+          <strong>Firma Locatario</strong><br/>
+          {{inquilino.nombre}}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`,
+        styles: `body { font-family: Arial, sans-serif; color: #2c3e50; }
+h1 { color: #2c3e50; border-bottom: 2px solid #e74c3c; padding-bottom: 10px; }
+h3 { color: #2c3e50; margin-top: 25px; }
+p { margin: 10px 0; text-align: justify; }`,
+        header: `<div style="text-align: center; padding: 10px; border-bottom: 1px solid #ccc;">
+  <strong>{{empresa.nombre}}</strong> — Tel: {{empresa.telefono}} — {{empresa.email}}
+</div>`,
+        footer: `<div style="text-align: center; font-size: 10px; color: #666; padding: 10px; border-top: 1px solid #ccc;">
+  Página {{pageNumber}} de {{totalPages}} — {{empresa.direccion}}
+</div>`
       }
     };
-    
-    return examples[templateType] || { html: '', styles: '', header: '', footer: '' };
+
+    const key = propertyPurpose ? `${templateType}_${propertyPurpose}` : templateType;
+    return examples[key] || examples[templateType] || { html: '', styles: '', header: '', footer: '' };
   };
 
   const handleCreateNew = () => {
@@ -661,9 +810,17 @@ p { margin: 10px 0; text-align: justify; }`,
                   </label>
                   <select
                     value={formData.templateType}
-                    onChange={(e) =>
-                      setFormData({ ...formData, templateType: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const newType = e.target.value;
+                      if (!editingTemplate) {
+                        const example = getExampleTemplate(newType, formData.propertyPurpose);
+                        if (example.html && !formData.htmlTemplate) {
+                          setFormData({ ...formData, templateType: newType, htmlTemplate: example.html, styles: example.styles, headerHtml: example.header, footerHtml: example.footer });
+                          return;
+                        }
+                      }
+                      setFormData({ ...formData, templateType: newType });
+                    }}
                     className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     disabled={!!editingTemplate}
                   >
@@ -698,9 +855,19 @@ p { margin: 10px 0; text-align: justify; }`,
                     </label>
                     <select
                       value={formData.propertyPurpose}
-                      onChange={(e) =>
-                        setFormData({ ...formData, propertyPurpose: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const newPurpose = e.target.value;
+                        if (!editingTemplate) {
+                          const example = getExampleTemplate(formData.templateType, newPurpose);
+                          if (example.html) {
+                            if (!formData.htmlTemplate || window.confirm('¿Desea cargar la plantilla de ejemplo para este tipo de propiedad? Se reemplazará el contenido actual.')) {
+                              setFormData({ ...formData, propertyPurpose: newPurpose, htmlTemplate: example.html, styles: example.styles, headerHtml: example.header, footerHtml: example.footer });
+                              return;
+                            }
+                          }
+                        }
+                        setFormData({ ...formData, propertyPurpose: newPurpose });
+                      }}
                       className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     >
                       <option value="">Todos los tipos de propiedad</option>

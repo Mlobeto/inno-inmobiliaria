@@ -129,6 +129,7 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
           { label: 'Ciudad propietario', value: '{{propietario.ciudad}}' },
           { label: 'Provincia propietario', value: '{{propietario.provincia}}' },
           { label: 'Email propietario', value: '{{propietario.email}}' },
+          { label: 'Teléfono propietario', value: '{{propietario.telefono}}' },
         ],
         inquilino: [
           { label: 'Nombre inquilino', value: '{{inquilino.nombre}}' },
@@ -137,11 +138,16 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
           { label: 'Ciudad inquilino', value: '{{inquilino.ciudad}}' },
           { label: 'Provincia inquilino', value: '{{inquilino.provincia}}' },
           { label: 'Email inquilino', value: '{{inquilino.email}}' },
+          { label: 'Teléfono inquilino', value: '{{inquilino.telefono}}' },
         ],
         propiedad: [
           { label: 'Dirección', value: '{{propiedad.direccion}}' },
           { label: 'Ciudad', value: '{{propiedad.ciudad}}' },
           { label: 'Provincia', value: '{{propiedad.provincia}}' },
+          { label: 'Superficie cubierta', value: '{{propiedad.superficieCubierta}}' },
+          { label: 'Superficie total', value: '{{propiedad.superficieTotal}}' },
+          { label: 'Habitaciones / locales', value: '{{propiedad.habitaciones}}' },
+          { label: 'Baños', value: '{{propiedad.banos}}' },
         ],
       },
       AUTORIZACION_VENTA: {
