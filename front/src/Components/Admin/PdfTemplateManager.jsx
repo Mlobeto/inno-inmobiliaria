@@ -52,6 +52,7 @@ const PdfTemplateManager = ({ embedded = false }) => {
     footerHtml: '',
     pageSize: 'A4',
     orientation: 'portrait',
+    propertyPurpose: '',
     isActive: true,
     isDefault: false,
   });
@@ -507,6 +508,7 @@ p { margin: 10px 0; text-align: justify; }`,
       footerHtml: exampleTemplate.footer,
       pageSize: 'A4',
       orientation: 'portrait',
+      propertyPurpose: '',
       isActive: true,
       isDefault: false,
     });
@@ -524,6 +526,7 @@ p { margin: 10px 0; text-align: justify; }`,
       footerHtml: template.footerHtml || '',
       pageSize: template.pageSize,
       orientation: template.orientation,
+      propertyPurpose: template.propertyPurpose || '',
       isActive: template.isActive,
       isDefault: template.isDefault,
     });
@@ -687,6 +690,29 @@ p { margin: 10px 0; text-align: justify; }`,
                     placeholder="Ej: Contrato Estándar"
                   />
                 </div>
+
+                {['CONTRATO_ALQUILER', 'CONTRATO_ALQUILER_TEMPORARIO'].includes(formData.templateType) && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Aplica a tipo de propiedad
+                    </label>
+                    <select
+                      value={formData.propertyPurpose}
+                      onChange={(e) =>
+                        setFormData({ ...formData, propertyPurpose: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Todos los tipos de propiedad</option>
+                      <option value="VIVIENDA">Vivienda (casa, departamento, duplex)</option>
+                      <option value="COMERCIAL">Comercial (local, oficina, finca, galpón...)</option>
+                      <option value="TERRENO">Terreno (lote, terreno)</option>
+                    </select>
+                    <p className="text-xs text-slate-500 mt-1">
+                      El sistema seleccionará automáticamente esta plantilla cuando el tipo de propiedad coincida.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -888,6 +914,13 @@ p { margin: 10px 0; text-align: justify; }`,
                     <p className="text-sm text-slate-400">
                       {getTypeLabel(template.templateType)}
                     </p>
+                    {template.propertyPurpose && (
+                      <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-teal-500/20 text-teal-400 rounded-full">
+                        {template.propertyPurpose === 'VIVIENDA' && 'Vivienda'}
+                        {template.propertyPurpose === 'COMERCIAL' && 'Comercial'}
+                        {template.propertyPurpose === 'TERRENO' && 'Terreno'}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
                     {template.isActive ? (

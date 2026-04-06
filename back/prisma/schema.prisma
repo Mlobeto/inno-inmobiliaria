@@ -514,6 +514,7 @@ model pdf_templates {
   pageSize     String    @default("A4") @db.VarChar(20)
   orientation  String    @default("portrait") @db.VarChar(20)
   margins      Json?     @default("{\"top\": \"20mm\", \"left\": \"15mm\", \"right\": \"15mm\", \"bottom\": \"20mm\"}")
+  propertyPurpose String?   @db.VarChar(20)
   isActive     Boolean   @default(true)
   isDefault    Boolean   @default(false)
   createdBy    Int?
@@ -526,6 +527,7 @@ model pdf_templates {
   @@index([isActive], map: "idx_pdf_templates_active")
   @@index([tenantId, isDefault], map: "idx_pdf_templates_tenant_default")
   @@index([tenantId, templateType], map: "idx_pdf_templates_tenant_type")
+  @@index([tenantId, templateType, propertyPurpose], map: "idx_pdf_templates_tenant_type_purpose")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments

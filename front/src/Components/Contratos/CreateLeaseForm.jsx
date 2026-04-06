@@ -337,13 +337,22 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     const templateType = isTemporary ? 'CONTRATO_ALQUILER_TEMPORARIO' : 'CONTRATO_ALQUILER';
 
     const commercialTypes = ['oficina', 'local', 'galpon', 'deposito', 'finca', 'cochera'];
+    const terrenoTypes = ['lote', 'terreno'];
     const isCommercial = commercialTypes.includes(selectedPropertyType?.toLowerCase());
 
     let typeLabel = 'Contrato de Alquiler';
     if (isTemporary) typeLabel = 'Contrato Temporario';
     else if (isCommercial) typeLabel = 'Contrato de Alquiler Comercial';
 
-    fetch(`${apiUrl}/pdf-templates/check?templateType=${templateType}`, {
+    // Calcular propertyPurpose para pasar al endpoint de verificación
+    let propertyPurpose = '';
+    if (commercialTypes.includes(selectedPropertyType?.toLowerCase())) propertyPurpose = 'COMERCIAL';
+    else if (terrenoTypes.includes(selectedPropertyType?.toLowerCase())) propertyPurpose = 'TERRENO';
+    else if (selectedPropertyType) propertyPurpose = 'VIVIENDA';
+
+    const purposeParam = propertyPurpose ? `&propertyPurpose=${propertyPurpose}` : '';
+
+    fetch(`${apiUrl}/pdf-templates/check?templateType=${templateType}${purposeParam}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)

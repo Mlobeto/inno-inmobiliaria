@@ -7,6 +7,25 @@ const { renderTemplate, prepareTemplateVariables } = require("../services/pdfSer
 const COMMERCIAL_PROPERTY_TYPES = ['oficina', 'local', 'galpon', 'deposito', 'finca', 'cochera'];
 
 /**
+ * Mapeo de tipo de propiedad → propósito de la plantilla.
+ * VIVIENDA, COMERCIAL, TERRENO, o null si no se reconoce.
+ */
+const PROPERTY_PURPOSE_TYPES = {
+  VIVIENDA: ['casa', 'departamento', 'duplex'],
+  COMERCIAL: ['oficina', 'local', 'galpon', 'deposito', 'finca', 'cochera'],
+  TERRENO: ['lote', 'terreno'],
+};
+
+const getPropertyPurpose = (typeProperty) => {
+  if (!typeProperty) return null;
+  const tp = typeProperty.toLowerCase();
+  for (const [purpose, types] of Object.entries(PROPERTY_PURPOSE_TYPES)) {
+    if (types.includes(tp)) return purpose;
+  }
+  return null;
+};
+
+/**
  * Determina el tipo de plantilla más apropiado según el tipo de propiedad y duración del contrato.
  * - Contratos <= 3 meses → CONTRATO_ALQUILER_TEMPORARIO
  * - Propiedades comerciales → CONTRATO_ALQUILER (mismo tipo, pero el título varía desde la plantilla)
@@ -125,6 +144,7 @@ const createTemplate = async (req, res) => {
       pageSize,
       orientation,
       margins,
+      propertyPurpose,
       isActive,
       isDefault,
     } = req.body;
@@ -137,10 +157,14 @@ const createTemplate = async (req, res) => {
       });
     }
 
-    // Si se marca como default, quitar el default de otras plantillas del mismo tipo
+    // Si se marca como default, quitar el default de otras plantillas del mismo tipo y propósito
     if (isDefault) {
       await prisma.pdf_templates.updateMany({
-        where: { tenantId, templateType },
+        where: {
+          tenantId,
+          templateType,
+          propertyPurpose: propertyPurpose || null,
+        },
         data: { isDefault: false },
       });
     }
@@ -158,6 +182,7 @@ const createTemplate = async (req, res) => {
         pageSize: pageSize || "A4",
         orientation: orientation || "portrait",
         margins: margins || { top: "20mm", right: "15mm", bottom: "20mm", left: "15mm" },
+        propertyPurpose: propertyPurpose || null,
         isActive: isActive !== undefined ? isActive : true,
         isDefault: isDefault || false,
         createdBy: adminId,
@@ -198,6 +223,7 @@ const updateTemplate = async (req, res) => {
       pageSize,
       orientation,
       margins,
+      propertyPurpose,
       isActive,
       isDefault,
     } = req.body;
@@ -213,12 +239,18 @@ const updateTemplate = async (req, res) => {
       });
     }
 
-    // Si se marca como default, quitar el default de otras plantillas del mismo tipo
+    // Propósito final (puede venir del body o mantenerse igual)
+    const finalPurpose = propertyPurpose !== undefined
+      ? (propertyPurpose || null)
+      : template.propertyPurpose;
+
+    // Si se marca como default, quitar el default de otras plantillas del mismo tipo y propósito
     if (isDefault && !template.isDefault) {
       await prisma.pdf_templates.updateMany({
         where: {
           tenantId,
           templateType: template.templateType,
+          propertyPurpose: finalPurpose,
           id: { not: parseInt(id) },
         },
         data: { isDefault: false },
@@ -238,6 +270,7 @@ const updateTemplate = async (req, res) => {
         pageSize: pageSize || template.pageSize,
         orientation: orientation || template.orientation,
         margins: margins || template.margins,
+        propertyPurpose: finalPurpose,
         isActive: isActive !== undefined ? isActive : template.isActive,
         isDefault: isDefault !== undefined ? isDefault : template.isDefault,
       },
@@ -334,6 +367,7 @@ const duplicateTemplate = async (req, res) => {
         pageSize: originalTemplate.pageSize,
         orientation: originalTemplate.orientation,
         margins: originalTemplate.margins,
+        propertyPurpose: originalTemplate.propertyPurpose,
         isActive: false, // La copia empieza inactiva
         isDefault: false, // La copia no puede ser default
         createdBy: adminId,
@@ -376,11 +410,12 @@ const setAsDefault = async (req, res) => {
       });
     }
 
-    // Quitar default de otras plantillas del mismo tipo
+    // Quitar default de otras plantillas del mismo tipo y propósito
     await prisma.pdf_templates.updateMany({
       where: {
         tenantId,
         templateType: template.templateType,
+        propertyPurpose: template.propertyPurpose,
         id: { not: parseInt(id) },
       },
       data: { isDefault: false },
@@ -560,31 +595,43 @@ const renderForLease = async (req, res) => {
         lease.totalMonths
       );
 
-      // Buscar plantilla: primero el tipo sugerido, luego CONTRATO_ALQUILER como fallback
-      template = await prisma.pdf_templates.findFirst({
-        where: {
-          tenantId,
-          templateType: suggestedType,
-          isDefault: true,
-          isActive: true,
-          deletedAt: null,
-        },
-      });
+      // Determinar el propósito según el tipo de propiedad
+      const propertyPurpose = getPropertyPurpose(lease.Property?.typeProperty);
+
+      // Cadena de búsqueda con prioridad decreciente:
+      // 1. templateType exacto + propertyPurpose exacto
+      // 2. templateType exacto + sin propósito (null = todos)
+      // 3. CONTRATO_ALQUILER + propertyPurpose exacto (si suggestedType era distinto)
+      // 4. CONTRATO_ALQUILER + sin propósito
+
+      const candidateQueries = [
+        // #1 — tipo exacto + propósito exacto
+        propertyPurpose
+          ? { tenantId, templateType: suggestedType, propertyPurpose, isDefault: true, isActive: true, deletedAt: null }
+          : null,
+        // #2 — tipo exacto + propósito null (genérico)
+        { tenantId, templateType: suggestedType, propertyPurpose: null, isDefault: true, isActive: true, deletedAt: null },
+      ];
+
+      if (suggestedType !== 'CONTRATO_ALQUILER') {
+        candidateQueries.push(
+          // #3 — CONTRATO_ALQUILER + propósito exacto
+          propertyPurpose
+            ? { tenantId, templateType: 'CONTRATO_ALQUILER', propertyPurpose, isDefault: true, isActive: true, deletedAt: null }
+            : null,
+          // #4 — CONTRATO_ALQUILER + propósito null
+          { tenantId, templateType: 'CONTRATO_ALQUILER', propertyPurpose: null, isDefault: true, isActive: true, deletedAt: null }
+        );
+      }
 
       usedType = suggestedType;
-
-      // Fallback a CONTRATO_ALQUILER si no hay plantilla del tipo sugerido
-      if (!template && suggestedType !== 'CONTRATO_ALQUILER') {
-        template = await prisma.pdf_templates.findFirst({
-          where: {
-            tenantId,
-            templateType: 'CONTRATO_ALQUILER',
-            isDefault: true,
-            isActive: true,
-            deletedAt: null,
-          },
-        });
-        usedType = 'CONTRATO_ALQUILER';
+      for (const query of candidateQueries) {
+        if (!query) continue;
+        template = await prisma.pdf_templates.findFirst({ where: query });
+        if (template) {
+          usedType = query.templateType;
+          break;
+        }
       }
 
       if (!template) {
@@ -592,6 +639,7 @@ const renderForLease = async (req, res) => {
           success: false,
           message: 'No hay plantilla de contrato configurada como predeterminada',
           suggestedType,
+          propertyPurpose,
         });
       }
     }
@@ -620,6 +668,7 @@ const renderForLease = async (req, res) => {
         id: template.id,
         name: template.templateName,
         type: usedType,
+        propertyPurpose: template.propertyPurpose || null,
         isFallback: !templateId && usedType !== suggestedType,
         suggestedType,
       },
@@ -644,7 +693,7 @@ const renderForLease = async (req, res) => {
 const checkTemplates = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { templateType } = req.query;
+    const { templateType, propertyPurpose } = req.query;
 
     if (!templateType) {
       return res.status(400).json({
@@ -653,20 +702,33 @@ const checkTemplates = async (req, res) => {
       });
     }
 
+    // Buscar plantillas que aplican al propósito indicado:
+    // - Las que tienen el propósito exacto (si se indicó uno)
+    // - Las que son genéricas (propertyPurpose null = todos)
+    const where = {
+      tenantId,
+      templateType,
+      isActive: true,
+      deletedAt: null,
+    };
+
+    if (propertyPurpose) {
+      where.OR = [
+        { propertyPurpose },
+        { propertyPurpose: null },
+      ];
+    }
+
     const templates = await prisma.pdf_templates.findMany({
-      where: {
-        tenantId,
-        templateType,
-        isActive: true,
-        deletedAt: null,
-      },
-      select: { id: true, templateName: true, isDefault: true },
+      where,
+      select: { id: true, templateName: true, isDefault: true, propertyPurpose: true },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
     });
 
     res.json({
       success: true,
       templateType,
+      propertyPurpose: propertyPurpose || null,
       hasTemplates: templates.length > 0,
       count: templates.length,
       templates,
