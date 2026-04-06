@@ -664,7 +664,7 @@ p { margin: 10px 0; text-align: justify; }`,
                     onChange={(e) =>
                       setFormData({ ...formData, templateType: e.target.value })
                     }
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     disabled={!!editingTemplate}
                   >
                     <option value="">Selecciona un tipo</option>
@@ -701,7 +701,7 @@ p { margin: 10px 0; text-align: justify; }`,
                       onChange={(e) =>
                         setFormData({ ...formData, propertyPurpose: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     >
                       <option value="">Todos los tipos de propiedad</option>
                       <option value="VIVIENDA">Vivienda (casa, departamento, duplex)</option>
@@ -724,7 +724,7 @@ p { margin: 10px 0; text-align: justify; }`,
                       onChange={(e) =>
                         setFormData({ ...formData, pageSize: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     >
                       <option value="A4">A4</option>
                       <option value="Letter">Letter</option>
@@ -741,7 +741,7 @@ p { margin: 10px 0; text-align: justify; }`,
                       onChange={(e) =>
                         setFormData({ ...formData, orientation: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 bg-slate-800 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-slate-800 [&>option]:text-white"
                     >
                       <option value="portrait">Vertical</option>
                       <option value="landscape">Horizontal</option>
