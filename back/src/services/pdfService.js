@@ -311,6 +311,7 @@ const prepareTemplateVariables = (data, tenant, customVariables = {}) => {
       email: variables.landlord.email || '',
       telefono: variables.landlord.phone || '',
       ciudad: variables.landlord.ciudad || '',
+      provincia: variables.landlord.provincia || '',
     };
   }
 
