@@ -45,6 +45,11 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const [selectedClient, setSelectedClient] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [pdfData, setPdfData] = useState(null);
+  const [selectedPropertyType, setSelectedPropertyType] = useState(null);
+  const [templateWarning, setTemplateWarning] = useState(null); // null | { hasTemplates, type, typeName }
+
+  const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+  const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -311,6 +316,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
         commission: fullProperty.comision,
         inventory: fullProperty.inventory,
       }));
+      setSelectedPropertyType(fullProperty.typeProperty || null);
       console.log("FormData actualizado exitosamente");
     } catch (error) {
       console.error("Error al obtener datos de la propiedad:", error);
@@ -321,6 +327,38 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
       });
     }
   };
+
+  // Verificar plantillas disponibles cuando cambia el tipo/duración del contrato
+  useEffect(() => {
+    if (!formData.propertyId) return;
+
+    const months = parseInt(formData.totalMonths, 10);
+    const isTemporary = !isNaN(months) && months <= 3;
+    const templateType = isTemporary ? 'CONTRATO_ALQUILER_TEMPORARIO' : 'CONTRATO_ALQUILER';
+
+    const commercialTypes = ['oficina', 'local', 'galpon', 'deposito', 'finca', 'cochera'];
+    const isCommercial = commercialTypes.includes(selectedPropertyType?.toLowerCase());
+
+    let typeLabel = 'Contrato de Alquiler';
+    if (isTemporary) typeLabel = 'Contrato Temporario';
+    else if (isCommercial) typeLabel = 'Contrato de Alquiler Comercial';
+
+    fetch(`${apiUrl}/pdf-templates/check?templateType=${templateType}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setTemplateWarning({
+            hasTemplates: data.hasTemplates,
+            type: templateType,
+            typeName: typeLabel,
+            isCommercial,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [formData.propertyId, formData.totalMonths, selectedPropertyType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Preseleccionar propiedad cuando viene desde el listado externo o navegación directa
   useEffect(() => {
@@ -387,6 +425,30 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                     <p className="text-white">ID: {formData.propertyId}</p>
                     <p className="text-slate-300">Propietario: {formData.locador}</p>
                   </div>
+
+                  {/* Aviso de plantillas de contrato */}
+                  {templateWarning && !templateWarning.hasTemplates && (
+                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-400/30 rounded-xl p-4 mb-2">
+                      <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-amber-300 font-medium text-sm">
+                          No tenés plantillas de {templateWarning.typeName} configuradas
+                        </p>
+                        <p className="text-amber-200/70 text-xs mt-1">
+                          El contrato se generará con el diseño por defecto del sistema.{' '}
+                          <a
+                            href="/admin/plantillas"
+                            className="underline hover:text-amber-100 transition-colors"
+                            onClick={e => { e.preventDefault(); navigate('/admin/plantillas'); }}
+                          >
+                            Configurar plantillas
+                          </a>
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Información básica del contrato */}
                   <div className="space-y-6">

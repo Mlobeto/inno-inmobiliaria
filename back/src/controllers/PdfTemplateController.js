@@ -2,6 +2,27 @@ const prisma = require("../utils/prismaClient");
 const { renderTemplate, prepareTemplateVariables } = require("../services/pdfService");
 
 /**
+ * Tipos de propiedad comerciales
+ */
+const COMMERCIAL_PROPERTY_TYPES = ['oficina', 'local', 'galpon', 'deposito', 'finca', 'cochera'];
+
+/**
+ * Determina el tipo de plantilla más apropiado según el tipo de propiedad y duración del contrato.
+ * - Contratos <= 3 meses → CONTRATO_ALQUILER_TEMPORARIO
+ * - Propiedades comerciales → CONTRATO_ALQUILER (mismo tipo, pero el título varía desde la plantilla)
+ * - Default → CONTRATO_ALQUILER
+ */
+const determineTemplateType = (typeProperty, totalMonths) => {
+  const months = parseInt(totalMonths, 10);
+  if (!isNaN(months) && months <= 3) {
+    return 'CONTRATO_ALQUILER_TEMPORARIO';
+  }
+  // Los contratos comerciales comparten tipo con los residenciales; la plantilla puede
+  // diferenciar con condicionales Handlebars sobre property.typeProperty.
+  return 'CONTRATO_ALQUILER';
+};
+
+/**
  * @route GET /api/pdf-templates
  * @desc Obtener todas las plantillas del tenant
  * @access Private (requiere tenancyMiddleware)
@@ -483,31 +504,16 @@ const getTemplateTypes = async (req, res) => {
 
 /**
  * @route GET /api/pdf-templates/render/lease/:leaseId
- * @desc Renderizar la plantilla CONTRATO_ALQUILER por defecto del tenant con los datos del lease
+ * @desc Renderizar la plantilla por defecto del tenant con los datos del lease.
+ *       Selección inteligente: detecta si es temporario (≤3 meses) y busca primero
+ *       la plantilla del tipo específico; si no existe, cae a CONTRATO_ALQUILER.
  * @access Private
  */
 const renderForLease = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { leaseId } = req.params;
-
-    // Buscar plantilla default CONTRATO_ALQUILER del tenant
-    const template = await prisma.pdf_templates.findFirst({
-      where: {
-        tenantId,
-        templateType: 'CONTRATO_ALQUILER',
-        isDefault: true,
-        isActive: true,
-        deletedAt: null,
-      },
-    });
-
-    if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: 'No hay plantilla CONTRATO_ALQUILER configurada como predeterminada',
-      });
-    }
+    const { templateId } = req.query; // permite solicitar una plantilla específica
 
     // Obtener el lease con todas las relaciones necesarias
     const lease = await prisma.Leases.findFirst({
@@ -527,6 +533,69 @@ const renderForLease = async (req, res) => {
       });
     }
 
+    let template = null;
+    let usedType;
+
+    // Si se solicita una plantilla específica, verificar que pertenezca al tenant
+    if (templateId) {
+      template = await prisma.pdf_templates.findFirst({
+        where: {
+          id: parseInt(templateId),
+          tenantId,
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          message: 'Plantilla específica no encontrada o inactiva',
+        });
+      }
+      usedType = template.templateType;
+    } else {
+      // Determinar el tipo de plantilla más adecuado
+      const suggestedType = determineTemplateType(
+        lease.Property?.typeProperty,
+        lease.totalMonths
+      );
+
+      // Buscar plantilla: primero el tipo sugerido, luego CONTRATO_ALQUILER como fallback
+      template = await prisma.pdf_templates.findFirst({
+        where: {
+          tenantId,
+          templateType: suggestedType,
+          isDefault: true,
+          isActive: true,
+          deletedAt: null,
+        },
+      });
+
+      usedType = suggestedType;
+
+      // Fallback a CONTRATO_ALQUILER si no hay plantilla del tipo sugerido
+      if (!template && suggestedType !== 'CONTRATO_ALQUILER') {
+        template = await prisma.pdf_templates.findFirst({
+          where: {
+            tenantId,
+            templateType: 'CONTRATO_ALQUILER',
+            isDefault: true,
+            isActive: true,
+            deletedAt: null,
+          },
+        });
+        usedType = 'CONTRATO_ALQUILER';
+      }
+
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          message: 'No hay plantilla de contrato configurada como predeterminada',
+          suggestedType,
+        });
+      }
+    }
+
     // Normalizar relaciones para prepareTemplateVariables
     const leaseData = {
       ...lease,
@@ -540,12 +609,73 @@ const renderForLease = async (req, res) => {
     const variables = prepareTemplateVariables(leaseData, tenant);
     const html = renderTemplate(template, variables);
 
-    res.json({ success: true, html });
+    const suggestedType = templateId
+      ? usedType
+      : determineTemplateType(lease.Property?.typeProperty, lease.totalMonths);
+
+    res.json({
+      success: true,
+      html,
+      templateUsed: {
+        id: template.id,
+        name: template.templateName,
+        type: usedType,
+        isFallback: !templateId && usedType !== suggestedType,
+        suggestedType,
+      },
+    });
   } catch (error) {
     console.error('Error al renderizar plantilla para lease:', error);
     res.status(500).json({
       success: false,
       message: 'Error al renderizar la plantilla',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @route GET /api/pdf-templates/check
+ * @desc Verificar si el tenant tiene plantillas activas de un tipo dado.
+ *       Útil para mostrar advertencias en el formulario de creación de contratos.
+ * @access Private
+ * @queryParam templateType (string, requerido)
+ */
+const checkTemplates = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { templateType } = req.query;
+
+    if (!templateType) {
+      return res.status(400).json({
+        success: false,
+        message: 'El parámetro templateType es requerido',
+      });
+    }
+
+    const templates = await prisma.pdf_templates.findMany({
+      where: {
+        tenantId,
+        templateType,
+        isActive: true,
+        deletedAt: null,
+      },
+      select: { id: true, templateName: true, isDefault: true },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+
+    res.json({
+      success: true,
+      templateType,
+      hasTemplates: templates.length > 0,
+      count: templates.length,
+      templates,
+    });
+  } catch (error) {
+    console.error('Error al verificar plantillas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar plantillas',
       error: error.message,
     });
   }
@@ -561,4 +691,5 @@ module.exports = {
   setAsDefault,
   getTemplateTypes,
   renderForLease,
+  checkTemplates,
 };
