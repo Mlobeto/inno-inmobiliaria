@@ -644,7 +644,7 @@ p { margin: 10px 0; text-align: justify; }`,
           </div>
 
           {/* Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Configuración básica */}
             <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
               <h2 className="text-xl font-semibold text-white mb-6">
@@ -751,33 +751,6 @@ p { margin: 10px 0; text-align: justify; }`,
               </div>
             </div>
 
-            {/* Variables disponibles */}
-            <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
-              <h2 className="text-xl font-semibold text-white mb-6">
-                Variables Disponibles
-              </h2>
-              
-              {formData.templateType && (
-                <div className="space-y-2">
-                  {types
-                    .find((t) => t.value === formData.templateType)
-                    ?.variables.map((variable) => (
-                      <div
-                        key={variable}
-                        className="px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-300 text-sm font-mono"
-                      >
-                        {`{{${variable}}}`}
-                      </div>
-                    ))}
-                </div>
-              )}
-
-              {!formData.templateType && (
-                <p className="text-slate-400 text-sm">
-                  Selecciona un tipo de plantilla para ver las variables disponibles
-                </p>
-              )}
-            </div>
           </div>
 
           {/* Editor de contenido */}
