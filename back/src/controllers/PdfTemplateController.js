@@ -510,8 +510,8 @@ const getTemplateTypes = async (req, res) => {
         label: "Contrato de Alquiler Temporario",
         description: "Contrato de locación temporaria para turismo/temporada (Art. 1199 CCyCN)",
         variables: [
-          "propietario.nombre", "propietario.dni", "propietario.domicilio",
-          "inquilino.nombre", "inquilino.dni", "inquilino.ciudadOrigen",
+          "propietario.nombre", "propietario.cuil", "propietario.domicilio",
+          "inquilino.nombre", "inquilino.cuil", "inquilino.ciudadOrigen",
           "inquilino.telefono", "inquilino.cantPersonas",
           "property.address", "property.city", "property.province",
           "contrato.fechaInicio", "contrato.fechaFin", "contrato.cantidadDias",

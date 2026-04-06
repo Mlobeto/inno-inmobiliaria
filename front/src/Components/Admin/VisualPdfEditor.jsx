@@ -124,12 +124,12 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
         ],
         propietario: [
           { label: 'Nombre propietario', value: '{{propietario.nombre}}' },
-          { label: 'DNI propietario', value: '{{propietario.dni}}' },
+          { label: 'CUIL propietario', value: '{{propietario.cuil}}' },
           { label: 'Domicilio propietario', value: '{{propietario.domicilio}}' },
         ],
         inquilino: [
           { label: 'Nombre inquilino', value: '{{inquilino.nombre}}' },
-          { label: 'DNI inquilino', value: '{{inquilino.dni}}' },
+          { label: 'CUIL inquilino', value: '{{inquilino.cuil}}' },
           { label: 'Domicilio inquilino', value: '{{inquilino.domicilio}}' },
         ],
         propiedad: [
@@ -141,7 +141,7 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
       AUTORIZACION_VENTA: {
         propietario: [
           { label: 'Nombre propietario', value: '{{propietario.nombre}}' },
-          { label: 'DNI propietario', value: '{{propietario.dni}}' },
+          { label: 'CUIL propietario', value: '{{propietario.cuil}}' },
         ],
         inmobiliaria: [
           { label: 'Nombre inmobiliaria', value: '{{inmobiliaria.nombre}}' },
@@ -208,7 +208,7 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
       ACTUALIZACION_RENTA: {
         inquilino: [
           { label: 'Nombre inquilino', value: '{{inquilino.nombre}}' },
-          { label: 'DNI inquilino', value: '{{inquilino.dni}}' },
+          { label: 'CUIL inquilino', value: '{{inquilino.cuil}}' },
         ],
         propiedad: [
           { label: 'Dirección', value: '{{propiedad.direccion}}' },
@@ -245,12 +245,12 @@ const VisualPdfEditor = ({ value, onChange, templateType, pageSize = 'A4', orien
         ],
         propietario: [
           { label: 'Nombre propietario', value: '{{propietario.nombre}}' },
-          { label: 'DNI propietario', value: '{{propietario.dni}}' },
+          { label: 'CUIL propietario', value: '{{propietario.cuil}}' },
           { label: 'Domicilio propietario', value: '{{propietario.domicilio}}' },
         ],
         inquilino: [
           { label: 'Nombre inquilino', value: '{{inquilino.nombre}}' },
-          { label: 'DNI inquilino', value: '{{inquilino.dni}}' },
+          { label: 'CUIL inquilino', value: '{{inquilino.cuil}}' },
           { label: 'Ciudad de origen', value: '{{inquilino.ciudadOrigen}}' },
           { label: 'Teléfono', value: '{{inquilino.telefono}}' },
           { label: 'Cant. de personas', value: '{{inquilino.cantPersonas}}' },

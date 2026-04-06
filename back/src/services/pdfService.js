@@ -282,6 +282,123 @@ const prepareTemplateVariables = (data, tenant, customVariables = {}) => {
     }
   }
 
+  // ─── Aliases en español para compatibilidad con templates ──────────────────
+  // Permite usar {{propietario.nombre}}, {{inquilino.cuil}}, etc. en los templates
+
+  // Fecha descompuesta
+  const now = new Date();
+  variables.dia = now.getDate();
+  variables.mes = now.toLocaleString('es-AR', { month: 'long' });
+  variables.anio = now.getFullYear();
+
+  // Empresa (alias de inmobiliaria)
+  variables.empresa = {
+    nombre: tenant?.businessName || '',
+    cuit: tenant?.cuit || '',
+    email: tenant?.email || '',
+    telefono: tenant?.phone || '',
+    direccion: tenant?.address || '',
+    logo: tenant?.logoUrl || '',
+    matricula: '',
+  };
+
+  // Alias para contratos de alquiler
+  if (variables.landlord) {
+    variables.propietario = {
+      nombre: variables.landlord.name || '',
+      cuil: variables.landlord.cuil || '',
+      domicilio: variables.landlord.direccion || '',
+      email: variables.landlord.email || '',
+      telefono: variables.landlord.phone || '',
+      ciudad: variables.landlord.ciudad || '',
+    };
+  }
+
+  if (variables.tenant) {
+    variables.inquilino = {
+      nombre: variables.tenant.name || '',
+      cuil: variables.tenant.cuil || '',
+      domicilio: variables.tenant.direccion || '',
+      email: variables.tenant.email || '',
+      telefono: variables.tenant.phone || '',
+      ciudad: variables.tenant.ciudad || '',
+      ciudadOrigen: variables.tenant.ciudad || '',
+      provincia: variables.tenant.provincia || '',
+      cantPersonas: '',
+    };
+  }
+
+  if (variables.guarantors) {
+    variables.avalistas = variables.guarantors.map((g) => ({
+      nombre: g.name || '',
+      cuil: g.cuil || '',
+      domicilio: g.direccion || '',
+      email: g.email || '',
+      telefono: g.phone || '',
+    }));
+  }
+
+  if (variables.property) {
+    variables.propiedad = {
+      direccion: variables.property.address || '',
+      ciudad: variables.property.city || '',
+      provincia: variables.property.province || '',
+      barrio: variables.property.neighborhood || '',
+      tipo: variables.property.typeProperty || '',
+      operacion: variables.property.type || '',
+      precio: variables.property.price || '',
+      habitaciones: variables.property.rooms || '',
+      banos: variables.property.bathrooms || '',
+      superficieCubierta: variables.property.superficieCubierta || '',
+      superficieTotal: variables.property.superficieTotal || '',
+      descripcion: variables.property.description || '',
+      codigo: variables.property.propertyId || '',
+    };
+    // Variable suelta 'ciudad' usada en muchos templates
+    variables.ciudad = variables.property.city || '';
+  }
+
+  if (variables.lease) {
+    const startDate = variables.lease.startDate ? new Date(variables.lease.startDate) : null;
+    let endDate = null;
+    if (startDate && variables.lease.totalMonths) {
+      endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + Number(variables.lease.totalMonths));
+    }
+    const fmt = (d) => d ? d.toLocaleDateString('es-AR') : '';
+    variables.contrato = {
+      plazoMeses: variables.lease.totalMonths || '',
+      fechaInicio: fmt(startDate),
+      fechaFin: fmt(endDate),
+      montoMensual: variables.lease.rentAmount
+        ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(variables.lease.rentAmount)
+        : '',
+      diaVencimiento: startDate ? startDate.getDate() : '',
+      // Temporario
+      cantidadDias: (startDate && endDate)
+        ? Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))
+        : '',
+      montoTotal: variables.lease.rentAmount || '',
+      montoPorDia: '',
+      deposito: '',
+      horaIngreso: '',
+      horaEgreso: '',
+      serviciosIncluidos: '',
+      reglas: '',
+    };
+  }
+
+  // Alias 'cliente' para ficha de propiedad / autorización de venta
+  if (variables.client) {
+    variables.cliente = {
+      nombre: variables.client.name || '',
+      cuil: variables.client.cuil || '',
+      domicilio: variables.client.direccion || '',
+      email: variables.client.email || '',
+      telefono: variables.client.phone || '',
+    };
+  }
+
   return variables;
 };
 
