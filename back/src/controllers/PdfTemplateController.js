@@ -1,4 +1,5 @@
 const prisma = require("../utils/prismaClient");
+const { renderTemplate, prepareTemplateVariables } = require("../services/pdfService");
 
 /**
  * @route GET /api/pdf-templates
@@ -480,6 +481,76 @@ const getTemplateTypes = async (req, res) => {
   }
 };
 
+/**
+ * @route GET /api/pdf-templates/render/lease/:leaseId
+ * @desc Renderizar la plantilla CONTRATO_ALQUILER por defecto del tenant con los datos del lease
+ * @access Private
+ */
+const renderForLease = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { leaseId } = req.params;
+
+    // Buscar plantilla default CONTRATO_ALQUILER del tenant
+    const template = await prisma.pdf_templates.findFirst({
+      where: {
+        tenantId,
+        templateType: 'CONTRATO_ALQUILER',
+        isDefault: true,
+        isActive: true,
+        deletedAt: null,
+      },
+    });
+
+    if (!template) {
+      return res.status(404).json({
+        success: false,
+        message: 'No hay plantilla CONTRATO_ALQUILER configurada como predeterminada',
+      });
+    }
+
+    // Obtener el lease con todas las relaciones necesarias
+    const lease = await prisma.Leases.findFirst({
+      where: { id: parseInt(leaseId), tenantId, deletedAt: null },
+      include: {
+        Property: true,
+        Clients_Leases_renterIdToClients: true,
+        Clients_Leases_landlordIdToClients: true,
+        Garantors: true,
+      },
+    });
+
+    if (!lease) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contrato no encontrado',
+      });
+    }
+
+    // Normalizar relaciones para prepareTemplateVariables
+    const leaseData = {
+      ...lease,
+      Renter: lease.Clients_Leases_renterIdToClients,
+      Landlord: lease.Clients_Leases_landlordIdToClients,
+    };
+
+    // Obtener datos del tenant
+    const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
+
+    const variables = prepareTemplateVariables(leaseData, tenant);
+    const html = renderTemplate(template, variables);
+
+    res.json({ success: true, html });
+  } catch (error) {
+    console.error('Error al renderizar plantilla para lease:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al renderizar la plantilla',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllTemplates,
   getTemplateById,
@@ -489,4 +560,5 @@ module.exports = {
   duplicateTemplate,
   setAsDefault,
   getTemplateTypes,
+  renderForLease,
 };

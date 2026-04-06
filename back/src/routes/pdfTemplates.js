@@ -9,6 +9,7 @@ const {
   duplicateTemplate,
   setAsDefault,
   getTemplateTypes,
+  renderForLease,
 } = require("../controllers/PdfTemplateController");
 const { tenancyMiddleware } = require("../middlewares/tenancyMiddleware");
 
@@ -19,6 +20,9 @@ const { tenancyMiddleware } = require("../middlewares/tenancyMiddleware");
 
 // Obtener tipos de plantillas disponibles
 router.get("/types", tenancyMiddleware, getTemplateTypes);
+
+// Renderizar plantilla por defecto con datos de un lease
+router.get("/render/lease/:leaseId", tenancyMiddleware, renderForLease);
 
 // Obtener todas las plantillas del tenant
 router.get("/", tenancyMiddleware, getAllTemplates);

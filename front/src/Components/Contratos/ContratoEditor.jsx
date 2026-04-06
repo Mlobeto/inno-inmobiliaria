@@ -13,43 +13,46 @@ const ContratoEditor = ({ lease, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [companySettings, setCompanySettings] = useState(null);
 
-  // Cargar configuración de la empresa
+  const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
+  const token = localStorage.getItem("token");
+
+  // Cargar configuración de la empresa y plantilla del tenant
   useEffect(() => {
-    const loadCompanySettings = async () => {
+    const loadContent = async () => {
       try {
-        const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${apiUrl}/admin/settings`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+        // Primero cargar settings (necesario como fallback)
+        const settingsRes = await fetch(`${apiUrl}/admin/settings`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setCompanySettings(data);
+        const settings = settingsRes.ok ? await settingsRes.json() : {};
+        setCompanySettings(settings);
+
+        // Si el contrato ya tiene contenido personalizado guardado, usarlo directamente
+        if (lease.customContent) {
+          setContenido(lease.customContent);
+          return;
+        }
+
+        // Intentar renderizar la plantilla default del tenant
+        const renderRes = await fetch(`${apiUrl}/pdf-templates/render/lease/${lease.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (renderRes.ok) {
+          const { html } = await renderRes.json();
+          setContenido(html);
+        } else {
+          // Fallback: generador hardcodeado
+          setContenido(generarHTMLContrato(lease, settings));
         }
       } catch (error) {
-        console.error("Error al cargar settings de la empresa:", error);
-        setCompanySettings({
-          company_name: "Inmobiliaria",
-          company_address: "",
-          company_phone: "",
-          company_email: ""
-        });
+        console.error("Error al cargar contenido del contrato:", error);
+        setContenido(generarHTMLContrato(lease, companySettings || {}));
       }
     };
 
-    loadCompanySettings();
-  }, []);
-
-  useEffect(() => {
-    // Esperar a que se carguen los settings antes de generar el HTML
-    if (companySettings) {
-      // Si ya tiene contenido personalizado, usarlo; si no, generar uno nuevo
-      const htmlInicial = lease.customContent || generarHTMLContrato(lease, companySettings);
-      setContenido(htmlInicial);
-    }
-  }, [lease, companySettings]);
+    loadContent();
+  }, [lease]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (editorRef.current) {
@@ -92,10 +95,21 @@ const ContratoEditor = ({ lease, onClose }) => {
       cancelButtonColor: '#d33',
       confirmButtonText: 'Sí, restaurar',
       cancelButtonText: 'Cancelar'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        const htmlOriginal = generarHTMLContrato(lease, companySettings);
-        setContenido(htmlOriginal);
+        try {
+          const renderRes = await fetch(`${apiUrl}/pdf-templates/render/lease/${lease.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (renderRes.ok) {
+            const { html } = await renderRes.json();
+            setContenido(html);
+          } else {
+            setContenido(generarHTMLContrato(lease, companySettings || {}));
+          }
+        } catch {
+          setContenido(generarHTMLContrato(lease, companySettings || {}));
+        }
       }
     });
   };
