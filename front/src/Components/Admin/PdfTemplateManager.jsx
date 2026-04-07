@@ -1065,53 +1065,73 @@ p { margin: 10px 0; text-align: justify; }`,
             {filteredTemplates.map((template) => (
               <div
                 key={template.id}
-                className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-blue-500/50 transition-all"
+                className={`rounded-2xl border p-5 transition-all flex flex-col ${
+                  embedded
+                    ? 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-md'
+                    : 'bg-white/5 backdrop-blur-xl border-white/10 hover:border-blue-500/50'
+                }`}
               >
                 {/* Header de la tarjeta */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <h3 className="text-lg font-semibold text-white">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className={`text-base font-semibold truncate ${embedded ? 'text-gray-800' : 'text-white'}`}>
                         {template.templateName}
                       </h3>
                       {template.isDefault && (
-                        <IoStar className="w-5 h-5 text-yellow-400" />
+                        <IoStar className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-sm text-slate-400">
+                    <p className={`text-xs ${embedded ? 'text-gray-500' : 'text-slate-400'}`}>
                       {getTypeLabel(template.templateType)}
                     </p>
                     {template.propertyPurpose && (
-                      <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-teal-500/20 text-teal-400 rounded-full">
+                      <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-teal-500/20 text-teal-600 rounded-full">
                         {template.propertyPurpose === 'VIVIENDA' && 'Vivienda'}
                         {template.propertyPurpose === 'COMERCIAL' && 'Comercial'}
                         {template.propertyPurpose === 'TERRENO' && 'Terreno'}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <span className="flex-shrink-0">
                     {template.isActive ? (
-                      <IoCheckmarkCircleOutline className="w-5 h-5 text-green-400" />
+                      <IoCheckmarkCircleOutline className="w-5 h-5 text-green-500" />
                     ) : (
                       <IoCloseCircleOutline className="w-5 h-5 text-red-400" />
                     )}
-                  </div>
+                  </span>
                 </div>
 
-                {/* Acciones */}
-                <div className="flex items-center space-x-2">
+                {/* Info adicional */}
+                <div className={`text-xs mb-3 ${embedded ? 'text-gray-400' : 'text-slate-500'}`}>
+                  <span>Creado: {new Date(template.createdAt).toLocaleDateString()}</span>
+                  {template.Creator && (
+                    <span className="ml-2">· {template.Creator.fullName}</span>
+                  )}
+                </div>
+
+                {/* Acciones - fila principal */}
+                <div className="flex items-center gap-2 mt-auto">
                   <button
                     onClick={() => handleEdit(template)}
-                    className="flex-1 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors flex items-center justify-center space-x-2"
+                    className={`flex-1 px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-sm font-medium ${
+                      embedded
+                        ? 'bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200'
+                        : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
+                    }`}
                     title="Editar"
                   >
                     <IoCreateOutline className="w-4 h-4" />
-                    <span className="text-sm">Editar</span>
+                    <span>Editar</span>
                   </button>
 
                   <button
                     onClick={() => handleDuplicate(template.id, template.templateName)}
-                    className="px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition-colors"
+                    className={`p-2 rounded-lg transition-colors ${
+                      embedded
+                        ? 'bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200'
+                        : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400'
+                    }`}
                     title="Duplicar"
                   >
                     <IoCopyOutline className="w-4 h-4" />
@@ -1120,7 +1140,11 @@ p { margin: 10px 0; text-align: justify; }`,
                   {!template.isDefault && (
                     <button
                       onClick={() => handleSetDefault(template.id)}
-                      className="px-3 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg transition-colors"
+                      className={`p-2 rounded-lg transition-colors ${
+                        embedded
+                          ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600 border border-yellow-200'
+                          : 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
+                      }`}
                       title="Marcar como predeterminada"
                     >
                       <IoStarOutline className="w-4 h-4" />
@@ -1129,10 +1153,14 @@ p { margin: 10px 0; text-align: justify; }`,
 
                   <button
                     onClick={() => handleToggleActive(template)}
-                    className={`px-3 py-2 rounded-lg transition-colors ${
+                    className={`p-2 rounded-lg transition-colors ${
                       template.isActive
-                        ? 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400'
-                        : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
+                        ? embedded
+                          ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200'
+                          : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400'
+                        : embedded
+                          ? 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
+                          : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
                     }`}
                     title={template.isActive ? 'Desactivar' : 'Activar'}
                   >
@@ -1145,21 +1173,15 @@ p { margin: 10px 0; text-align: justify; }`,
 
                   <button
                     onClick={() => handleDelete(template.id)}
-                    className="px-3 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors"
+                    className={`p-2 rounded-lg transition-colors ${
+                      embedded
+                        ? 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                        : 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                    }`}
                     title="Eliminar"
                   >
                     <IoTrashOutline className="w-4 h-4" />
                   </button>
-                </div>
-
-                {/* Info adicional */}
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>Creado: {new Date(template.createdAt).toLocaleDateString()}</span>
-                    {template.Creator && (
-                      <span>Por: {template.Creator.fullName}</span>
-                    )}
-                  </div>
                 </div>
               </div>
             ))}
