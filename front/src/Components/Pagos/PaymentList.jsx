@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { getAllPayments } from '../../redux/Actions/actions';
+import { getAllPayments, updatePayment, deletePayment } from '../../redux/Actions/actions';
 import ReciboPdf from '../PdfTemplates/ReciboPdf';
+import Swal from 'sweetalert2';
 import {
   IoArrowBackOutline,
   IoHomeOutline,
@@ -16,6 +17,10 @@ import {
   IoDownloadOutline,
   IoTimeOutline,
   IoStatsChartOutline,
+  IoCreateOutline,
+  IoTrashOutline,
+  IoCloseOutline,
+  IoSaveOutline,
 } from 'react-icons/io5';
 
 const PaymentList = () => {
@@ -30,6 +35,18 @@ const PaymentList = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [downloadingPayment, setDownloadingPayment] = useState(null);
+  
+  // Estados para modal de edición
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [editForm, setEditForm] = useState({
+    paymentDate: '',
+    amount: '',
+    period: '',
+    type: '',
+    installmentNumber: '',
+    totalInstallments: ''
+  });
 
   useEffect(() => {
     // Obtener todos los pagos
@@ -54,10 +71,87 @@ const PaymentList = () => {
     setTimeout(() => setDownloadingPayment(null), 1000);
   };
 
+  const handleEditClick = (payment) => {
+    console.log('=== EDIT CLICK ===');
+    console.log('Payment to edit:', payment);
+    setEditingPayment(payment);
+    setEditForm({
+      paymentDate: payment.paymentDate ? payment.paymentDate.split('T')[0] : '',
+      amount: payment.amount || '',
+      period: payment.period || '',
+      type: payment.type || '',
+      installmentNumber: payment.installmentNumber || '',
+      totalInstallments: payment.totalInstallments || ''
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    
+    console.log('=== EDIT SUBMIT ===');
+    console.log('Editing payment ID:', editingPayment?.id);
+    console.log('Form data:', editForm);
+    
+    if (!editingPayment) return;
+
+    const updateData = {
+      paymentDate: editForm.paymentDate,
+      amount: parseFloat(editForm.amount),
+      period: editForm.period,
+      type: editForm.type,
+    };
+
+    // Solo incluir installmentNumber y totalInstallments si el tipo es 'installment'
+    if (editForm.type === 'installment') {
+      updateData.installmentNumber = parseInt(editForm.installmentNumber) || null;
+      updateData.totalInstallments = parseInt(editForm.totalInstallments) || null;
+    }
+
+    console.log('Update data to send:', updateData);
+    await dispatch(updatePayment(editingPayment.id, updateData));
+    setEditModalOpen(false);
+    setEditingPayment(null);
+  };
+
+  const handleDelete = async (payment) => {
+    console.log('=== DELETE CLICK ===');
+    console.log('Payment to delete:', payment);
+    
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Deseas eliminar el pago #${payment.id} por ${formatCurrency(payment.amount)}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      background: '#1e293b',
+      color: '#fff',
+      customClass: {
+        popup: 'border border-white/10',
+      }
+    });
+
+    if (result.isConfirmed) {
+      console.log('Delete confirmed for payment ID:', payment.id);
+      await dispatch(deletePayment(payment.id));
+    }
+  };
+
   // Filtrar pagos según los criterios
   const filteredPayments = payments.filter(payment => {
-    const matchesText = payment.leaseId.toString().includes(filter) ||
-      (payment.Client && payment.Client.name.toLowerCase().includes(filter.toLowerCase())) ||
+    const matchesText = (payment.leaseId && payment.leaseId.toString().includes(filter)) ||
+      (payment.Client && payment.Client.name && payment.Client.name.toLowerCase().includes(filter.toLowerCase())) ||
       (payment.period && payment.period.toLowerCase().includes(filter.toLowerCase()));
 
     const matchesType = typeFilter === 'all' || payment.type === typeFilter;
@@ -83,7 +177,7 @@ const PaymentList = () => {
   });
 
   // Calcular estadísticas
-  const totalAmount = filteredPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  const totalAmount = filteredPayments.reduce((sum, payment) => sum + (parseFloat(payment.amount) || 0), 0);
   const avgAmount = filteredPayments.length > 0 ? totalAmount / filteredPayments.length : 0;
 
   const formatCurrency = (amount) => {
@@ -399,13 +493,31 @@ const PaymentList = () => {
 
                   {/* Acciones */}
                   <div className="mt-4 pt-4 border-t border-white/10">
-                    <button 
-                      onClick={() => handleDownloadReceipt(payment)}
-                      className="w-full flex items-center justify-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors border border-blue-400/30"
-                    >
-                      <IoDownloadOutline className="w-4 h-4 mr-2" />
-                      Descargar Recibo
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleDownloadReceipt(payment)}
+                        className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors border border-blue-400/30"
+                      >
+                        <IoDownloadOutline className="w-4 h-4 mr-2" />
+                        Descargar
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleEditClick(payment)}
+                        className="flex items-center justify-center px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-colors border border-amber-400/30"
+                        title="Editar pago"
+                      >
+                        <IoCreateOutline className="w-4 h-4" />
+                      </button>
+                      
+                      <button 
+                        onClick={() => handleDelete(payment)}
+                        className="flex items-center justify-center px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-400/30"
+                        title="Eliminar pago"
+                      >
+                        <IoTrashOutline className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -422,6 +534,165 @@ const PaymentList = () => {
             lease={downloadingPayment.Lease}
             autoGenerate={true}
           />
+        </div>
+      )}
+
+      {/* Modal de edición */}
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 rounded-2xl border border-white/10 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header del modal */}
+            <div className="sticky top-0 bg-slate-900 border-b border-white/10 p-6 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-amber-500/20 rounded-lg">
+                  <IoCreateOutline className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Editar Pago</h3>
+                  <p className="text-slate-400 text-sm">Pago #{editingPayment?.id}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingPayment(null);
+                }}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <IoCloseOutline className="w-6 h-6 text-slate-400" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Fecha de pago */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-slate-300">
+                    <IoCalendarOutline className="w-4 h-4 mr-2 text-blue-400" />
+                    Fecha de Pago
+                  </label>
+                  <input
+                    type="date"
+                    name="paymentDate"
+                    value={editForm.paymentDate}
+                    onChange={handleEditFormChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                  />
+                </div>
+
+                {/* Monto */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-slate-300">
+                    <IoCashOutline className="w-4 h-4 mr-2 text-emerald-400" />
+                    Monto
+                  </label>
+                  <input
+                    type="number"
+                    name="amount"
+                    value={editForm.amount}
+                    onChange={handleEditFormChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                  />
+                </div>
+
+                {/* Tipo de pago */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-slate-300">
+                    <IoReceiptOutline className="w-4 h-4 mr-2 text-purple-400" />
+                    Tipo de Pago
+                  </label>
+                  <select
+                    name="type"
+                    value={editForm.type}
+                    onChange={handleEditFormChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                  >
+                    <option value="installment" className="bg-slate-800">Cuota</option>
+                    <option value="initial" className="bg-slate-800">Pago Inicial</option>
+                    <option value="commission" className="bg-slate-800">Comisión</option>
+                  </select>
+                </div>
+
+                {/* Período */}
+                <div className="space-y-2">
+                  <label className="flex items-center text-sm font-medium text-slate-300">
+                    <IoTimeOutline className="w-4 h-4 mr-2 text-amber-400" />
+                    Período
+                  </label>
+                  <input
+                    type="text"
+                    name="period"
+                    value={editForm.period}
+                    onChange={handleEditFormChange}
+                    placeholder="Ej: Enero 2026"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                  />
+                </div>
+
+                {/* Campos adicionales para cuotas */}
+                {editForm.type === 'installment' && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-slate-300">
+                        <IoDocumentTextOutline className="w-4 h-4 mr-2 text-blue-400" />
+                        Número de Cuota
+                      </label>
+                      <input
+                        type="number"
+                        name="installmentNumber"
+                        value={editForm.installmentNumber}
+                        onChange={handleEditFormChange}
+                        min="1"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="flex items-center text-sm font-medium text-slate-300">
+                        <IoDocumentTextOutline className="w-4 h-4 mr-2 text-blue-400" />
+                        Total de Cuotas
+                      </label>
+                      <input
+                        type="number"
+                        name="totalInstallments"
+                        value={editForm.totalInstallments}
+                        onChange={handleEditFormChange}
+                        min="1"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditModalOpen(false);
+                    setEditingPayment(null);
+                  }}
+                  className="flex-1 px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition-colors border border-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-xl transition-colors border border-blue-400/30 flex items-center justify-center"
+                >
+                  <IoSaveOutline className="w-5 h-5 mr-2" />
+                  Guardar Cambios
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
