@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { createPayment, getClientById } from "../../redux/Actions/actions";
 import EstadoContratos from "../Contratos/EstadoContratos";
 import ReciboPdf from "../PdfTemplates/ReciboPdf";
+import { useDolarRate } from '../hooks/useDolarRate';
+import { formatCurrency } from '../../utils/formatCurrency';
 import {
   IoDocumentTextOutline,
   IoReceiptOutline,
@@ -18,6 +20,7 @@ import {
 const PaymentForm = () => {
   const dispatch = useDispatch();
   const paymentCreate = useSelector((state) => state.paymentCreate);
+  const { dolar, loading: dolarLoading } = useDolarRate();
 
   // Estados para el modal y flujo
   const [selectedLease, setSelectedLease] = useState(null);
@@ -31,6 +34,7 @@ const PaymentForm = () => {
     leaseId: "",
     paymentDate: "",
     amount: "",
+    currency: "ARS",
     period: "",
     type: "installment",
     totalInstallments: "",
@@ -94,14 +98,25 @@ const PaymentForm = () => {
         idClient: formData.idClient,
         leaseId: formData.leaseId,
         paymentDate: formData.paymentDate,
-        amount: parseFloat(formData.amount),
         period: period,
         type: formData.type,
-        // Solo incluir totalInstallments si el tipo es "installment" y tiene valor
-        totalInstallments: formData.type === 'installment' && formData.totalInstallments 
-          ? parseInt(formData.totalInstallments) 
+        totalInstallments: formData.type === 'installment' && formData.totalInstallments
+          ? parseInt(formData.totalInstallments)
           : null,
       };
+
+      // Conversión USD → ARS al momento del cobro
+      const rawAmount = parseFloat(formData.amount);
+      if (formData.currency === 'USD' && dolar?.oficial?.venta) {
+        const rate = dolar.oficial.venta;
+        paymentData.amount = rawAmount * rate;          // se guarda en ARS
+        paymentData.originalAmount = rawAmount;         // monto original en USD
+        paymentData.originalCurrency = 'USD';
+        paymentData.dolarRateUsed = rate;
+      } else {
+        paymentData.amount = rawAmount;
+        paymentData.originalCurrency = 'ARS';
+      }
 
       await dispatch(createPayment(paymentData));
     } catch (error) {
@@ -117,6 +132,7 @@ const PaymentForm = () => {
       leaseId: "",
       paymentDate: "",
       amount: "",
+      currency: "ARS",
       period: "",
       type: "installment",
       totalInstallments: "",
@@ -194,21 +210,63 @@ const PaymentForm = () => {
                         />
                       </div>
 
-                      {/* Monto */}
+                      {/* Moneda + Monto */}
                       <div className="space-y-2">
                         <label className="flex items-center text-sm font-medium text-slate-300">
                           <IoCashOutline className="w-4 h-4 mr-2 text-emerald-400" />
-                          Monto
+                          Moneda y Monto
                         </label>
-                        <input
-                          type="number"
-                          name="amount"
-                          value={formData.amount}
-                          onChange={handleChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all duration-200"
-                          placeholder="Monto del pago..."
-                          required
-                        />
+                        <div className="flex gap-2">
+                          <select
+                            name="currency"
+                            value={formData.currency}
+                            onChange={handleChange}
+                            className="px-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all duration-200 min-w-[90px]"
+                          >
+                            <option value="ARS" className="bg-slate-800">$ ARS</option>
+                            <option value="USD" className="bg-slate-800">U$D USD</option>
+                          </select>
+                          <input
+                            type="number"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleChange}
+                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all duration-200"
+                            placeholder={formData.currency === 'USD' ? 'Monto en USD' : 'Monto en pesos...'}
+                            required
+                          />
+                        </div>
+
+                        {/* Panel cotización USD */}
+                        {formData.currency === 'USD' && (
+                          <div className="mt-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs">
+                            {dolarLoading ? (
+                              <p className="text-amber-400">Obteniendo cotización...</p>
+                            ) : dolar ? (
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-slate-300">
+                                  <span>Dólar Oficial venta:</span>
+                                  <span className="text-white font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
+                                </div>
+                                {formData.amount && (
+                                  <div className="border-t border-amber-500/20 pt-1 mt-1">
+                                    <div className="flex justify-between">
+                                      <span className="text-amber-300">Se guardará en ARS:</span>
+                                      <span className="text-amber-300 font-semibold">
+                                        {formatCurrency(parseFloat(formData.amount) * (dolar.oficial?.venta || 0), 'ARS')}
+                                      </span>
+                                    </div>
+                                    <p className="text-slate-500 text-[10px] mt-1">
+                                      Cotización oficial · {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-red-400">No se pudo obtener cotización — ingresá el monto en ARS</p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Período - Solo para cuotas y comisiones */}

@@ -13,6 +13,9 @@ exports.createPayment = async (req, res) => {
         type, // "installment", "commission" o "initial"
         installmentNumber, // opcional para "installment"
         totalInstallments, // opcional para "installment"
+        originalAmount,    // monto en moneda original (si se pagó en USD)
+        originalCurrency,  // 'ARS' o 'USD'
+        dolarRateUsed,     // cotización usada para la conversión
       } = req.body;
   
       // Validación previa básica
@@ -73,7 +76,10 @@ exports.createPayment = async (req, res) => {
           idClient: parseInt(idClient),
           leaseId: parseInt(leaseId),
           paymentDate: new Date(paymentDate),
-          amount,
+          amount,                                                            // siempre ARS
+          originalAmount: originalAmount ?? null,                            // monto en moneda original
+          originalCurrency: ['ARS', 'USD'].includes(originalCurrency) ? originalCurrency : 'ARS',
+          dolarRateUsed: dolarRateUsed ?? null,                              // cotización al momento del cobro
           period: finalPeriod,
           type,
           installmentNumber: type === "installment" ? finalInstallmentNumber : null,

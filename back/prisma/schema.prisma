@@ -162,7 +162,10 @@ model MercadoLibreMessages {
 model PaymentReceipts {
   id                Int                         @id @default(autoincrement())
   paymentDate       DateTime                    @db.Timestamptz(6)
-  amount            Decimal                     @db.Decimal
+  amount            Decimal                     @db.Decimal           // Siempre en ARS
+  originalAmount    Decimal?                    @db.Decimal           // Monto en moneda original (ej: USD)
+  originalCurrency  String?                     @default("ARS") @db.VarChar(3)
+  dolarRateUsed     Decimal?                    @db.Decimal           // Cotización usada al registrar
   period            String                      @db.VarChar(255)
   installmentNumber Int?
   totalInstallments Int?
@@ -178,6 +181,7 @@ model PaymentReceipts {
   tenants           tenants?                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([tenantId], map: "idx_payment_receipts_tenant")
+  @@index([originalCurrency], map: "idx_payment_receipts_currency")
 }
 
 model Property {
