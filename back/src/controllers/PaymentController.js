@@ -53,20 +53,36 @@ exports.createPayment = async (req, res) => {
       let finalTotalInstallments = null;
   
       if (type === "installment") {
-        // Si es cuota, se requiere calcular o recibir installmentNumber y totalInstallments.
-        // Podés calcular el número siguiente si no lo pasás desde el front:
-        const lastReceipt = await prisma.PaymentReceipts.findFirst({
-          where: { leaseId: parseInt(leaseId), type: 'installment', tenantId },
-          orderBy: { installmentNumber: 'desc' },
-        });
-        finalInstallmentNumber = lastReceipt ? lastReceipt.installmentNumber + 1 : 1;
-  
-        // Si totalInstallments se envía, se puede usar, o de lo contrario puede venir del contrato.
-        if (totalInstallments) {
-          finalTotalInstallments = totalInstallments;
-        } else {
-          // Aquí podrías, por ejemplo, consultar el contrato para definir la cantidad total.
+        if (!totalInstallments) {
           return res.status(400).json({ error: 'El total de cuotas es requerido para una cuota.' });
+        }
+        finalTotalInstallments = parseInt(totalInstallments);
+
+        // Usar el installmentNumber enviado por el frontend (elegido en InstallmentSelector)
+        if (installmentNumber) {
+          finalInstallmentNumber = parseInt(installmentNumber);
+
+          // Evitar pagar la misma cuota dos veces
+          const existingDuplicate = await prisma.PaymentReceipts.findFirst({
+            where: {
+              leaseId: parseInt(leaseId),
+              type: 'installment',
+              installmentNumber: finalInstallmentNumber,
+              tenantId,
+            },
+          });
+          if (existingDuplicate) {
+            return res.status(400).json({
+              error: `La cuota ${finalInstallmentNumber} de este contrato ya fue registrada.`,
+            });
+          }
+        } else {
+          // Fallback: calcular el siguiente número si no se envía
+          const lastReceipt = await prisma.PaymentReceipts.findFirst({
+            where: { leaseId: parseInt(leaseId), type: 'installment', tenantId },
+            orderBy: { installmentNumber: 'desc' },
+          });
+          finalInstallmentNumber = lastReceipt ? lastReceipt.installmentNumber + 1 : 1;
         }
       }
   
@@ -132,12 +148,10 @@ exports.getPaymentsByLeaseId = async (req, res) => {
         const payments = await prisma.PaymentReceipts.findMany({
             where: { leaseId: parseInt(leaseId), tenantId },
             include: { Clients: true },
+            orderBy: { installmentNumber: 'asc' },
         });
 
-        if (!payments.length) {
-            return res.status(404).json({ error: 'No se encontraron pagos para este contrato' });
-        }
-
+        // Devolver array vacío si no hay pagos (no 404)
         res.status(200).json(payments);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener los pagos', details: error.message });
