@@ -1110,11 +1110,12 @@ p { margin: 10px 0; text-align: justify; }`,
                   )}
                 </div>
 
-                {/* Acciones - fila principal */}
-                <div className="flex items-center gap-2 mt-auto">
+                {/* Acciones */}
+                <div className="flex flex-col gap-2 mt-auto">
+                  {/* Fila 1: Editar (ancho completo) */}
                   <button
                     onClick={() => handleEdit(template)}
-                    className={`flex-1 px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-sm font-medium ${
+                    className={`w-full px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-sm font-medium ${
                       embedded
                         ? 'bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200'
                         : 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-400'
@@ -1125,63 +1126,66 @@ p { margin: 10px 0; text-align: justify; }`,
                     <span>Editar</span>
                   </button>
 
-                  <button
-                    onClick={() => handleDuplicate(template.id, template.templateName)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      embedded
-                        ? 'bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200'
-                        : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400'
-                    }`}
-                    title="Duplicar"
-                  >
-                    <IoCopyOutline className="w-4 h-4" />
-                  </button>
-
-                  {!template.isDefault && (
+                  {/* Fila 2: acciones secundarias distribuidas */}
+                  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${!template.isDefault ? 4 : 3}, 1fr)` }}>
                     <button
-                      onClick={() => handleSetDefault(template.id)}
-                      className={`p-2 rounded-lg transition-colors ${
+                      onClick={() => handleDuplicate(template.id, template.templateName)}
+                      className={`py-2 rounded-lg transition-colors flex items-center justify-center ${
                         embedded
-                          ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600 border border-yellow-200'
-                          : 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
+                          ? 'bg-purple-50 hover:bg-purple-100 text-purple-600 border border-purple-200'
+                          : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400'
                       }`}
-                      title="Marcar como predeterminada"
+                      title="Duplicar"
                     >
-                      <IoStarOutline className="w-4 h-4" />
+                      <IoCopyOutline className="w-4 h-4" />
                     </button>
-                  )}
 
-                  <button
-                    onClick={() => handleToggleActive(template)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      template.isActive
-                        ? embedded
-                          ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200'
-                          : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400'
-                        : embedded
-                          ? 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
-                          : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
-                    }`}
-                    title={template.isActive ? 'Desactivar' : 'Activar'}
-                  >
-                    {template.isActive ? (
-                      <IoCloseCircleOutline className="w-4 h-4" />
-                    ) : (
-                      <IoCheckmarkCircleOutline className="w-4 h-4" />
+                    {!template.isDefault && (
+                      <button
+                        onClick={() => handleSetDefault(template.id)}
+                        className={`py-2 rounded-lg transition-colors flex items-center justify-center ${
+                          embedded
+                            ? 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600 border border-yellow-200'
+                            : 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400'
+                        }`}
+                        title="Marcar como predeterminada"
+                      >
+                        <IoStarOutline className="w-4 h-4" />
+                      </button>
                     )}
-                  </button>
 
-                  <button
-                    onClick={() => handleDelete(template.id)}
-                    className={`p-2 rounded-lg transition-colors ${
-                      embedded
-                        ? 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
-                        : 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
-                    }`}
-                    title="Eliminar"
-                  >
-                    <IoTrashOutline className="w-4 h-4" />
-                  </button>
+                    <button
+                      onClick={() => handleToggleActive(template)}
+                      className={`py-2 rounded-lg transition-colors flex items-center justify-center ${
+                        template.isActive
+                          ? embedded
+                            ? 'bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200'
+                            : 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400'
+                          : embedded
+                            ? 'bg-green-50 hover:bg-green-100 text-green-600 border border-green-200'
+                            : 'bg-green-500/20 hover:bg-green-500/30 text-green-400'
+                      }`}
+                      title={template.isActive ? 'Desactivar' : 'Activar'}
+                    >
+                      {template.isActive ? (
+                        <IoCloseCircleOutline className="w-4 h-4" />
+                      ) : (
+                        <IoCheckmarkCircleOutline className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(template.id)}
+                      className={`py-2 rounded-lg transition-colors flex items-center justify-center ${
+                        embedded
+                          ? 'bg-red-50 hover:bg-red-100 text-red-600 border border-red-200'
+                          : 'bg-red-500/20 hover:bg-red-500/30 text-red-400'
+                      }`}
+                      title="Eliminar"
+                    >
+                      <IoTrashOutline className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
