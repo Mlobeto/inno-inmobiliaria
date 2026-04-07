@@ -1,8 +1,9 @@
 // routes/dolar.js
 // Proxy interno para cotización del dólar - usa Bluelytics (fuente: Banco Nación, blue, MEP, CCL)
-// Sin API key requerida. Documetación: https://bluelytics.com.ar/#!/api
+// Sin API key requerida. Documentación: https://bluelytics.com.ar/#!/api
 
 const { Router } = require('express');
+const axios = require('axios');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 const router = Router();
@@ -21,12 +22,7 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 
     // Fetch a Bluelytics
-    const response = await fetch('https://api.bluelytics.com.ar/v2/latest');
-    if (!response.ok) {
-      throw new Error(`Bluelytics respondió ${response.status}`);
-    }
-
-    const raw = await response.json();
+    const { data: raw } = await axios.get('https://api.bluelytics.com.ar/v2/latest', { timeout: 8000 });
 
     const data = {
       oficial: {
@@ -36,10 +32,6 @@ router.get('/', authMiddleware, async (req, res) => {
       blue: {
         compra: raw.blue?.value_buy ?? null,
         venta: raw.blue?.value_sell ?? null,
-      },
-      mep: {
-        compra: raw.oficial_euro?.value_buy ?? null,  // Bluelytics no expone MEP directo → usar referencia
-        venta: raw.oficial_euro?.value_sell ?? null,
       },
       lastUpdate: raw.last_update ?? null,
       source: 'bluelytics.com.ar',

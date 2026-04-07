@@ -1,12 +1,14 @@
 /**
  * useDolarRate.js
- * Hook que obtiene la cotización del dólar desde el backend proxy (/api/dolar).
- * Usa RTK Query si ya existe una slice, pero al ser un endpoint propio lo parseamos directamente.
+ * Hook que obtiene la cotización del dólar.
+ * Intenta primero el proxy del backend (/api/dolar).
+ * Si no está disponible (404/error), llama directamente a Bluelytics.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const BLUELYTICS_URL = 'https://api.bluelytics.com.ar/v2/latest';
 
 /**
  * @typedef {Object} DolarRate
@@ -16,6 +18,23 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
  * @property {string} source
  * @property {boolean} cached
  */
+
+/** Normaliza la respuesta cruda de Bluelytics al formato interno */
+function normalizeBluelytics(raw) {
+  return {
+    oficial: {
+      compra: raw.oficial?.value_buy ?? null,
+      venta: raw.oficial?.value_sell ?? null,
+    },
+    blue: {
+      compra: raw.blue?.value_buy ?? null,
+      venta: raw.blue?.value_sell ?? null,
+    },
+    lastUpdate: raw.last_update ?? null,
+    source: 'bluelytics.com.ar (directo)',
+    cached: false,
+  };
+}
 
 /**
  * Hook para obtener la cotización del dólar.
@@ -30,13 +49,25 @@ export function useDolarRate() {
     setLoading(true);
     setError(null);
     try {
+      // 1) Intentar el proxy del backend
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_BASE}/dolar`, {
+      const backendRes = await fetch(`${API_BASE}/dolar`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) throw new Error(`Error ${res.status}`);
-      const data = await res.json();
-      setDolar(data);
+
+      if (backendRes.ok) {
+        const data = await backendRes.json();
+        setDolar(data);
+        return;
+      }
+
+      // 2) Proxy no disponible (backend no desplegado aún) → llamar directamente
+      console.warn(`[useDolarRate] Backend proxy devolvió ${backendRes.status}, usando Bluelytics directo`);
+      const directRes = await fetch(BLUELYTICS_URL);
+      if (!directRes.ok) throw new Error(`Bluelytics ${directRes.status}`);
+      const raw = await directRes.json();
+      setDolar(normalizeBluelytics(raw));
+
     } catch (err) {
       setError('No se pudo obtener la cotización del dólar');
       console.error('[useDolarRate]', err);
