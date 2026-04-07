@@ -68,6 +68,12 @@ import {
   GET_ALL_PAYMENTS_REQUEST,
   GET_ALL_PAYMENTS_SUCCESS,
   GET_ALL_PAYMENTS_FAILURE,
+  UPDATE_PAYMENT_REQUEST,
+  UPDATE_PAYMENT_SUCCESS,
+  UPDATE_PAYMENT_FAILURE,
+  DELETE_PAYMENT_REQUEST,
+  DELETE_PAYMENT_SUCCESS,
+  DELETE_PAYMENT_FAILURE,
   CREATE_GUARANTORS_REQUEST,
   CREATE_GUARANTORS_SUCCESS,
   CREATE_GUARANTORS_FAIL,
@@ -915,6 +921,30 @@ const rootReducer = (state = initialState, action) => {
         ...state,
         loading: false,
         error: action.payload
+      };
+
+    case UPDATE_PAYMENT_REQUEST:
+    case DELETE_PAYMENT_REQUEST:
+      return { ...state, loading: true, error: null };
+
+    case UPDATE_PAYMENT_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        allPayments: state.allPayments.map(p =>
+          p.id === action.payload.id ? action.payload : p
+        ),
+      };
+
+    case UPDATE_PAYMENT_FAILURE:
+    case DELETE_PAYMENT_FAILURE:
+      return { ...state, loading: false, error: action.payload };
+
+    case DELETE_PAYMENT_SUCCESS:
+      return {
+        ...state,
+        loading: false,
+        allPayments: state.allPayments.filter(p => p.id !== action.payload),
       };
 
     // ========== GARANTES ==========

@@ -213,3 +213,56 @@ exports.getPaymentsByLease = async (req, res) => {
     });
   }
 };
+
+exports.updatePayment = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { id } = req.params;
+    const { paymentDate, amount, period, type, installmentNumber, totalInstallments } = req.body;
+
+    const existing = await prisma.PaymentReceipts.findFirst({
+      where: { id: parseInt(id), tenantId },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Pago no encontrado.' });
+    }
+
+    const updated = await prisma.PaymentReceipts.update({
+      where: { id: parseInt(id) },
+      data: {
+        ...(paymentDate && { paymentDate: new Date(paymentDate) }),
+        ...(amount !== undefined && { amount: parseFloat(amount) }),
+        ...(period && { period }),
+        ...(type && { type }),
+        ...(installmentNumber !== undefined && { installmentNumber: installmentNumber ? parseInt(installmentNumber) : null }),
+        ...(totalInstallments !== undefined && { totalInstallments: totalInstallments ? parseInt(totalInstallments) : null }),
+      },
+    });
+
+    res.status(200).json(updated);
+  } catch (error) {
+    console.error('Error al actualizar el pago:', error);
+    res.status(500).json({ error: 'Error al actualizar el pago.', details: error.message });
+  }
+};
+
+exports.deletePayment = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { id } = req.params;
+
+    const existing = await prisma.PaymentReceipts.findFirst({
+      where: { id: parseInt(id), tenantId },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Pago no encontrado.' });
+    }
+
+    await prisma.PaymentReceipts.delete({ where: { id: parseInt(id) } });
+    res.status(200).json({ message: 'Pago eliminado correctamente.' });
+  } catch (error) {
+    console.error('Error al eliminar el pago:', error);
+    res.status(500).json({ error: 'Error al eliminar el pago.', details: error.message });
+  }
+};
+};

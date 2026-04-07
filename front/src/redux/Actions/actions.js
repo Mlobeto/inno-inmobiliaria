@@ -70,6 +70,12 @@ import {
   GET_ALL_PAYMENTS_REQUEST,
   GET_ALL_PAYMENTS_SUCCESS,
   GET_ALL_PAYMENTS_FAILURE,
+  UPDATE_PAYMENT_REQUEST,
+  UPDATE_PAYMENT_SUCCESS,
+  UPDATE_PAYMENT_FAILURE,
+  DELETE_PAYMENT_REQUEST,
+  DELETE_PAYMENT_SUCCESS,
+  DELETE_PAYMENT_FAILURE,
   CREATE_GUARANTORS_REQUEST,
   CREATE_GUARANTORS_SUCCESS,
   CREATE_GUARANTORS_FAIL,
@@ -654,6 +660,33 @@ export const getAllPayments = () => async (dispatch) => {
   } catch (error) {
     dispatch({
       type: GET_ALL_PAYMENTS_FAILURE,
+      payload: error.response?.data?.error || error.message,
+    });
+  }
+};
+
+export const updatePayment = (id, paymentData) => async (dispatch) => {
+  dispatch({ type: UPDATE_PAYMENT_REQUEST });
+  try {
+    const response = await axios.put(`/payment/${id}`, paymentData);
+    dispatch({ type: UPDATE_PAYMENT_SUCCESS, payload: response.data });
+    dispatch(getAllPayments());
+  } catch (error) {
+    dispatch({
+      type: UPDATE_PAYMENT_FAILURE,
+      payload: error.response?.data?.error || error.message,
+    });
+  }
+};
+
+export const deletePayment = (id) => async (dispatch) => {
+  dispatch({ type: DELETE_PAYMENT_REQUEST });
+  try {
+    await axios.delete(`/payment/${id}`);
+    dispatch({ type: DELETE_PAYMENT_SUCCESS, payload: id });
+  } catch (error) {
+    dispatch({
+      type: DELETE_PAYMENT_FAILURE,
       payload: error.response?.data?.error || error.message,
     });
   }
