@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { 
-  getAllLeases, 
   updateLeaseRentAmount
 } from "../../redux/Actions/actions";
+import { useGetAllLeasesQuery } from "@shared/redux";
 import Swal from "sweetalert2";
 import pdfMake from 'pdfmake/build/pdfmake';
 import * as pdfFonts from 'pdfmake/build/vfs_fonts';
@@ -32,13 +32,11 @@ if (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
 const ActualizarAlquileres = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { leases, loading } = useSelector((state) => state);
+  const { data: leases = [], isLoading: loading, refetch } = useGetAllLeasesQuery();
   const [actualizaciones, setActualizaciones] = useState({});
   const [processing, setProcessing] = useState({});
 
-  useEffect(() => {
-    dispatch(getAllLeases());
-  }, [dispatch]);
+  // RTK Query carga automáticamente al montar el componente
 
   // Función para determinar si un contrato necesita actualización
   const necesitaActualizacion = (lease) => {
@@ -347,7 +345,7 @@ const ActualizarAlquileres = () => {
       });
 
       // Recargar datos
-      await dispatch(getAllLeases());
+      refetch();
 
       Swal.fire({
         title: "¡Éxito!",
@@ -403,7 +401,7 @@ const ActualizarAlquileres = () => {
           </div>
 
           <button
-            onClick={() => dispatch(getAllLeases())}
+            onClick={() => refetch()}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-white rounded-lg transition-colors"
           >
             <IoRefreshOutline className="w-5 h-5" />

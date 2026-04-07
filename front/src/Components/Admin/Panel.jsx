@@ -91,9 +91,7 @@ const Panel = () => {
   // Calcular estadísticas
   const stats = useMemo(() => {
     return {
-      clientesActivos: clients.filter(client => 
-        client.properties && client.properties.length > 0
-      ).length,
+      clientesActivos: clients.length,
       totalPropiedades: properties.length,
       contratosActivos: leases.filter(lease => lease.status === 'active').length,
       totalRecibos: payments.length
