@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useDispatch } from 'react-redux';
 import { updateProperty, getAllProperties } from '../../redux/Actions/actions';
+import { useDolarRate } from '../hooks/useDolarRate';
+import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
 import { 
   IoCloseOutline, 
   IoSaveOutline,
@@ -48,9 +50,11 @@ const EditPropertyModal = ({ property, onClose }) => {
     requisito: '',
     rentalType: 'TRADICIONAL',
     minStayDays: '',
+    currency: 'ARS',
   });
   
   const [loading, setLoading] = useState(false);
+  const { dolar, loading: dolarLoading } = useDolarRate();
 
   useEffect(() => {
     if (property) {
@@ -83,6 +87,7 @@ const EditPropertyModal = ({ property, onClose }) => {
         requisito: property.requisito || '',
         rentalType: property.rentalType || 'TRADICIONAL',
         minStayDays: property.minStayDays || '',
+        currency: property.currency || 'ARS',
       });
     }
   }, [property]);
@@ -297,18 +302,96 @@ const EditPropertyModal = ({ property, onClose }) => {
                 <IoPricetagOutline /> Precio y Comisión
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
+                {/* Moneda + Precio */}
+                <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Precio *
+                    Moneda y Precio *
                   </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={handleChange}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 min-w-[90px]"
+                    >
+                      <option value="ARS">$ ARS</option>
+                      <option value="USD">U$D USD</option>
+                    </select>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      placeholder={formData.currency === 'USD' ? 'Precio en USD' : 'Precio en pesos'}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      required
+                    />
+                  </div>
+
+                  {formData.currency === 'USD' && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                      {dolarLoading ? (
+                        <p className="text-amber-600">Obteniendo cotización...</p>
+                      ) : dolar ? (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-gray-600">
+                            <span>Dólar Oficial venta:</span>
+                            <span className="font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600">
+                            <span>Dólar Blue venta:</span>
+                            <span className="font-semibold">{formatCurrency(dolar.blue?.venta, 'ARS')}</span>
+                          </div>
+                          {formData.price && (
+                            <>
+                              <div className="border-t border-amber-200 pt-1 mt-1">
+                                <div className="flex justify-between">
+                                  <span className="text-amber-700">Equiv. Oficial:</span>
+                                  <span className="text-amber-700 font-semibold">
+                                    {formatCurrency(parseFloat(formData.price) * (dolar.oficial?.venta || 0), 'ARS')}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-blue-700">Equiv. Blue:</span>
+                                  <span className="text-blue-700 font-semibold">
+                                    {formatCurrency(parseFloat(formData.price) * (dolar.blue?.venta || 0), 'ARS')}
+                                  </span>
+                                </div>
+                              </div>
+                              {formData.comision && (
+                                <div className="border-t border-amber-200 pt-1 mt-1">
+                                  <p className="text-gray-500 mb-0.5">Comisión {formData.comision}%:</p>
+                                  {(() => {
+                                    const { comisionOriginal, comisionARS: comArsOficial } = calcularComision(formData.price, 'USD', formData.comision, dolar.oficial?.venta);
+                                    const { comisionARS: comArsBlue } = calcularComision(formData.price, 'USD', formData.comision, dolar.blue?.venta);
+                                    return (
+                                      <>
+                                        <div className="flex justify-between">
+                                          <span>En USD:</span>
+                                          <span>USD {comisionOriginal.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                                        </div>
+                                        <div className="flex justify-between text-amber-700">
+                                          <span>En ARS (Oficial):</span>
+                                          <span>{formatCurrency(comArsOficial, 'ARS')}</span>
+                                        </div>
+                                        <div className="flex justify-between text-blue-700">
+                                          <span>En ARS (Blue):</span>
+                                          <span>{formatCurrency(comArsBlue, 'ARS')}</span>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <p className="text-gray-400 text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
+                        </div>
+                      ) : (
+                        <p className="text-red-500">No se pudo obtener la cotización</p>
+                      )}
+                    </div>
+                  )}
                 </div>
                 
                 <div>

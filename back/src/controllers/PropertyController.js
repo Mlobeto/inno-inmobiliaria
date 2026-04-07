@@ -89,6 +89,7 @@ exports.createProperty = async (req, res) => {
         superficieTotal,
         rentalType,
         minStayDays,
+        currency,
       } = req.body;
   
       const normalizedOperationType = normalizeOperationType(operationType || type);
@@ -163,6 +164,7 @@ exports.createProperty = async (req, res) => {
           requisito: req.body.requisito || null,
           rentalType: rentalType || 'TRADICIONAL',
           minStayDays: minStayDays ? parseInt(minStayDays, 10) : null,
+          currency: ['ARS', 'USD'].includes(currency) ? currency : 'ARS',
           createdAt: new Date(),
           updatedAt: new Date(),
         }
@@ -284,6 +286,11 @@ exports.updateProperty = async (req, res) => {
     // Mantener requisito si viene en el body
     if (req.body.requisito !== undefined) {
       cleanedData.requisito = req.body.requisito || null;
+    }
+
+    // Validar y normalizar currency si viene en el body
+    if (req.body.currency !== undefined) {
+      cleanedData.currency = ['ARS', 'USD'].includes(req.body.currency) ? req.body.currency : 'ARS';
     }
 
     const normalizedOperationType = normalizeOperationType(cleanedData.operationType || cleanedData.type);

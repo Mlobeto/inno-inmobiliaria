@@ -492,7 +492,12 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                       <IoPricetagOutline className="w-4 h-4 text-emerald-400" />
                       <span className="text-emerald-300 text-xs font-semibold uppercase">Precio</span>
                     </div>
-                    <p className="text-emerald-400 font-bold text-2xl">{formatCurrency(property.price)}</p>
+                    <p className="text-emerald-400 font-bold text-2xl">
+                      {property.currency === 'USD'
+                        ? `USD ${Number(property.price).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
+                        : formatCurrency(property.price)
+                      }
+                    </p>
                   </div>
                 </div>
               </div>

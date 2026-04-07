@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useGetAllClientsQuery, useCreatePropertyMutation, useGetCurrentTenantQuery } from '@shared/redux';
+import { useDolarRate } from '../hooks/useDolarRate';
+import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import { toast } from 'react-toastify';
 import {
@@ -87,6 +89,9 @@ const CreateProperty = () => {
   const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
   const { data: tenantData } = useGetCurrentTenantQuery();
   const tenantSubdomain = tenantData?.data?.subdomain || tenantData?.subdomain || 'default';
+
+  // Cotización del dólar
+  const { dolar, loading: dolarLoading } = useDolarRate();
   
   const [formData, setFormData] = useState({
     address: "",
@@ -99,6 +104,7 @@ const CreateProperty = () => {
     operationType: "",
     typeProperty: "",
     price: "",
+    currency: "ARS",
     precioReferencia: "",
     rooms: "",
     bathrooms: "",
@@ -281,6 +287,7 @@ const CreateProperty = () => {
         operationType: "",
         typeProperty: "",
         price: "",
+        currency: "ARS",
         precioReferencia: "",
         rooms: "",
         bathrooms: "",
@@ -752,20 +759,104 @@ const CreateProperty = () => {
                   </>
                 )}
 
+                {/* Moneda + Precio */}
                 <div>
-                  <label htmlFor="price" className="block text-slate-300 font-medium mb-2">
-                    Precio *
+                  <label className="block text-slate-300 font-medium mb-2">
+                    Moneda y Precio *
                   </label>
-                  <input
-                    type="number"
-                    id="price"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
-                    placeholder="Ingrese el precio"
-                    required
-                  />
+                  <div className="flex gap-2">
+                    {/* Selector de moneda */}
+                    <select
+                      name="currency"
+                      value={formData.currency}
+                      onChange={handleChange}
+                      className="px-3 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm min-w-[90px]"
+                    >
+                      <option value="ARS" className="bg-slate-800">$ ARS</option>
+                      <option value="USD" className="bg-slate-800">U$D USD</option>
+                    </select>
+                    {/* Input precio */}
+                    <input
+                      type="number"
+                      id="price"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                      placeholder={formData.currency === 'USD' ? 'Precio en USD' : 'Precio en pesos'}
+                      required
+                    />
+                  </div>
+
+                  {/* Cotización del dólar + equivalente en ARS */}
+                  {formData.currency === 'USD' && (
+                    <div className="mt-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                      {dolarLoading ? (
+                        <p className="text-amber-400 text-xs">Obteniendo cotización...</p>
+                      ) : dolar ? (
+                        <div className="space-y-1 text-xs">
+                          <div className="flex justify-between text-slate-300">
+                            <span>Dólar Oficial venta:</span>
+                            <span className="text-white font-semibold">
+                              {formatCurrency(dolar.oficial?.venta, 'ARS')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-slate-300">
+                            <span>Dólar Blue venta:</span>
+                            <span className="text-white font-semibold">
+                              {formatCurrency(dolar.blue?.venta, 'ARS')}
+                            </span>
+                          </div>
+                          {formData.price && (
+                            <>
+                              <div className="border-t border-amber-500/20 pt-1 mt-1">
+                                <div className="flex justify-between">
+                                  <span className="text-amber-300">Equiv. Oficial:</span>
+                                  <span className="text-amber-300 font-semibold">
+                                    {formatCurrency(parseFloat(formData.price) * (dolar.oficial?.venta || 0), 'ARS')}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-blue-300">Equiv. Blue:</span>
+                                  <span className="text-blue-300 font-semibold">
+                                    {formatCurrency(parseFloat(formData.price) * (dolar.blue?.venta || 0), 'ARS')}
+                                  </span>
+                                </div>
+                              </div>
+                              {formData.comision && (
+                                <div className="border-t border-amber-500/20 pt-1 mt-1">
+                                  <p className="text-slate-400 mb-0.5">Comisión {formData.comision}%:</p>
+                                  {(() => {
+                                    const { comisionOriginal, comisionARS: comArsOficial } = calcularComision(formData.price, 'USD', formData.comision, dolar.oficial?.venta);
+                                    const { comisionARS: comArsBlue } = calcularComision(formData.price, 'USD', formData.comision, dolar.blue?.venta);
+                                    return (
+                                      <>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-300">En USD:</span>
+                                          <span className="text-white">USD {comisionOriginal.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-amber-300">En ARS (Oficial):</span>
+                                          <span className="text-amber-300">{formatCurrency(comArsOficial, 'ARS')}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-blue-300">En ARS (Blue):</span>
+                                          <span className="text-blue-300">{formatCurrency(comArsBlue, 'ARS')}</span>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              )}
+                            </>
+                          )}
+                          <p className="text-slate-500 text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
+                        </div>
+                      ) : (
+                        <p className="text-red-400 text-xs">No se pudo obtener la cotización</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>

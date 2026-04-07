@@ -217,6 +217,7 @@ model Property {
   agentId              Int?
   rentalType           String?                    @default("TRADICIONAL") @db.VarChar(50)
   minStayDays          Int?
+  currency             String                     @default("ARS") @db.VarChar(3)
   isPublishedInLanding Boolean?                   @default(false)
   rentedAt             DateTime?                  @db.Timestamp(6)
   ClientProperties     ClientProperties[]
