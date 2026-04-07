@@ -1,0 +1,71 @@
+# ============================================================
+# deploy-backend.yml
+# Trigger: push a main con cambios en back/ o infra/
+# Hace: build Docker → push a ACR → actualiza Container App
+# ============================================================
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'back/**'
+      - 'infra/**'
+      - '.github/workflows/deploy-backend.yml'
+
+env:
+  AZURE_RESOURCE_GROUP: inno-prod-rg
+  ACR_NAME: innoacrprod
+  CONTAINER_APP_NAME: inno-prod-api
+  IMAGE_NAME: inno-api
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Necesario para OIDC login a Azure
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # Login a Azure usando Federated Identity (OIDC) — sin secretos de larga duración
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Login a Container Registry usando Managed Identity
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      # Build y push de la imagen Docker
+      - name: Build and push Docker image
+        working-directory: back
+        run: |
+          IMAGE_TAG=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+          docker build -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
+          docker push "$IMAGE_TAG"
+          docker push "$IMAGE_LATEST"
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      # Actualizar la imagen en Container Apps
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.IMAGE_TAG }}
+
+      # Verificar que el deployment quedó activo
+      - name: Verify deployment
+        run: |
+          az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.latestRevisionFqdn" \
+            --output tsv
