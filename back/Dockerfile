@@ -8,7 +8,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Instalar dependencias de producción + devDependencies para generar Prisma client
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Generar Prisma client
 RUN npx prisma generate
