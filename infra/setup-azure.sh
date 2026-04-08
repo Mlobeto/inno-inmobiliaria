@@ -3,7 +3,7 @@
 # setup-azure.sh — Script de configuración inicial en Azure
 # Ejecutar UNA SOLA VEZ desde tu máquina local con az CLI
 # =============================================================
-set -e
+set -euo pipefail
 
 # ── Configuración ──────────────────────────────────────────────
 PROJECT="inno"
@@ -45,13 +45,25 @@ else
 fi
 
 # Reusar SP si ya existe, crear si no
-EXISTING_SP_OID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null)
+EXISTING_SP_OID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
 if [[ -n "$EXISTING_SP_OID" && "$EXISTING_SP_OID" != "None" ]]; then
   echo "   Service Principal ya existe, reusando."
   SP_OBJECT_ID="$EXISTING_SP_OID"
 else
-  SP_OBJECT_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
-  echo "   Service Principal creado."
+  echo "   Creando Service Principal..."
+  SP_CREATE_OUTPUT=$(az ad sp create --id "$APP_ID" --query id -o tsv 2>&1) || true
+  SP_OBJECT_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
+  if [[ -z "$SP_OBJECT_ID" || "$SP_OBJECT_ID" == "None" ]]; then
+    echo "   ERROR al crear SP: $SP_CREATE_OUTPUT"
+    echo "   Intentando con wait de 5s (propagación de Azure AD)..."
+    sleep 5
+    SP_OBJECT_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
+  fi
+  if [[ -z "$SP_OBJECT_ID" || "$SP_OBJECT_ID" == "None" ]]; then
+    echo "❌ No se pudo crear el Service Principal. Error: $SP_CREATE_OUTPUT"
+    exit 1
+  fi
+  echo "   Service Principal creado: $SP_OBJECT_ID"
 fi
 
 # Agregar federated credential (ignorar error si ya existe)
