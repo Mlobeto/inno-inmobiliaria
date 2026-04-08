@@ -41,8 +41,8 @@ app.use(cors({
         // Permitir requests sin origin (como Postman, curl, etc.)
         if (!origin) return callback(null, true);
         
-        // Permitir cualquier subdominio de vercel.app
-        if (origin.includes('.vercel.app') || allowedOrigins.indexOf(origin) !== -1) {
+        // Permitir cualquier subdominio de vercel.app o azurestaticapps.net
+        if (origin.includes('.vercel.app') || origin.includes('.azurestaticapps.net') || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             logger.warn('Origin bloqueado por CORS', { origin, path: this.path });
@@ -97,7 +97,7 @@ app.use((err, req, res, next) => {
 
     // Asegurar CORS también en errores
     const origin = req.get('origin');
-    if (origin && (origin.includes('.vercel.app') || allowedOrigins.indexOf(origin) !== -1)) {
+    if (origin && (origin.includes('.vercel.app') || origin.includes('.azurestaticapps.net') || allowedOrigins.indexOf(origin) !== -1)) {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Credentials', 'true');
     }
@@ -122,7 +122,7 @@ app.use((req, res) => {
 
     // Asegurar CORS también en 404
     const origin = req.get('origin');
-    if (origin && (origin.includes('.vercel.app') || allowedOrigins.indexOf(origin) !== -1)) {
+    if (origin && (origin.includes('.vercel.app') || origin.includes('.azurestaticapps.net') || allowedOrigins.indexOf(origin) !== -1)) {
         res.header('Access-Control-Allow-Origin', origin);
         res.header('Access-Control-Allow-Credentials', 'true');
     }
