@@ -30,13 +30,31 @@ az group create \
 
 # 2. Crear Service Principal con Federated Identity (OIDC — sin secretos de larga duración)
 echo ""
-echo "🔑 Creando Service Principal con Federated Identity para GitHub Actions..."
+echo "🔑 Configurando Service Principal con Federated Identity para GitHub Actions..."
 
 APP_NAME="${PROJECT}-github-actions"
-APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-SP_OBJECT_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
 
-# Federated credential para push a main
+# Reusar app si ya existe, crear si no
+EXISTING_APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv 2>/dev/null)
+if [[ -n "$EXISTING_APP_ID" && "$EXISTING_APP_ID" != "None" ]]; then
+  echo "   App ya existe, reusando: $EXISTING_APP_ID"
+  APP_ID="$EXISTING_APP_ID"
+else
+  APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
+  echo "   App creada: $APP_ID"
+fi
+
+# Reusar SP si ya existe, crear si no
+EXISTING_SP_OID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null)
+if [[ -n "$EXISTING_SP_OID" && "$EXISTING_SP_OID" != "None" ]]; then
+  echo "   Service Principal ya existe, reusando."
+  SP_OBJECT_ID="$EXISTING_SP_OID"
+else
+  SP_OBJECT_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
+  echo "   Service Principal creado."
+fi
+
+# Agregar federated credential (ignorar error si ya existe)
 az ad app federated-credential create \
   --id "$APP_ID" \
   --parameters "{
@@ -44,14 +62,14 @@ az ad app federated-credential create \
     \"issuer\": \"https://token.actions.githubusercontent.com\",
     \"subject\": \"repo:${GITHUB_REPO}:ref:refs/heads/main\",
     \"audiences\": [\"api://AzureADTokenExchange\"]
-  }"
+  }" 2>/dev/null || echo "   Federated credential ya existente, continuando."
 
-# Asignar rol Contributor al Resource Group
+# Asignar rol Contributor (ignorar si ya fue asignado)
 az role assignment create \
   --assignee "$SP_OBJECT_ID" \
   --role "Contributor" \
   --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}" \
-  --output table
+  --output table 2>/dev/null || echo "   Rol Contributor ya asignado, continuando."
 
 echo ""
 echo "⚙️  Agrega estos secretos en GitHub → Settings → Secrets → Actions:"
@@ -68,8 +86,8 @@ read -r -p "¿Contraseña para PostgreSQL? " PG_PASSWORD
 az deployment group what-if \
   --name "${PROJECT}-infra-deploy" \
   --resource-group "$RESOURCE_GROUP" \
-  --template-file "./infra/main.bicep" \
-  --parameters "./infra/main.bicepparam" \
+  --template-file "./main.bicep" \
+  --parameters "./main.bicepparam" \
   --parameters pgAdminPassword="$PG_PASSWORD"
 
 echo ""
@@ -79,8 +97,8 @@ if [[ "$CONFIRM" =~ ^[sS]$ ]]; then
   az deployment group create \
     --name "${PROJECT}-infra-deploy" \
     --resource-group "$RESOURCE_GROUP" \
-    --template-file "./infra/main.bicep" \
-    --parameters "./infra/main.bicepparam" \
+    --template-file "./main.bicep" \
+    --parameters "./main.bicepparam" \
     --parameters pgAdminPassword="$PG_PASSWORD" \
     --output table
 

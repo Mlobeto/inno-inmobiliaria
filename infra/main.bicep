@@ -120,10 +120,7 @@ resource pgServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview'
       geoRedundantBackup: 'Disabled'
     }
     highAvailability: {
-      mode: 'Disabled'  // Habilitar en prod si se necesita HA
-    }
-    authConfig: {
-      passwordAuth: 'Enabled'
+      mode: 'Disabled'
     }
   }
 }
