@@ -7,8 +7,10 @@ import {
   IoCheckmarkCircleOutline,
   IoPersonAddOutline,
   IoHomeOutline,
-  IoDocumentTextOutline
- 
+  IoDocumentTextOutline,
+  IoSettingsOutline,
+  IoChatboxOutline,
+  IoExtensionPuzzleOutline
 } from 'react-icons/io5';
 
 const TipsModal = ({ isOpen, onClose }) => {
@@ -16,8 +18,44 @@ const TipsModal = ({ isOpen, onClose }) => {
 
   const tips = [
     {
+      icon: IoSettingsOutline,
+      title: '1. Configurá tu Empresa',
+      description: 'Antes de comenzar, completá los datos de tu inmobiliaria. Esta información aparecerá en todos los contratos y documentos que generes.',
+      details: [
+        'Ingresá a "Configuración" en el menú principal',
+        'Completá nombre de la empresa, CUIT, matrícula, dirección, teléfono y email',
+        'Subí el logo de tu inmobiliaria',
+        'Guardá los cambios antes de continuar'
+      ],
+      color: 'from-slate-600 to-slate-700'
+    },
+    {
+      icon: IoChatboxOutline,
+      title: '2. Configurá Plantillas y Mensajes',
+      description: 'Personalizá las plantillas de contratos y los mensajes automáticos que se enviarán a tus clientes.',
+      details: [
+        'Accedé a "Configuración" → "Plantillas de Documentos"',
+        'Editá las plantillas de contratos de alquiler, compraventa y otros documentos',
+        'Configurá los mensajes de WhatsApp para comunicarte con propietarios e inquilinos',
+        'Revisá las variables disponibles (nombre, propiedad, fechas, etc.)'
+      ],
+      color: 'from-indigo-500 to-indigo-600'
+    },
+    {
+      icon: IoExtensionPuzzleOutline,
+      title: '3. Configurá las Integraciones',
+      description: 'Conectá tu cuenta con MercadoPago para cobrar y con MercadoLibre para publicar propiedades.',
+      details: [
+        'Accedé a "Configuración" → "Integraciones"',
+        'Conectá MercadoPago para gestionar pagos de alquileres',
+        'Vinculá tu cuenta de MercadoLibre para publicar propiedades automáticamente',
+        'Podés omitir este paso y configurarlo más adelante'
+      ],
+      color: 'from-cyan-500 to-cyan-600'
+    },
+    {
       icon: IoPersonAddOutline,
-      title: '1. Registra al Cliente Propietario',
+      title: '4. Registra al Cliente Propietario',
       description: 'Comienza registrando al cliente que trae la propiedad. Este será el propietario o vendedor.',
       details: [
         'Ve a "Clientes" → "Alta de Clientes"',
@@ -28,7 +66,7 @@ const TipsModal = ({ isOpen, onClose }) => {
     },
     {
       icon: IoHomeOutline,
-      title: '2. Carga la Propiedad',
+      title: '5. Carga la Propiedad',
       description: 'Una vez registrado el propietario, carga los datos de su propiedad.',
       details: [
         'Dirígete a "Propiedades" → "Alta Propiedades"',
@@ -40,7 +78,7 @@ const TipsModal = ({ isOpen, onClose }) => {
     },
     {
       icon: IoPersonAddOutline,
-      title: '3. Registra al Cliente Comprador/Inquilino',
+      title: '6. Registra al Cliente Comprador/Inquilino',
       description: 'Registra al cliente interesado en comprar o alquilar la propiedad.',
       details: [
         'Ve nuevamente a "Clientes" → "Alta de Clientes"',
@@ -51,7 +89,7 @@ const TipsModal = ({ isOpen, onClose }) => {
     },
     {
       icon: IoDocumentTextOutline,
-      title: '4. Genera el Contrato o Orden',
+      title: '7. Genera el Contrato o Orden',
       description: 'Finalmente, crea el contrato de alquiler o la orden de venta.',
       details: [
         'Para alquiler: "Contratos" → "Contrato de Alquiler"',
@@ -63,12 +101,12 @@ const TipsModal = ({ isOpen, onClose }) => {
     },
     {
       icon: IoCheckmarkCircleOutline,
-      title: '¡Listo para Comenzar!',
-      description: 'Ya conoces el flujo completo de trabajo. Recuerda seguir este orden para mantener tu información organizada.',
+      title: '¡Todo listo para comenzar!',
+      description: 'Ya conoces el flujo completo. Seguí este orden para mantener tu información organizada y aprovechar al máximo el sistema.',
       details: [
-        'Puedes volver a ver estos tips en cualquier momento',
-        'Busca el ícono de ayuda (?) en el panel principal',
-        'Si tienes dudas, consulta la documentación completa'
+        'Podés volver a ver estos tips en cualquier momento',
+        'Buscá el ícono de ayuda (?) en el panel principal',
+        'Si tenés dudas, consultá la documentación completa'
       ],
       color: 'from-green-500 to-green-600'
     }
