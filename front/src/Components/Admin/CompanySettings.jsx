@@ -28,13 +28,14 @@ import { uploadFile } from '../../utils/azureUpload';
 import PdfTemplateManager from './PdfTemplateManager';
 import MercadoLibreIntegration from './MercadoLibreIntegration';
 import ElectronicInvoicingIntegration from './ElectronicInvoicingIntegration';
+import PaymentMethodsManager from './PaymentMethodsManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('general'); // 'general', 'messages', 'templates', 'integrations'
+  const [activeTab, setActiveTab] = useState('general'); // 'general', 'messages', 'templates', 'integrations', 'payments'
   const isIncomplete = searchParams.get('incomplete') === 'true';
   const [settings, setSettings] = useState({
     company_name: '',
@@ -149,7 +150,7 @@ const CompanySettings = () => {
     
     // Verificar tab en URL
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['general', 'messages', 'templates', 'integrations'].includes(tabParam)) {
+    if (tabParam && ['general', 'messages', 'templates', 'integrations', 'payments'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
     
@@ -657,6 +658,19 @@ const CompanySettings = () => {
                 <div className="flex items-center space-x-2">
                   <IoExtensionPuzzleOutline className="w-5 h-5" />
                   <span>Integraciones</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('payments')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'payments'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center space-x-2">
+                  <IoCardOutline className="w-5 h-5" />
+                  <span>Métodos de Pago</span>
                 </div>
               </button>
             </nav>
@@ -1285,6 +1299,9 @@ const CompanySettings = () => {
             <MercadoLibreIntegration />
             <ElectronicInvoicingIntegration />
           </div>
+        ) : activeTab === 'payments' ? (
+          // Pestaña de Métodos de Pago
+          <PaymentMethodsManager />
         ) : null}
 
         {/* Ayuda - Solo mostrar en tab general */}

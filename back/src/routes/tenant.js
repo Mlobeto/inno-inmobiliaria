@@ -59,4 +59,30 @@ router.post("/check-subdomain", TenantController.checkSubdomainAvailability);
  */
 router.put("/subdomain", TenantController.updateSubdomain);
 
+/**
+ * @route GET /api/tenant/payment-methods
+ * @desc Lista los métodos de pago configurados
+ * @access Private
+ */
+router.get("/payment-methods", TenantController.getPaymentMethods);
+
+/**
+ * @route POST /api/tenant/payment-methods
+ * @body { type, label, value } — para QR: subir imagen con /api/upload y pasar la URL como value
+ * @access Private (SUPER_ADMIN)
+ */
+router.post("/payment-methods", TenantController.createPaymentMethod);
+
+/**
+ * @route PUT /api/tenant/payment-methods/:id
+ * @access Private (SUPER_ADMIN)
+ */
+router.put("/payment-methods/:id", TenantController.updatePaymentMethod);
+
+/**
+ * @route DELETE /api/tenant/payment-methods/:id
+ * @access Private (SUPER_ADMIN)
+ */
+router.delete("/payment-methods/:id", TenantController.deletePaymentMethod);
+
 module.exports = router;

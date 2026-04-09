@@ -409,6 +409,125 @@ const updateSubdomain = async (req, res) => {
   }
 };
 
+// ─── PaymentMethods ──────────────────────────────────────────────────────────
+
+/**
+ * @route GET /api/tenant/payment-methods
+ * @desc Lista los métodos de pago configurados por el tenant
+ * @access Private
+ */
+const getPaymentMethods = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const methods = await prisma.PaymentMethods.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.status(200).json({ success: true, data: methods });
+  } catch (error) {
+    logger.error('Error obteniendo métodos de pago', { tenantId: req.user?.tenantId, error: error.message });
+    res.status(500).json({ success: false, message: 'Error al obtener métodos de pago' });
+  }
+};
+
+/**
+ * @route POST /api/tenant/payment-methods
+ * @desc Crea un método de pago. Para QR: subir imagen con /api/upload primero y pasar la URL como `value`.
+ * @body { type: 'cbu'|'alias'|'qr'|'transferencia', label: string, value: string }
+ * @access Private (SUPER_ADMIN)
+ */
+const createPaymentMethod = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { type, label, value } = req.body;
+
+    const VALID_TYPES = ['cbu', 'alias', 'qr', 'transferencia'];
+    if (!type || !VALID_TYPES.includes(type)) {
+      return res.status(400).json({ success: false, message: `type debe ser uno de: ${VALID_TYPES.join(', ')}` });
+    }
+    if (!label || !label.trim()) {
+      return res.status(400).json({ success: false, message: 'label es requerido' });
+    }
+    if (!value || !value.trim()) {
+      return res.status(400).json({ success: false, message: 'value es requerido' });
+    }
+
+    const method = await prisma.PaymentMethods.create({
+      data: { tenantId, type, label: label.trim(), value: value.trim() },
+    });
+
+    res.status(201).json({ success: true, data: method });
+  } catch (error) {
+    logger.error('Error creando método de pago', { tenantId: req.user?.tenantId, error: error.message });
+    res.status(500).json({ success: false, message: 'Error al crear método de pago' });
+  }
+};
+
+/**
+ * @route PUT /api/tenant/payment-methods/:id
+ * @desc Actualiza un método de pago (label, value, isActive)
+ * @access Private (SUPER_ADMIN)
+ */
+const updatePaymentMethod = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const id = parseInt(req.params.id, 10);
+    const { label, value, isActive } = req.body;
+
+    const existing = await prisma.PaymentMethods.findFirst({ where: { id, tenantId } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Método de pago no encontrado' });
+    }
+
+    const updated = await prisma.PaymentMethods.update({
+      where: { id },
+      data: {
+        ...(label !== undefined && { label: label.trim() }),
+        ...(value !== undefined && { value: value.trim() }),
+        ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    logger.error('Error actualizando método de pago', { tenantId: req.user?.tenantId, error: error.message });
+    res.status(500).json({ success: false, message: 'Error al actualizar método de pago' });
+  }
+};
+
+/**
+ * @route DELETE /api/tenant/payment-methods/:id
+ * @desc Elimina un método de pago. Si es QR, borra el blob de Azure.
+ * @access Private (SUPER_ADMIN)
+ */
+const deletePaymentMethod = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const id = parseInt(req.params.id, 10);
+
+    const existing = await prisma.PaymentMethods.findFirst({ where: { id, tenantId } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Método de pago no encontrado' });
+    }
+
+    // Si es QR, eliminar imagen de Azure Blob
+    if (existing.type === 'qr' && existing.value) {
+      try {
+        await azureBlobHelper.deleteFile(existing.value);
+      } catch (err) {
+        logger.warn('No se pudo eliminar QR de Azure Blob', { id, error: err.message });
+      }
+    }
+
+    await prisma.PaymentMethods.delete({ where: { id } });
+
+    res.status(200).json({ success: true, message: 'Método de pago eliminado' });
+  } catch (error) {
+    logger.error('Error eliminando método de pago', { tenantId: req.user?.tenantId, error: error.message });
+    res.status(500).json({ success: false, message: 'Error al eliminar método de pago' });
+  }
+};
+
 module.exports = {
   uploadSignature,
   getSignature,
@@ -417,4 +536,8 @@ module.exports = {
   updateTenantInfo,
   checkSubdomainAvailability,
   updateSubdomain,
+  getPaymentMethods,
+  createPaymentMethod,
+  updatePaymentMethod,
+  deletePaymentMethod,
 };
