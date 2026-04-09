@@ -260,6 +260,55 @@ resource kvSecretsRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
+// ---------- Azure Blob Storage — Media (imágenes/videos por tenant) ----------
+var storageAccountName = replace('${projectName}media${environment}', '-', '') // sin guiones, max 24 chars
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: 'Standard_LRS'  // Locally redundant — suficiente para media
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+    allowBlobPublicAccess: true  // Necesario para servir imágenes públicas
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+// Blob service
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+  properties: {
+    cors: {
+      corsRules: [
+        {
+          allowedOrigins: ['*']
+          allowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD', 'OPTIONS']
+          allowedHeaders: ['*']
+          exposedHeaders: ['*']
+          maxAgeInSeconds: 3600
+        }
+      ]
+    }
+  }
+}
+
+// Container público para media (imágenes y videos de propiedades)
+resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: 'media'
+  properties: {
+    publicAccess: 'Blob'  // URLs públicas directas para imágenes/videos
+  }
+}
+
+// Nota: el rol Storage Blob Data Contributor ya está asignado al Managed Identity del Container App (asignado en deploy inicial)
+
 // ---------- Static Web App — Frontend (React/Vite) ----------
 resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   name: staticWebAppName
@@ -283,3 +332,5 @@ output containerAppUrl string = 'https://${containerApp.properties.configuration
 output staticWebAppUrl string = staticWebApp.properties.defaultHostname
 output pgServerFqdn string = pgServer.properties.fullyQualifiedDomainName
 output pgConnectionString string = 'postgresql://${pgAdminUser}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDbName}?sslmode=require'
+output storageAccountName string = storageAccount.name
+output storageBlobEndpoint string = storageAccount.properties.primaryEndpoints.blob

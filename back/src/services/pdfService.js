@@ -1,6 +1,6 @@
 const puppeteer = require("puppeteer");
 const Handlebars = require("handlebars");
-const cloudinaryHelper = require("../utils/cloudinaryHelper");
+const azureBlobHelper = require("../utils/azureBlobHelper");
 const path = require("path");
 const fs = require("fs").promises;
 
@@ -548,11 +548,9 @@ const uploadPdfToCloudinary = async (pdfBuffer, tenantId, fileName) => {
     // Escribir buffer a archivo temporal
     await fs.writeFile(tempFilePath, pdfBuffer);
 
-    // Subir a Cloudinary desde archivo temporal
-    const result = await cloudinaryHelper.uploadImage(tempFilePath, tenantId, "pdfs", {
-      public_id: fileName,
-      resource_type: "raw", // Para PDFs
-      format: "pdf",
+    // Subir a Azure Blob Storage desde archivo temporal
+    const result = await azureBlobHelper.uploadFile(tempFilePath, tenantId, "pdfs", {
+      originalName: `${fileName}.pdf`,
     });
 
     // Eliminar archivo temporal

@@ -1,5 +1,5 @@
 const prisma = require("../utils/prismaClient");
-const cloudinaryHelper = require("../utils/cloudinaryHelper");
+const azureBlobHelper = require("../utils/azureBlobHelper");
 const { invalidateTenantCache } = require('../utils/tenantCache');
 const logger = require('../utils/logger');
 
@@ -37,32 +37,27 @@ const uploadSignature = async (req, res) => {
       });
     }
 
-    // Si ya tiene una firma anterior, eliminarla de Cloudinary
+    // Si ya tiene una firma anterior, eliminarla de Azure Blob
     if (tenant.signatureUrl) {
       try {
-        await cloudinaryHelper.deleteImage(tenant.signatureUrl);
+        await azureBlobHelper.deleteFile(tenant.signatureUrl);
       } catch (error) {
-        logger.warn('No se pudo eliminar la firma anterior de Cloudinary', { tenantId, error: error.message });
+        logger.warn('No se pudo eliminar la firma anterior de Azure Blob', { tenantId, error: error.message });
       }
     }
 
-    // Subir nueva firma a Cloudinary
-    const result = await cloudinaryHelper.uploadImage(
+    // Subir nueva firma a Azure Blob Storage (base64)
+    const result = await azureBlobHelper.uploadFromBase64(
       signatureDataUrl,
       tenantId,
       "signatures",
-      {
-        public_id: `signature-tenant-${tenantId}`,
-        overwrite: true,
-        resource_type: "image",
-        format: "png",
-      }
+      { filename: `signature-tenant-${tenantId}.png` }
     );
 
     // Actualizar tenant con la nueva URL
     await prisma.tenants.update({
       where: { tenantId },
-      data: { signatureUrl: result.secure_url },
+      data: { signatureUrl: result.url },
     });
 
     await invalidateTenantCache(tenantId, tenant.subdomain, tenant.custom_domain);
@@ -145,11 +140,11 @@ const deleteSignature = async (req, res) => {
       });
     }
 
-    // Eliminar de Cloudinary
+    // Eliminar de Azure Blob
     try {
-      await cloudinaryHelper.deleteImage(tenant.signatureUrl);
+      await azureBlobHelper.deleteFile(tenant.signatureUrl);
     } catch (error) {
-      logger.warn('No se pudo eliminar firma de Cloudinary', { tenantId, error: error.message });
+      logger.warn('No se pudo eliminar firma de Azure Blob', { tenantId, error: error.message });
     }
 
     // Actualizar tenant
