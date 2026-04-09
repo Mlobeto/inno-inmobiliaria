@@ -169,11 +169,15 @@ model PaymentReceipts {
   period            String                      @db.VarChar(255)
   installmentNumber Int?
   totalInstallments Int?
-  type              enum_PaymentReceipts_type   @default(installment)
-  status            enum_PaymentReceipts_status @default(pending)
-  createdAt         DateTime                    @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime                    @default(now()) @updatedAt @db.Timestamptz(6)
-  deletedAt         DateTime?                   @db.Timestamptz(6)
+  type              enum_PaymentReceipts_type          @default(installment)
+  status            enum_PaymentReceipts_status         @default(pending)
+  voucherUrl        String?                             @db.VarChar(1000)         // URL comprobante en Azure Blob
+  voucherStatus     enum_PaymentReceipts_voucherStatus  @default(none)            // Estado del comprobante subido por inquilino
+  voucherRejReason  String?                             @db.VarChar(500)          // Motivo de rechazo (si aplica)
+  paidAt            DateTime?                           @db.Timestamptz(6)        // Fecha en que se marcó como pagado
+  createdAt         DateTime                            @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime                            @default(now()) @updatedAt @db.Timestamptz(6)
+  deletedAt         DateTime?                           @db.Timestamptz(6)
   leaseId           Int?
   idClient          Int?
   tenantId          Int?
@@ -682,6 +686,7 @@ model tenants {
   MercadoLibreConfig   MercadoLibreConfig?
   MercadoLibreMessages MercadoLibreMessages[]
   PaymentReceipts      PaymentReceipts[]
+  PaymentMethods       PaymentMethods[]
   Property             Property[]
   PropertyMLListings   PropertyMLListings[]
   RentUpdates          RentUpdates[]
@@ -703,6 +708,28 @@ model tenants {
   @@index([cuit], map: "tenants_cuit")
   @@index([status], map: "tenants_status")
   @@index([subdomain], map: "tenants_subdomain")
+}
+
+// Métodos de pago configurados por cada inmobiliaria (para mostrar al inquilino)
+model PaymentMethods {
+  id        Int                      @id @default(autoincrement())
+  tenantId  Int
+  type      enum_PaymentMethods_type
+  label     String                   @db.VarChar(100)   // Ej: "Banco Nación", "Cuenta corriente"
+  value     String                   @db.VarChar(500)   // CBU / alias / URL del QR
+  isActive  Boolean                  @default(true)
+  createdAt DateTime                 @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
+  tenants   tenants                  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([tenantId], map: "idx_payment_methods_tenant")
+}
+
+enum enum_PaymentMethods_type {
+  cbu
+  alias
+  qr
+  transferencia
 }
 
 enum document_type_enum {
@@ -735,6 +762,13 @@ enum enum_Leases_updateFrequency {
 enum enum_PaymentReceipts_status {
   pending
   paid
+}
+
+enum enum_PaymentReceipts_voucherStatus {
+  none             // No se subió comprobante
+  pending_review   // Comprobante subido, esperando aprobación del admin
+  approved         // Aprobado — pago confirmado
+  rejected         // Rechazado — admin indicó motivo
 }
 
 enum enum_PaymentReceipts_type {
