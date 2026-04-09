@@ -54,13 +54,28 @@ jobs:
           docker push "$IMAGE_LATEST"
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
-      # Actualizar la imagen en Container Apps
+      # Actualizar la imagen en Container Apps y referenciar secrets como env vars
       - name: Deploy to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE_TAG }}
+            --image ${{ env.IMAGE_TAG }} \
+            --set-env-vars \
+              "NODE_ENV=production" \
+              "PORT=3001" \
+              "DATABASE_URL=secretref:database-url" \
+              "JWT_SECRET_KEY=secretref:jwt-secret-key" \
+              "ENCRYPTION_KEY=secretref:encryption-key" \
+              "MP_ACCESS_TOKEN=secretref:mp-access-token" \
+              "MP_PUBLIC_KEY=secretref:mp-public-key" \
+              "ML_CLIENT_SECRET=secretref:ml-client-secret" \
+              "AZURE_STORAGE_ACCOUNT_NAME=innomediaprod" \
+              "FRONTEND_URL=https://yellow-mud-000b27d0f.6.azurestaticapps.net" \
+              "ML_CLIENT_ID=6081765459956502" \
+              "ML_REDIRECT_URI=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io/api/mercadolibre/callback" \
+              "PLATFORM_ADMIN_EMAIL=admin@innoinmo.com" \
+              "PLATFORM_ADMIN_EMAILS=admin@innoinmo.com"
 
       # Verificar que el deployment quedó activo
       - name: Verify deployment
