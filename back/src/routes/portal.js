@@ -28,6 +28,12 @@ const upload = multer({
 });
 
 /**
+ * GET /api/portal/tenant?code=admin21
+ * Resuelve el código/subdomain al tenantId y nombre. Público.
+ */
+router.get('/tenant', PortalController.lookupTenant);
+
+/**
  * POST /api/portal/auth
  * Autenticación del inquilino con email + cuil
  * X-Tenant-Id header o tenantId en body para identificar la inmobiliaria

@@ -5,7 +5,8 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { getToken, getTenantId } from '../utils/storageHelper';
 
 // URL base del API (configurable por entorno)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const API_BASE_URL = (globalThis as any).process?.env?.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Crear instancia de axios
 export const apiClient: AxiosInstance = axios.create({

@@ -5,12 +5,13 @@ import { combineReducers } from '@reduxjs/toolkit';
 
 // Importar reducers desde @inno/shared
 import { authReducer, clientsReducer, propertiesReducer } from '@inno/shared';
+import portalReducer from './portalSlice';
 
 // Configuración de persistencia
 const persistConfig = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'clients', 'properties'], // Solo persiste estos
+  whitelist: ['auth', 'clients', 'properties', 'portal'], // Solo persiste estos
   blacklist: [], // Excluir slices si es necesario
 };
 
@@ -18,6 +19,7 @@ const rootReducer = combineReducers({
   auth: authReducer,
   clients: clientsReducer,
   properties: propertiesReducer,
+  portal: portalReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

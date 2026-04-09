@@ -8,6 +8,8 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { PropertiesScreen } from '../screens/PropertiesScreen';
 import ClientsScreen from '../screens/ClientsScreen';
 import AddClientScreen from '../screens/AddClientScreen';
+import { PortalLoginScreen } from '../screens/portal/PortalLoginScreen';
+import { PortalNavigator } from './PortalNavigator';
 import { Text } from 'react-native';
 
 const Stack = createStackNavigator();
@@ -101,16 +103,24 @@ const MainTabs = () => {
 
 // Navegación principal
 export const AppNavigator = () => {
-  const { user, token } = useSelector((state: RootState) => state.auth);
-  const isAuthenticated = !!token && !!user;
+  const { user, token: agentToken } = useSelector((state: RootState) => state.auth);
+  const { token: portalToken } = useSelector((state: RootState) => state.portal);
+
+  const isAgent = !!agentToken && !!user;
+  const isInquilino = !!portalToken;
 
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!isAuthenticated ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
-        ) : (
+        {isInquilino ? (
+          <Stack.Screen name="Portal" component={PortalNavigator} />
+        ) : isAgent ? (
           <Stack.Screen name="MainTabs" component={MainTabs} />
+        ) : (
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="PortalLogin" component={PortalLoginScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

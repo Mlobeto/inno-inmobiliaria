@@ -4,10 +4,11 @@
 import { Middleware } from '@reduxjs/toolkit';
 import { showToast } from '../../utils/toastHelper';
 
-const toastMiddleware: Middleware = () => (next) => (action) => {
+const toastMiddleware: Middleware = () => (next) => (action: unknown) => {
+  const typedAction = action as { type: string; payload?: unknown };
   // Detectar acciones fulfilled/rejected de async thunks
-  if (action.type.endsWith('/fulfilled')) {
-    const actionName = action.type.split('/')[1];
+  if (typedAction.type.endsWith('/fulfilled')) {
+    const actionName = typedAction.type.split('/')[1];
     
     // Mostrar toast de éxito para operaciones CRUD
     if (['create', 'update', 'delete'].some(op => actionName.includes(op))) {
@@ -15,8 +16,8 @@ const toastMiddleware: Middleware = () => (next) => (action) => {
     }
   }
   
-  if (action.type.endsWith('/rejected')) {
-    const errorMessage = action.payload || 'Ocurrió un error';
+  if (typedAction.type.endsWith('/rejected')) {
+    const errorMessage = typedAction.payload || 'Ocurrió un error';
     showToast('error', errorMessage as string);
   }
   

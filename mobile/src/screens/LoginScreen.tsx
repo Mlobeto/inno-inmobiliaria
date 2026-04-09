@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import { login } from '@inno/shared';
 import { AppDispatch, RootState } from '../store/store';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
@@ -22,6 +23,7 @@ export const LoginScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { isLoading, error } = useSelector((state: RootState) => state.auth);
   const { isConnected } = useNetworkStatus();
+  const navigation = useNavigation<any>();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -100,6 +102,14 @@ export const LoginScreen = () => {
             ) : (
               <Text style={styles.buttonText}>Iniciar Sesión</Text>
             )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Acceso inquilinos */}
+        <View style={styles.inquilinoSection}>
+          <Text style={styles.inquilinoHint}>¿Sos inquilino?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('PortalLogin')}>
+            <Text style={styles.inquilinoLink}>Accedé al portal de pagos →</Text>
           </TouchableOpacity>
         </View>
 
@@ -200,5 +210,19 @@ const styles = StyleSheet.create({
     color: '#92400e',
     textAlign: 'center',
     fontSize: 14,
+  },
+  inquilinoSection: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  inquilinoHint: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 4,
+  },
+  inquilinoLink: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#16a34a',
   },
 });

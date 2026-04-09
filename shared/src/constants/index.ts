@@ -4,6 +4,7 @@
  */
 
 // ==================== ARGENTINA DATA ====================
+// @ts-ignore
 export {
   PROVINCIAS_ARGENTINA,
   CIUDADES_POR_PROVINCIA,
@@ -12,6 +13,7 @@ export {
 } from './argentinLocations.js';
 
 // ==================== COUNTRY CONFIGS ====================
+// @ts-ignore
 export {
   COUNTRY_CONFIGS,
   getCountryConfig,

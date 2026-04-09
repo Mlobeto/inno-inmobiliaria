@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAllProperties } from '@inno/shared';
+import { fetchProperties } from '@inno/shared';
 import { AppDispatch, RootState } from '../store/store';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
@@ -40,7 +40,7 @@ export const PropertiesScreen = () => {
   const loadProperties = async () => {
     if (isConnected) {
       try {
-        await dispatch(fetchAllProperties()).unwrap();
+        await dispatch(fetchProperties()).unwrap();
       } catch (error) {
         console.error('Error al cargar propiedades:', error);
       }

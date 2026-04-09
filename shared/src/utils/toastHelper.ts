@@ -4,16 +4,9 @@
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
 export const showToast = (type: ToastType, message: string) => {
-  // Esta función debe ser implementada de forma diferente en web vs mobile
-  
-  // En web: usar react-toastify
-  if (typeof window !== 'undefined') {
-    console.log(`[${type.toUpperCase()}] ${message}`);
-    // Implementar con react-toastify en web
-  }
-  
-  // En mobile: usar Alert o expo-notifications
-  // Se sobrescribe en mobile/src/utils/toastHelper.ts
+  // Stub — implementado por cada plataforma (web usa react-toastify, mobile usa Alert)
+  void type;
+  void message;
 };
 
 export default showToast;

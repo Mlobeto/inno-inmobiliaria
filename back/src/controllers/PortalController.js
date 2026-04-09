@@ -3,6 +3,36 @@ const prisma = require('../utils/prismaClient');
 const azureBlobHelper = require('../utils/azureBlobHelper');
 const logger = require('../utils/logger');
 
+// ─── Lookup tenant por código/subdomain ──────────────────────────────────────
+
+/**
+ * GET /api/portal/tenant?code=admin21
+ * Resuelve el subdomain al tenantId y nombre de la inmobiliaria.
+ * Público — no requiere autenticación.
+ */
+exports.lookupTenant = async (req, res) => {
+  try {
+    const code = (req.query.code || '').toLowerCase().trim();
+    if (!code) {
+      return res.status(400).json({ message: 'El código de inmobiliaria es requerido' });
+    }
+
+    const tenant = await prisma.tenants.findFirst({
+      where: { subdomain: code, deletedAt: null },
+      select: { tenantId: true, businessName: true, logo: true },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: 'No se encontró una inmobiliaria con ese código' });
+    }
+
+    return res.json({ tenantId: tenant.tenantId, businessName: tenant.businessName, logo: tenant.logo });
+  } catch (err) {
+    logger.error('PortalController.lookupTenant error:', err);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
+};
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 /**

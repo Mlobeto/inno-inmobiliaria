@@ -18,7 +18,7 @@ export {
 } from './store/slices/authSlice';
 
 export {
-  fetchClients,
+  fetchAllClients as fetchClients,
   fetchClientById,
   createClient,
   updateClient,
@@ -26,7 +26,7 @@ export {
 } from './store/slices/clientsSlice';
 
 export {
-  fetchProperties,
+  fetchAllProperties as fetchProperties,
   fetchPropertyById,
   createProperty,
   updateProperty,
