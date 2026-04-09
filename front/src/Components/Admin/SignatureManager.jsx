@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { IoCreateOutline, IoTrashOutline, IoSaveOutline, IoImageOutline, IoCheckmarkCircleOutline } from 'react-icons/io5';
+import axios from 'axios';
 
 const SignatureManager = () => {
   const sigCanvas = useRef(null);
@@ -16,8 +17,7 @@ const SignatureManager = () => {
 
   const fetchCurrentSignature = async () => {
     try {
-      const response = await fetch('https://qlinmobiliaria.onrender.com/api/admin/signature');
-      const data = await response.json();
+      const { data } = await axios.get('/tenant/signature');
       if (data.signatureUrl) {
         setSignatureUrl(data.signatureUrl);
       }
@@ -40,44 +40,15 @@ const SignatureManager = () => {
     setMessage({ type: '', text: '' });
 
     try {
-      // Convertir canvas a blob
-      const canvas = sigCanvas.current.getTrimmedCanvas();
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      // Convertir canvas a base64 data URL
+      const signatureDataUrl = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
 
-      // Crear FormData para Cloudinary
-      const formData = new FormData();
-      formData.append('file', blob, 'firma.png');
-      formData.append('upload_preset', 'propiedades'); // Usar preset existente
+      // Enviar al backend → Azure Blob Storage
+      const { data } = await axios.post('/tenant/signature', { signatureDataUrl });
 
-      // Subir a Cloudinary
-      const cloudinaryResponse = await fetch(
-        'https://api.cloudinary.com/v1_1/dachr5i8f/image/upload',
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      const cloudinaryData = await cloudinaryResponse.json();
-
-            // Guardar la URL en el backend
-      const response = await fetch('https://qlinmobiliaria.onrender.com/admin/signature', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          signatureUrl: cloudinaryData.secure_url,
-        }),
-      });
-
-      if (response.ok) {
-        setSignatureUrl(cloudinaryData.secure_url);
-        setMessage({ type: 'success', text: 'Firma guardada exitosamente' });
-        sigCanvas.current.clear();
-      } else {
-        throw new Error('Error al guardar firma');
-      }
+      setSignatureUrl(data.data.signatureUrl);
+      setMessage({ type: 'success', text: 'Firma guardada exitosamente' });
+      sigCanvas.current.clear();
     } catch (error) {
       console.error('Error:', error);
       setMessage({ type: 'error', text: 'Error al guardar la firma' });
@@ -93,14 +64,9 @@ const SignatureManager = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('https://qlinmobiliaria.onrender.com/admin/signature', {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setSignatureUrl(null);
-        setMessage({ type: 'success', text: 'Firma eliminada exitosamente' });
-      }
+      await axios.delete('/tenant/signature');
+      setSignatureUrl(null);
+      setMessage({ type: 'success', text: 'Firma eliminada exitosamente' });
     } catch (error) {
       console.error('Error:', error);
       setMessage({ type: 'error', text: 'Error al eliminar la firma' });

@@ -69,6 +69,7 @@ router.use("/import", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/pdf", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./pdf")); // PDF generation and templates
 router.use("/pdf-templates", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./pdfTemplates")); // PDF template management
 router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./tenant")); // Tenant management and signature
+router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica

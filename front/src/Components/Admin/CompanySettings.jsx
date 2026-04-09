@@ -24,10 +24,7 @@ import {
   IoLogoWhatsapp,
   IoExtensionPuzzleOutline
 } from 'react-icons/io5';
-import {
-  loadCloudinaryScript,
-  openCloudinaryWidgetForLogo,
-} from '../../cloudinaryConfig';
+import { uploadFile } from '../../utils/azureUpload';
 import PdfTemplateManager from './PdfTemplateManager';
 import MercadoLibreIntegration from './MercadoLibreIntegration';
 import ElectronicInvoicingIntegration from './ElectronicInvoicingIntegration';
@@ -278,23 +275,16 @@ const CompanySettings = () => {
     setValidationErrors(errors);
   };
 
-  const handleLogoWidget = async () => {
+  const handleLogoWidget = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     try {
-      await loadCloudinaryScript();
-      
-      const subdomain = tenantInfo.subdomain || 'default';
-      
-      // Usar la función específica para logos con carpeta separada por tenant
-      openCloudinaryWidgetForLogo((uploadedImageUrl) => {
-        setSettings((prevSettings) => ({
-          ...prevSettings,
-          company_logo_url: uploadedImageUrl,
-        }));
-        toast.success('Logo subido exitosamente');
-      }, `inno-saas/${subdomain}`);
+      const url = await uploadFile(file, 'logos');
+      setSettings((prev) => ({ ...prev, company_logo_url: url }));
+      toast.success('Logo subido exitosamente');
     } catch (error) {
-      console.error("Error al cargar el widget de Cloudinary:", error);
-      toast.error('Error al cargar el widget de imágenes');
+      console.error('Error al subir el logo:', error);
+      toast.error('Error al subir el logo');
     }
   };
 
@@ -1073,14 +1063,16 @@ const CompanySettings = () => {
             
             <div className="space-y-4">
               {/* Botón para subir logo */}
-              <button
-                type="button"
-                onClick={handleLogoWidget}
-                className="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md"
-              >
+              <label className="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md cursor-pointer">
                 <IoCloudUploadOutline className="w-5 h-5" />
-                <span>Subir Logo desde Cloudinary</span>
-              </button>
+                <span>Subir Logo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoWidget}
+                />
+              </label>
               
               <p className="text-sm text-gray-500">
                 El logo aparecerá en PDFs de propiedades, contratos y documentos oficiales

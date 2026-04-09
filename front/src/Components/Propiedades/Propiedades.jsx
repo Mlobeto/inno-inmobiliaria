@@ -9,10 +9,7 @@ import {
   getLegalStatusOptionsByOperationType,
   isLegalStatusValidForOperationType,
 } from './legalStatus';
-import {
-  loadCloudinaryScript,
-  openCloudinaryWidget,
-} from "../../cloudinaryConfig";
+import { uploadMultipleFiles } from "../../utils/azureUpload";
 import { useNavigate } from "react-router-dom";
 import { 
   IoArrowBackOutline,
@@ -154,17 +151,15 @@ const CreateProperty = () => {
     }
   }, [formData.provincia]);
 
-  const handleWidget = async () => {
+  const handleWidget = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     try {
-      await loadCloudinaryScript();
-      openCloudinaryWidget((uploadedImageUrl) => {
-        setFormData((prevFormData) => ({
-          ...prevFormData,
-          images: [...prevFormData.images, uploadedImageUrl],
-        }));
-      }, `inno-saas/${tenantSubdomain}/properties`);
+      const urls = await uploadMultipleFiles(files, 'properties');
+      setFormData((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
     } catch (error) {
-      console.error("Error al cargar el script de Cloudinary:", error);
+      console.error("Error al subir im\u00e1genes:", error);
+      toast.error('Error al subir las im\u00e1genes');
     }
   };
 
@@ -1093,16 +1088,19 @@ const CreateProperty = () => {
               
               {/* Botón de subir imágenes */}
               <div className="mb-6">
-                <button
-                  type="button"
-                  onClick={handleWidget}
-                  className="flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
-                >
+                <label className="flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer">
                   <IoCloudUploadOutline className="w-6 h-6" />
-                  <span>Subir Imágenes desde Cloudinary</span>
-                </button>
+                  <span>Subir Imágenes</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleWidget}
+                  />
+                </label>
                 <p className="text-slate-400 text-sm mt-2">
-                  Sube múltiples imágenes para mostrar la propiedad desde diferentes ángulos
+                  Subí múltiples imágenes para mostrar la propiedad desde diferentes ángulos
                 </p>
               </div>
 

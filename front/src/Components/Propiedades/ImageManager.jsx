@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { updatePropertyImages } from "../../redux/Actions/actions";
-import { loadCloudinaryScript, openCloudinaryWidget } from "../../cloudinaryConfig";
+import { uploadMultipleFiles } from "../../utils/azureUpload";
 
 export default function ImageManager({ property }) {
   const dispatch = useDispatch();
@@ -9,15 +9,21 @@ export default function ImageManager({ property }) {
   const [images, setImages] = useState(property.images || []);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAddImage = async () => {
+  const fileInputRef = useRef(null);
+
+  const handleAddImage = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsLoading(true);
     try {
-      await loadCloudinaryScript();
-      openCloudinaryWidget((uploadedImageUrl) => {
-        setImages((prevImages) => [...prevImages, uploadedImageUrl]);
-      });
+      const urls = await uploadMultipleFiles(files, 'properties');
+      setImages((prev) => [...prev, ...urls]);
     } catch (error) {
-      console.error("Error al cargar el script de Cloudinary:", error);
-      alert("Error al abrir el widget de Cloudinary");
+      console.error("Error al subir imágenes:", error);
+      alert("Error al subir las imágenes");
+    } finally {
+      setIsLoading(false);
+      e.target.value = null; // reset input
     }
   };
 
@@ -80,16 +86,25 @@ export default function ImageManager({ property }) {
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Agregar nuevas imágenes
                 </label>
-                <button
-                  onClick={handleAddImage}
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                <label
+                  className={`w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 cursor-pointer ${
+                    isLoading ? 'opacity-50 pointer-events-none' : ''
+                  }`}
                 >
-                  <span className="text-xl">☁️</span>
-                  Subir Imágenes a Cloudinary
-                </button>
+                  <span className="text-xl">🖼️</span>
+                  {isLoading ? 'Subiendo...' : 'Seleccionar Imágenes'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleAddImage}
+                    disabled={isLoading}
+                  />
+                </label>
                 <p className="text-xs text-gray-500 mt-2">
-                  💡 Haz clic para abrir el widget de Cloudinary y subir múltiples imágenes
+                  💡 Seleccioná una o varias imágenes. Se suben y comprimen automáticamente.
                 </p>
               </div>
 
