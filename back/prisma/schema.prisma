@@ -349,6 +349,7 @@ model admins {
   tenantId                                   Int?
   fullName                                   String?                 @db.VarChar(255)
   email                                      String?                 @db.VarChar(255)
+  pushToken                                  String?                 @db.VarChar(500)
   Leases                                     Leases[]
   Property                                   Property[]
   SaleContracts                              SaleContracts[]

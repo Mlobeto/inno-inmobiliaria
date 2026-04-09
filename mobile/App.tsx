@@ -7,16 +7,24 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './src/store/store';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
+
+function AppInner() {
+  usePushNotifications();
+  return (
+    <SafeAreaView style={styles.container}>
+      <OfflineBanner />
+      <AppNavigator />
+      <StatusBar style="auto" />
+    </SafeAreaView>
+  );
+}
 
 export default function App() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
-        <SafeAreaView style={styles.container}>
-          <OfflineBanner />
-          <AppNavigator />
-          <StatusBar style="auto" />
-        </SafeAreaView>
+        <AppInner />
       </PersistGate>
     </Provider>
   );

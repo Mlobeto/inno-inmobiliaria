@@ -9,9 +9,11 @@ const {
   editAdmin, 
   deleteAdmin,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  updatePushToken,
 } = require('../controllers/authController');
 const { authLimiter } = require('../middlewares/rateLimiter');
+const authMiddleware = require('../middlewares/authMiddleware');
 const router = express.Router();
 
 // Autenticación básica
@@ -24,6 +26,9 @@ router.get('/verify', verifyToken);
 // Recuperación de contraseña
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);
+
+// Push notifications
+router.put('/push-token', authMiddleware, updatePushToken);
 
 // Gestión de admins
 router.get('/admin', getAllAdmins);

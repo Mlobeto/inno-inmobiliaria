@@ -16,8 +16,20 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#22c55e",
+          "defaultChannel": "comprobantes",
+          "sounds": []
+        }
+      ]
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.innoinmobiliaria.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,10 +37,17 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.innoinmobiliaria.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REEMPLAZAR-CON-TU-EAS-PROJECT-ID"
+      }
     }
   }
 }

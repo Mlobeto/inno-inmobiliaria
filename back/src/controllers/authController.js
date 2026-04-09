@@ -566,3 +566,37 @@ exports.deleteAdmin = async (req, res) => {
   }
 };
 
+// ─── Push Token ────────────────────────────────────────────────────────────────
+
+/**
+ * PUT /api/auth/push-token
+ * Registra o actualiza el Expo push token del dispositivo del admin autenticado.
+ * Requiere: authMiddleware
+ * Body: { pushToken: string }
+ */
+exports.updatePushToken = async (req, res) => {
+  try {
+    const adminId = req.user?.adminId;
+    const { pushToken } = req.body;
+
+    if (!pushToken || typeof pushToken !== 'string') {
+      return res.status(400).json({ message: 'pushToken requerido' });
+    }
+
+    // Validación básica del formato Expo push token
+    if (!pushToken.startsWith('ExponentPushToken[') && !pushToken.startsWith('ExpoPushToken[')) {
+      return res.status(400).json({ message: 'Formato de pushToken inválido' });
+    }
+
+    await prisma.admins.update({
+      where: { adminId },
+      data: { pushToken },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error al actualizar pushToken:', error);
+    res.status(500).json({ message: 'Error interno' });
+  }
+};
+

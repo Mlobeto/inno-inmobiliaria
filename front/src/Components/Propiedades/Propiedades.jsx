@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useGetAllClientsQuery, useCreatePropertyMutation, useGetCurrentTenantQuery } from '@shared/redux';
+import { useGetAllClientsQuery, useCreatePropertyMutation } from '@shared/redux';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
@@ -84,9 +84,6 @@ const CreateProperty = () => {
   // RTK Query hooks
   const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useGetAllClientsQuery();
   const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
-  const { data: tenantData } = useGetCurrentTenantQuery();
-  const tenantSubdomain = tenantData?.data?.subdomain || tenantData?.subdomain || 'default';
-
   // Cotización del dólar
   const { dolar, loading: dolarLoading } = useDolarRate();
   

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prismaClient');
 const azureBlobHelper = require('../utils/azureBlobHelper');
 const logger = require('../utils/logger');
+const pushNotifications = require('../utils/pushNotifications');
 
 // ─── Lookup tenant por código/subdomain ──────────────────────────────────────
 
@@ -200,6 +201,28 @@ exports.subirComprobante = async (req, res) => {
       },
       select: { id: true, voucherUrl: true, voucherStatus: true },
     });
+
+    // Notificar a los admins del tenant
+    try {
+      const client = await prisma.Clients.findUnique({
+        where: { idClient },
+        select: { name: true },
+      });
+      const clientName = client?.name ?? 'Un inquilino';
+      const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+        'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      let periodLabel = receipt.period ?? '';
+      if (periodLabel.includes('-')) {
+        const [y, m] = periodLabel.split('-');
+        periodLabel = `${months[parseInt(m, 10) - 1] ?? m} ${y}`;
+      }
+      await pushNotifications.sendToTenant(
+        tenantId,
+        '📄 Nuevo comprobante recibido',
+        `${clientName} envió el comprobante de ${periodLabel}`,
+        { receiptId, type: 'comprobante' }
+      );
+    } catch (_) { /* no bloquear respuesta */ }
 
     res.status(200).json({ success: true, data: updated });
   } catch (error) {
