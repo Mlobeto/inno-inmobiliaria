@@ -11,9 +11,6 @@ export default defineConfig({
   datasource: {
     url: dbUrl,
   },
-  migrate: {
-    adapter(env) {
-      return new PrismaPg({ connectionString: process.env.DATABASE_URL as string })
-    },
-  },
+  // Nota: migrate NO usa adapter — usa la URL directamente con el motor nativo de Prisma.
+  // PrismaPg solo se usa en runtime (query engine), no en migraciones.
 })
