@@ -265,3 +265,75 @@ exports.deletePayment = async (req, res) => {
     res.status(500).json({ error: 'Error al eliminar el pago.', details: error.message });
   }
 };
+
+// ─── Gestión de comprobantes del portal (admin) ───────────────────────────────
+
+/**
+ * PUT /api/payment/:id/aprobar-comprobante
+ * Admin aprueba el comprobante subido por el inquilino:
+ * voucherStatus = approved, status = paid, paidAt = now
+ */
+exports.aprobarComprobante = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const id = parseInt(req.params.id, 10);
+
+    const receipt = await prisma.PaymentReceipts.findFirst({
+      where: { id, tenantId, deletedAt: null },
+    });
+    if (!receipt) return res.status(404).json({ error: 'Pago no encontrado.' });
+    if (!receipt.voucherUrl) return res.status(400).json({ error: 'No hay comprobante para aprobar.' });
+    if (receipt.voucherStatus === 'approved') return res.status(400).json({ error: 'Ya está aprobado.' });
+
+    const updated = await prisma.PaymentReceipts.update({
+      where: { id },
+      data: {
+        voucherStatus: 'approved',
+        status: 'paid',
+        paidAt: new Date(),
+        voucherRejReason: null,
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Error al aprobar comprobante:', error);
+    res.status(500).json({ error: 'Error interno.', details: error.message });
+  }
+};
+
+/**
+ * PUT /api/payment/:id/rechazar-comprobante
+ * Body: { reason } — motivo de rechazo
+ * Admin rechaza el comprobante: voucherStatus = rejected, voucherRejReason = reason
+ */
+exports.rechazarComprobante = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const id = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'El motivo de rechazo es requerido.' });
+    }
+
+    const receipt = await prisma.PaymentReceipts.findFirst({
+      where: { id, tenantId, deletedAt: null },
+    });
+    if (!receipt) return res.status(404).json({ error: 'Pago no encontrado.' });
+    if (!receipt.voucherUrl) return res.status(400).json({ error: 'No hay comprobante para rechazar.' });
+
+    const updated = await prisma.PaymentReceipts.update({
+      where: { id },
+      data: {
+        voucherStatus: 'rejected',
+        voucherRejReason: reason.trim(),
+      },
+    });
+
+    res.status(200).json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Error al rechazar comprobante:', error);
+    res.status(500).json({ error: 'Error interno.', details: error.message });
+  }
+};

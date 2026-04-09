@@ -71,6 +71,8 @@ module.exports = {
   getAllPayments: catchedAsync(PaymentController.getAllPayments),
   updatePayment: catchedAsync(PaymentController.updatePayment),
   deletePayment: catchedAsync(PaymentController.deletePayment),
+  aprobarComprobante: catchedAsync(PaymentController.aprobarComprobante),
+  rechazarComprobante: catchedAsync(PaymentController.rechazarComprobante),
   quickUpdateLeaseRent: catchedAsync(LeaseController.quickUpdateLeaseRent),
   getUpdateStatistics: catchedAsync(LeaseController.getUpdateStatistics),
   bulkUpdateLeases: catchedAsync(LeaseController.bulkUpdateLeases)
