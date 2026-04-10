@@ -11,7 +11,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_ENV": "development"
+        "EXPO_PUBLIC_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io/api"
       }
     },
     "preview": {
