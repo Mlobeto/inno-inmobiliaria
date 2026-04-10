@@ -5,8 +5,12 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { getToken, getTenantId } from '../utils/storageHelper';
 
 // URL base del API (configurable por entorno)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const API_BASE_URL = (globalThis as any).process?.env?.REACT_APP_API_URL || 'http://localhost:3001/api';
+// Soporta: EXPO_PUBLIC_API_URL (Expo/Metro), REACT_APP_API_URL (CRA), VITE_API_URL (Vite)
+// IMPORTANTE: Metro requiere referencias literales de process.env para inlinear en el bundle
+const API_BASE_URL: string =
+  process.env.EXPO_PUBLIC_API_URL ||
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:3001/api';
 
 // Crear instancia de axios
 export const apiClient: AxiosInstance = axios.create({

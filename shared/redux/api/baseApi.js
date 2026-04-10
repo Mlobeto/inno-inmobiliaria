@@ -20,8 +20,8 @@ const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     return import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
   }
-  // Para React Native
-  return process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+  // Para React Native / Expo
+  return process.env.EXPO_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 };
 
 // BaseQuery con manejo de errores 401
