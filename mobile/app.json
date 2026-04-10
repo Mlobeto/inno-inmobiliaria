@@ -38,11 +38,16 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.innoinmobiliaria.app",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.innoinmobiliaria.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "86b5dd85-0797-4eac-849a-418f0a9bcaef"
+      }
+    },
+    "owner": "mlobeto"
   }
 }
