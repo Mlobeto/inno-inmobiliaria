@@ -43,8 +43,10 @@ import SubscriptionManager from "./Components/Admin/SubscriptionManager"; // �
 import PdfTemplateManager from "./Components/Admin/PdfTemplateManager"; // 🆕 NUEVO - Gestión de plantillas PDF
 import InstallPWA from "./Components/InstallPWA";
 import ProtectedRoute from "./Components/Guards/ProtectedRoute"; // 🆕 Guard combinado
+import { useTokenExpiry } from "./hooks/useTokenExpiry";
 
 function App() {
+  useTokenExpiry();
   return (
     <>
       <InstallPWA />

@@ -27,6 +27,19 @@ axios.interceptors.request.use(
   }
 );
 
+// Interceptor de respuesta: si el token expiró (401), limpiar sesión y redirigir al login
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      store.dispatch({ type: 'LOGOUT' });
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Restaurar sesión desde localStorage
 store.dispatch(restoreSession());
 
