@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import html2pdf from "html2pdf.js";
 
 const PropiedadesPDF = ({ property }) => {
@@ -8,13 +9,15 @@ const PropiedadesPDF = ({ property }) => {
   const [template, setTemplate] = useState(null);
   const [settings, setSettings] = useState(null);
 
+  const token = useSelector((state) => state.token);
+
   const getDefaultTemplate = () => {
     return `
       <div style="font-family: 'Courier New', monospace; padding: 20px;">
         <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px;">
           <div>
-            <img src="{{empresa_logo}}" alt="Logo" style="height: 60px; width: auto;" />
+            {{empresa_logo}}
           </div>
           <div style="text-align: right;">
             <div style="font-size: 14px; font-weight: bold;">{{empresa_nombre}}</div>
@@ -91,6 +94,7 @@ const PropiedadesPDF = ({ property }) => {
 
   useEffect(() => {
     const loadTemplateAndSettings = async () => {
+      if (!token) return;
       try {
         // Cargar template de tipo FICHA_PROPIEDAD
         const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
@@ -98,7 +102,7 @@ const PropiedadesPDF = ({ property }) => {
           `${apiUrl}/pdf-templates?templateType=FICHA_PROPIEDAD&isActive=true`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -110,10 +114,10 @@ const PropiedadesPDF = ({ property }) => {
           setTemplate({ htmlTemplate: getDefaultTemplate() });
         }
 
-        // Cargar configuraciones de la inmobiliaria
+        // Cargar configuraciones de la inmobiliaria (tenant-aware por JWT)
         const settingsRes = await fetch(`${apiUrl}/admin/settings`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         });
         
@@ -140,7 +144,7 @@ const PropiedadesPDF = ({ property }) => {
     };
 
     loadTemplateAndSettings();
-  }, []);
+  }, [token]);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("es-AR", {
@@ -153,14 +157,16 @@ const PropiedadesPDF = ({ property }) => {
   const replaceVariables = (html) => {
     if (!html) return "";
 
-    const logoUrl = settings?.company_logo_url || "/assets/logoNegro.png";
+    const logoUrl = settings?.company_logo_url || "";
 
     const variables = {
-      "{{empresa_nombre}}": settings?.company_name || "Inmobiliaria",
+      "{{empresa_nombre}}": settings?.company_name || "",
       "{{empresa_direccion}}": settings?.company_address || "",
       "{{empresa_telefono}}": settings?.company_phone || "",
       "{{empresa_email}}": settings?.company_email || "",
-      "{{empresa_logo}}": logoUrl,
+      "{{empresa_logo}}": logoUrl
+        ? `<img src="${logoUrl}" alt="Logo" style="height: 60px; width: auto;" />`
+        : "",
       "{{propiedad_direccion}}": property.address || "",
       "{{propiedad_barrio}}": property.neighborhood || "",
       "{{propiedad_ciudad}}": property.city || "",
