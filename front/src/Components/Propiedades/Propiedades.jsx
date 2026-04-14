@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useGetAllClientsQuery, useCreatePropertyMutation } from '@shared/redux';
+import { useGetAllClientsQuery, useCreatePropertyMutation, useCreateClientMutation } from '@shared/redux';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
@@ -22,7 +22,9 @@ import {
   IoPricetagOutline,
   IoDocumentTextOutline,
   IoPersonOutline,
-  IoLayersOutline
+  IoLayersOutline,
+  IoPersonAddOutline,
+  IoCloseOutline,
 } from 'react-icons/io5';
 
 import AutorizacionVentaPdf from "../PdfTemplates/AutorizacionVentaPdf";
@@ -82,8 +84,9 @@ const CreateProperty = () => {
   const navigate = useNavigate();
   
   // RTK Query hooks
-  const { data: clients = [], isLoading: clientsLoading, error: clientsError } = useGetAllClientsQuery();
+  const { data: clients = [], isLoading: clientsLoading, error: clientsError, refetch: refetchClients } = useGetAllClientsQuery();
   const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
+  const [createClient, { isLoading: isCreatingClient }] = useCreateClientMutation();
   // Cotización del dólar
   const { dolar, loading: dolarLoading } = useDolarRate();
   
@@ -128,6 +131,9 @@ const CreateProperty = () => {
   const [showPdfButton, setShowPdfButton] = useState(false);
   const [availableCiudades, setAvailableCiudades] = useState([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [newClientData, setNewClientData] = useState({ name: '', cuil: '', email: '', mobilePhone: '' });
+  const [newClientErrors, setNewClientErrors] = useState({});
 
   const legalStatusOptions = useMemo(
     () => getLegalStatusOptionsByOperationType(formData.operationType),
@@ -148,6 +154,34 @@ const CreateProperty = () => {
       setAvailableCiudades([]);
     }
   }, [formData.provincia]);
+
+  const handleNewClientChange = (e) => {
+    const { name, value } = e.target;
+    setNewClientData((prev) => ({ ...prev, [name]: value }));
+    if (newClientErrors[name]) setNewClientErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleNewClientSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!newClientData.name.trim()) errors.name = 'El nombre es requerido';
+    if (!newClientData.cuil.trim()) errors.cuil = 'El CUIL/DNI es requerido';
+    if (Object.keys(errors).length > 0) { setNewClientErrors(errors); return; }
+    try {
+      const result = await createClient(newClientData).unwrap();
+      const newId = result?.data?.idClient ?? result?.idClient;
+      await refetchClients();
+      if (newId) {
+        setFormData((prev) => ({ ...prev, idClient: String(newId) }));
+      }
+      toast.success(`Cliente "${newClientData.name}" creado y seleccionado`);
+      setShowNewClientModal(false);
+      setNewClientData({ name: '', cuil: '', email: '', mobilePhone: '' });
+    } catch (err) {
+      const msg = err?.data?.error || err?.data?.details || 'Error al crear el cliente';
+      toast.error(msg);
+    }
+  };
 
   const handleWidget = async (e) => {
     const files = e.target.files;
@@ -241,13 +275,13 @@ const CreateProperty = () => {
 
   const handleClientSelect = (e) => {
     const selectedClient = clients?.find(
-      (client) => client.idClient === Number(e.target.value)
+      (client) => String(client.idClient) === e.target.value
     );
     console.log("Cliente seleccionado:", selectedClient);
     setFormData((prevData) => ({
       ...prevData,
-      idClient: selectedClient ? selectedClient.idClient : "", // Establece el id del cliente
-      role: selectedClient ? selectedClient.role : "", // Establece el rol del cliente
+      idClient: selectedClient ? String(selectedClient.idClient) : "",
+      role: selectedClient ? selectedClient.role : "",
     }));
   };
 
@@ -263,6 +297,7 @@ const CreateProperty = () => {
         legalStatus: formData.legalStatus,
         city: formData.ciudad, // Mapear ciudad a city (campo legacy requerido por backend)
         neighborhood: formData.neighborhood || "Sin especificar", // Asegurar que no esté vacío
+        idClient: formData.idClient ? Number(formData.idClient) : undefined,
       };
       
       console.log("Datos mapeados para backend:", dataToSend);
@@ -399,19 +434,30 @@ const CreateProperty = () => {
                   <label htmlFor="client" className="block text-slate-300 font-medium mb-2">
                     Cliente *
                   </label>
-                  <select
-                    id="client"
-                    name="client"
-                    onChange={handleClientSelect}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
-                  >
-                    <option value="" className="bg-slate-800">Seleccione un cliente</option>
-                    {clients?.map((client) => (
-                      <option key={client.idClient} value={client.idClient} className="bg-slate-800">
-                        {client.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <select
+                      id="client"
+                      name="client"
+                      value={formData.idClient}
+                      onChange={handleClientSelect}
+                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                    >
+                      <option value="" className="bg-slate-800">Seleccione un cliente</option>
+                      {clients?.map((client) => (
+                        <option key={client.idClient} value={String(client.idClient)} className="bg-slate-800">
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewClientModal(true)}
+                      title="Crear nuevo cliente"
+                      className="flex items-center justify-center px-3 py-3 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/30 text-emerald-400 rounded-lg transition-all duration-200"
+                    >
+                      <IoPersonAddOutline className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1243,6 +1289,125 @@ const CreateProperty = () => {
           </form>
         </div>
       </div>
+
+      {/* Modal: Crear nuevo cliente */}
+      {showNewClientModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md">
+            {/* Header del modal */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                  <IoPersonAddOutline className="w-5 h-5 text-emerald-400" />
+                </div>
+                <h3 className="text-lg font-bold text-white">Nuevo Cliente</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <IoCloseOutline className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cuerpo del modal */}
+            <form onSubmit={handleNewClientSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">
+                  Nombre completo *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newClientData.name}
+                  onChange={handleNewClientChange}
+                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.name ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                  placeholder="Ej: Juan Pérez"
+                />
+                {newClientErrors.name && <p className="mt-1 text-red-400 text-xs">{newClientErrors.name}</p>}
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">
+                  CUIL / DNI *
+                </label>
+                <input
+                  type="text"
+                  name="cuil"
+                  value={newClientData.cuil}
+                  onChange={handleNewClientChange}
+                  className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.cuil ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                  placeholder="XX-XXXXXXXX-X"
+                />
+                {newClientErrors.cuil && <p className="mt-1 text-red-400 text-xs">{newClientErrors.cuil}</p>}
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={newClientData.email}
+                  onChange={handleNewClientChange}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+                  placeholder="email@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">
+                  Teléfono
+                </label>
+                <input
+                  type="text"
+                  name="mobilePhone"
+                  value={newClientData.mobilePhone}
+                  onChange={handleNewClientChange}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+                  placeholder="Ej: 3835503166"
+                />
+              </div>
+
+              <p className="text-slate-400 text-xs">
+                Podés completar el resto de la información del cliente luego desde el panel de clientes.
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
+                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingClient}
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+                >
+                  {isCreatingClient ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      <span>Creando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IoPersonAddOutline className="w-4 h-4" />
+                      <span>Crear y seleccionar</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
