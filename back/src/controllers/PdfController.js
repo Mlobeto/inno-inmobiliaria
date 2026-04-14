@@ -1,5 +1,6 @@
 const prisma = require('../utils/prismaClient');
 const pdfService = require('../services/pdfService');
+const { createDefaultTemplatesForTenant } = require('../scripts/seedPdfTemplates');
 
 async function getLeasePdfData(tenantId, dataId) {
   const lease = await prisma.Leases.findFirst({ where: { id: Number(dataId), tenantId } });
@@ -42,6 +43,20 @@ const generatePdf = async (req, res) => {
       template = await prisma.pdf_templates.findFirst({
         where: { tenantId, templateType, isDefault: true, isActive: true, deletedAt: null },
       });
+    }
+
+    if (!template) {
+      // Auto-seed templates por defecto para este tenant y reintentar
+      await createDefaultTemplatesForTenant(tenantId);
+      if (templateId) {
+        template = await prisma.pdf_templates.findFirst({
+          where: { id: Number(templateId), tenantId, isActive: true, deletedAt: null },
+        });
+      } else {
+        template = await prisma.pdf_templates.findFirst({
+          where: { tenantId, templateType, isDefault: true, isActive: true, deletedAt: null },
+        });
+      }
     }
 
     if (!template) {

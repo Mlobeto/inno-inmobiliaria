@@ -115,7 +115,7 @@ async function readTemplate(fileName) {
 /**
  * Crea templates por defecto para un tenant
  */
-async function createDefaultTemplatesForTenant(tenantId, adminId = null) {
+async function createDefaultTemplatesForTenant(tenantId, adminId = null, forceUpdate = false) {
   console.log(`\n📄 Creando templates por defecto para tenant ${tenantId}...`);
   
   for (const templateDef of TEMPLATE_DEFINITIONS) {
@@ -128,13 +128,22 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null) {
         },
       });
 
-      if (existing) {
+      if (existing && !forceUpdate) {
         console.log(`   ⏭️  ${templateDef.templateType} ya existe, saltando...`);
         continue;
       }
 
       // Leer el contenido del template HTML
       const htmlTemplate = await readTemplate(templateDef.fileName);
+
+      if (existing && forceUpdate) {
+        await prisma.pdf_templates.update({
+          where: { id: existing.id },
+          data: { htmlTemplate, updatedAt: new Date() },
+        });
+        console.log(`   🔄 ${templateDef.templateType} actualizado al template por defecto`);
+        continue;
+      }
 
       // Crear el template
       await prisma.pdf_templates.create({
@@ -165,7 +174,7 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null) {
 /**
  * Crea templates para todos los tenants existentes
  */
-async function seedAllTenants() {
+async function seedAllTenants(forceUpdate = false) {
   try {
     console.log('🚀 Iniciando seed de templates PDF...\n');
 
@@ -185,7 +194,7 @@ async function seedAllTenants() {
 
     // Crear templates para cada tenant
     for (const tenant of tenants) {
-      await createDefaultTemplatesForTenant(tenant.tenantId);
+      await createDefaultTemplatesForTenant(tenant.tenantId, null, forceUpdate);
     }
 
     console.log('\n✅ Seed completado exitosamente!');
@@ -198,7 +207,7 @@ async function seedAllTenants() {
 /**
  * Crea templates solo para un tenant específico
  */
-async function seedSpecificTenant(tenantId) {
+async function seedSpecificTenant(tenantId, forceUpdate = false) {
   try {
     console.log(`🚀 Creando templates para tenant ${tenantId}...\n`);
 
@@ -209,7 +218,7 @@ async function seedSpecificTenant(tenantId) {
       return;
     }
 
-    await createDefaultTemplatesForTenant(tenantId);
+    await createDefaultTemplatesForTenant(tenantId, null, forceUpdate);
     
     console.log('\n✅ Templates creados exitosamente!');
   } catch (error) {
@@ -221,11 +230,17 @@ async function seedSpecificTenant(tenantId) {
 // Ejecutar el script
 if (require.main === module) {
   const args = process.argv.slice(2);
-  const tenantId = args[0] ? parseInt(args[0]) : null;
+  const forceFlag = args.includes('--force');
+  const numericArgs = args.filter(a => !a.startsWith('--'));
+  const tenantId = numericArgs[0] ? parseInt(numericArgs[0]) : null;
+
+  if (forceFlag) {
+    console.log('⚠️  Modo --force activado: se actualizarán los templates existentes.');
+  }
 
   if (tenantId) {
     // Seed para un tenant específico
-    seedSpecificTenant(tenantId)
+    seedSpecificTenant(tenantId, forceFlag)
       .then(() => process.exit(0))
       .catch((error) => {
         console.error(error);
@@ -233,7 +248,7 @@ if (require.main === module) {
       });
   } else {
     // Seed para todos los tenants
-    seedAllTenants()
+    seedAllTenants(forceFlag)
       .then(() => process.exit(0))
       .catch((error) => {
         console.error(error);

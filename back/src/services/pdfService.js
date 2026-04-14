@@ -124,7 +124,7 @@ const prepareTemplateVariables = (data, tenant, customVariables = {}) => {
       email: tenant?.email || "",
       phone: tenant?.phone || "",
       address: tenant?.address || "",
-      logoUrl: tenant?.logoUrl || "",
+      logoUrl: tenant?.logo || tenant?.logoUrl || "",
       signatureUrl: tenant?.signatureUrl || "",
     },
     // Fecha actual

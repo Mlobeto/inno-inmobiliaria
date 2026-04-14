@@ -175,15 +175,20 @@
   <div class="container">
     <div class="header">
       <div class="header-left">
-        <h1>QUINTERO + LOBETO</h1>
-        <div class="subtitle">P R O P I E D A D E S</div>
-        <div class="owner">de LOBETO MARIANA</div>
-        <div class="owner">ARQUITECTA</div>
-        <div class="credentials">M.P. Nº 275</div>
-        <div class="contact">AVDA. CUBA Nº 50 / Tel. 3835 503166</div>
-        <div class="contact">C.P. 4750 - Belen - Catamarca</div>
-        <div class="contact">qlinmobiliaria@gmail.com</div>
-        <div class="tax-info">IVA RESPONSABLE MONOTRIBUTO</div>
+        {{#if inmobiliaria.logoUrl}}
+          <img src="{{inmobiliaria.logoUrl}}" alt="Logo" style="max-height: 60px; margin-bottom: 8px; display: block;">
+        {{else}}
+          <h1>{{inmobiliaria.businessName}}</h1>
+        {{/if}}
+        {{#if inmobiliaria.address}}
+          <div class="contact">{{inmobiliaria.address}}</div>
+        {{/if}}
+        {{#if inmobiliaria.phone}}
+          <div class="contact">Tel: {{inmobiliaria.phone}}</div>
+        {{/if}}
+        {{#if inmobiliaria.email}}
+          <div class="contact">{{inmobiliaria.email}}</div>
+        {{/if}}
       </div>
       <div class="header-right">
         <div class="receipt-type">X</div>
@@ -191,9 +196,9 @@
         <div class="receipt-title">RECIBO</div>
         <div class="not-valid">DOCUMENTO NO VALIDO COMO FACTURA</div>
         <div class="date-box">
-          <div>C.U.I.T.: 23-20514549-4</div>
-          <div>Ing. Brutos: 23-20514549-4</div>
-          <div>Inicio Activ.: 01-10-1996</div>
+          {{#if inmobiliaria.cuit}}
+          <div>C.U.I.T.: {{inmobiliaria.cuit}}</div>
+          {{/if}}
           <div class="date-fields">
             <div><strong>DIA</strong><br>{{formatDate payment.paymentDate "DD"}}</div>
             <div><strong>MES</strong><br>{{formatDate payment.paymentDate "MM"}}</div>
