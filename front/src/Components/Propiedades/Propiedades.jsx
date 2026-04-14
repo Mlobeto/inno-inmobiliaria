@@ -127,6 +127,7 @@ const CreateProperty = () => {
   });
   const [showPdfButton, setShowPdfButton] = useState(false);
   const [availableCiudades, setAvailableCiudades] = useState([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const legalStatusOptions = useMemo(
     () => getLegalStatusOptionsByOperationType(formData.operationType),
@@ -151,12 +152,17 @@ const CreateProperty = () => {
   const handleWidget = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    setIsUploadingImages(true);
     try {
       const urls = await uploadMultipleFiles(files, 'properties');
       setFormData((prev) => ({ ...prev, images: [...prev.images, ...urls] }));
+      toast.success(`${urls.length} imagen${urls.length !== 1 ? 'es' : ''} subida${urls.length !== 1 ? 's' : ''} correctamente`);
     } catch (error) {
-      console.error("Error al subir im\u00e1genes:", error);
-      toast.error('Error al subir las im\u00e1genes');
+      console.error("Error al subir imágenes:", error);
+      toast.error('Error al subir las imágenes');
+    } finally {
+      setIsUploadingImages(false);
+      e.target.value = null;
     }
   };
 
@@ -1085,14 +1091,22 @@ const CreateProperty = () => {
               
               {/* Botón de subir imágenes */}
               <div className="mb-6">
-                <label className="flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer">
-                  <IoCloudUploadOutline className="w-6 h-6" />
-                  <span>Subir Imágenes</span>
+                <label className={`flex items-center space-x-3 px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg cursor-pointer ${isUploadingImages ? 'opacity-70 pointer-events-none' : 'hover:from-cyan-600 hover:to-blue-600 transform hover:scale-105 hover:shadow-xl'}`}>
+                  {isUploadingImages ? (
+                    <svg className="animate-spin w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  ) : (
+                    <IoCloudUploadOutline className="w-6 h-6" />
+                  )}
+                  <span>{isUploadingImages ? 'Subiendo...' : 'Subir Imágenes'}</span>
                   <input
                     type="file"
                     accept="image/*"
                     multiple
                     className="hidden"
+                    disabled={isUploadingImages}
                     onChange={handleWidget}
                   />
                 </label>
