@@ -653,9 +653,12 @@ Estamos a tu entera disposición por dudas, precio o consultas.`;
       propertyDescription += ` en ${property.neighborhood}`;
     }
 
+    const companyName = settings?.company_name || '';
+
     // Reemplazar variables en la plantilla
     let whatsappText = template
-      .replace(/{empresa}/g, settings?.company_name || '')
+      .replace(/Quintero Lobeto Propiedades/g, companyName) // compatibilidad con templates legacy en DB
+      .replace(/{empresa}/g, companyName)
       .replace(/{precio}/g, formattedPrice)
       .replace(/{direccion}/g, property.address)
       .replace(/{ciudad}/g, property.city || '')
