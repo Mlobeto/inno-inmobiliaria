@@ -46,6 +46,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   
   // Estado para tenant info
   const [tenantHasLanding, setTenantHasLanding] = useState(false);
+  const [tenantHasMl, setTenantHasMl] = useState(false);
   
   // Estado para MercadoLibre
   const [mlConnection, setMlConnection] = useState({ connected: false, loading: true });
@@ -86,6 +87,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         });
         const tenant = response.data?.data || response.data;
         setTenantHasLanding(tenant?.features?.landingPage === true);
+        setTenantHasMl(tenant?.features?.ml === true);
       } catch (error) {
         console.error('Error al obtener tenant:', error);
         setTenantHasLanding(false);
@@ -534,7 +536,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   <ImageManager property={property} />
                   
                   {/* Botón de MercadoLibre */}
-                  {!mlConnection.loading && mlConnection.connected && !mlListings[property.propertyId] && (
+                  {tenantHasMl && !mlConnection.loading && mlConnection.connected && !mlListings[property.propertyId] && (
                     <button
                       onClick={() => handlePublishML(property.propertyId)}
                       disabled={publishingML[property.propertyId]}
@@ -547,7 +549,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   )}
                   
                   {/* Badge si ya está publicado en ML */}
-                  {mlListings[property.propertyId] && (
+                  {tenantHasMl && mlListings[property.propertyId] && (
                     <a
                       href={mlListings[property.propertyId].mlPermalink}
                       target="_blank"

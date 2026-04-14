@@ -9,7 +9,11 @@ import {
   IoSyncOutline,
   IoLinkOutline,
   IoInformationCircleOutline,
-  IoWarningOutline
+  IoWarningOutline,
+  IoChatbubbleOutline,
+  IoSendOutline,
+  IoRefreshOutline,
+  IoHomeOutline,
 } from 'react-icons/io5';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -20,17 +24,23 @@ const MercadoLibreIntegration = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isConnecting, setIsConnecting] = useState(false);
 
+  // Estado de consultas
+  const [questions, setQuestions] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [replyingId, setReplyingId] = useState(null);
+  const [replyTexts, setReplyTexts] = useState({});
+  const [sendingId, setSendingId] = useState(null);
+
   useEffect(() => {
     checkConnectionStatus();
     
-    // Si viene con parámetro tab=integrations, verificar estado nuevamente
-    // (puede venir del callback de OAuth)
     const tab = searchParams.get('tab');
     if (tab === 'integrations') {
       setTimeout(() => {
         checkConnectionStatus();
       }, 500);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const checkConnectionStatus = async () => {
@@ -41,6 +51,9 @@ const MercadoLibreIntegration = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       setConnectionStatus(response.data);
+      if (response.data?.connected) {
+        fetchQuestions();
+      }
     } catch (error) {
       console.error('Error al verificar estado de MercadoLibre:', error);
       if (error.response?.status === 404 || error.response?.data?.connected === false) {
@@ -48,6 +61,45 @@ const MercadoLibreIntegration = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchQuestions = async () => {
+    setQuestionsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/mercadolibre/questions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setQuestions(response.data.questions || []);
+    } catch (error) {
+      console.error('Error al obtener preguntas:', error);
+      toast.error('No se pudieron cargar las consultas');
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleSendReply = async (questionId) => {
+    const text = replyTexts[questionId]?.trim();
+    if (!text) return;
+    setSendingId(questionId);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.post(
+        `${API_URL}/mercadolibre/questions/${questionId}/answer`,
+        { text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Respuesta enviada');
+      setReplyingId(null);
+      setReplyTexts((prev) => ({ ...prev, [questionId]: '' }));
+      // Quitar la pregunta de la lista (ya fue respondida)
+      setQuestions((prev) => prev.filter((q) => q.questionId !== questionId));
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Error al enviar la respuesta');
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -60,7 +112,6 @@ const MercadoLibreIntegration = () => {
       });
       
       if (response.data.authUrl) {
-        // Redirigir a MercadoLibre para autorización
         window.location.href = response.data.authUrl;
       }
     } catch (error) {
@@ -83,6 +134,7 @@ const MercadoLibreIntegration = () => {
       
       toast.success('Cuenta de MercadoLibre desconectada');
       setConnectionStatus({ connected: false });
+      setQuestions([]);
     } catch (error) {
       console.error('Error al desconectar:', error);
       toast.error('Error al desconectar cuenta');
@@ -101,9 +153,9 @@ const MercadoLibreIntegration = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-8">
+    <div className="bg-white rounded-lg shadow-lg p-8 space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between">
         <div className="flex items-center space-x-4">
           <div className="w-16 h-16 bg-yellow-400 rounded-lg flex items-center justify-center">
             <IoLogoBuffer className="w-10 h-10 text-white" />
@@ -116,7 +168,7 @@ const MercadoLibreIntegration = () => {
       </div>
 
       {/* Estado de Conexión */}
-      <div className={`rounded-lg p-6 mb-6 ${
+      <div className={`rounded-lg p-6 ${
         connectionStatus?.connected 
           ? 'bg-green-50 border border-green-200' 
           : 'bg-gray-50 border border-gray-200'
@@ -156,7 +208,6 @@ const MercadoLibreIntegration = () => {
             </div>
           </div>
 
-          {/* Botón de acción */}
           <div>
             {connectionStatus?.connected ? (
               <button
@@ -192,6 +243,125 @@ const MercadoLibreIntegration = () => {
         </div>
       </div>
 
+      {/* ===== SECCIÓN DE CONSULTAS ===== */}
+      {connectionStatus?.connected && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-2">
+              <IoChatbubbleOutline className="w-5 h-5 text-yellow-500" />
+              <h3 className="text-lg font-bold text-gray-900">Consultas sin responder</h3>
+              {!questionsLoading && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                  questions.length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                }`}>
+                  {questions.length}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={fetchQuestions}
+              disabled={questionsLoading}
+              className="flex items-center space-x-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              <IoRefreshOutline className={`w-4 h-4 ${questionsLoading ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
+          </div>
+
+          {questionsLoading ? (
+            <div className="flex items-center justify-center py-10 text-gray-500">
+              <IoSyncOutline className="w-5 h-5 animate-spin mr-2" />
+              Cargando consultas...
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-xl">
+              <IoChatbubbleOutline className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+              <p className="text-gray-500 font-medium">Sin consultas pendientes</p>
+              <p className="text-gray-400 text-sm mt-1">Las nuevas preguntas de compradores aparecerán aquí</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {questions.map((q) => (
+                <div key={q.questionId} className="border border-gray-200 rounded-xl p-4 hover:border-yellow-300 transition-colors">
+                  {/* Propiedad */}
+                  <div className="flex items-center space-x-2 mb-3">
+                    <IoHomeOutline className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-500 truncate">
+                      {q.propertyType && <span className="capitalize">{q.propertyType} — </span>}
+                      {q.propertyAddress}
+                    </span>
+                    {q.mlPermalink && (
+                      <a
+                        href={q.mlPermalink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-auto text-xs text-yellow-600 hover:text-yellow-700 underline flex-shrink-0"
+                      >
+                        Ver en ML
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Pregunta */}
+                  <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                    <p className="text-gray-800 text-sm">{q.text}</p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {new Date(q.dateCreated).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {q.buyerId && <span> · Comprador #{q.buyerId}</span>}
+                    </p>
+                  </div>
+
+                  {/* Respuesta */}
+                  {replyingId === q.questionId ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={replyTexts[q.questionId] || ''}
+                        onChange={(e) => setReplyTexts((prev) => ({ ...prev, [q.questionId]: e.target.value }))}
+                        rows={3}
+                        placeholder="Escribí tu respuesta..."
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400/50 focus:border-yellow-400 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setReplyingId(null)}
+                          className="px-3 py-1.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSendReply(q.questionId)}
+                          disabled={!replyTexts[q.questionId]?.trim() || sendingId === q.questionId}
+                          className="flex items-center space-x-1.5 px-4 py-1.5 text-sm bg-yellow-400 hover:bg-yellow-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
+                        >
+                          {sendingId === q.questionId ? (
+                            <IoSyncOutline className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <IoSendOutline className="w-4 h-4" />
+                          )}
+                          <span>{sendingId === q.questionId ? 'Enviando...' : 'Enviar respuesta'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setReplyingId(q.questionId)}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 text-sm text-yellow-700 bg-yellow-50 hover:bg-yellow-100 border border-yellow-200 rounded-lg transition-colors"
+                    >
+                      <IoChatbubbleOutline className="w-4 h-4" />
+                      <span>Responder</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Información y características */}
       <div className="space-y-4">
         <div className="flex items-start space-x-3 text-sm text-gray-700">
@@ -219,7 +389,6 @@ const MercadoLibreIntegration = () => {
           </div>
         </div>
 
-        {/* Link a configuración de app si no está conectado */}
         {!connectionStatus?.connected && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
             <p className="text-sm text-blue-800">
@@ -232,7 +401,7 @@ const MercadoLibreIntegration = () => {
 
       {/* Guía rápida si está conectado */}
       {connectionStatus?.connected && (
-        <div className="mt-8 bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-6">
+        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-lg p-6">
           <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
             <IoCheckmarkCircleOutline className="w-5 h-5 text-green-600 mr-2" />
             ¡Todo listo! Próximos pasos

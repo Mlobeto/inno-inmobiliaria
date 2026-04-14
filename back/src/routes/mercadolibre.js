@@ -41,4 +41,14 @@ router.put('/listings/:propertyId/status', MercadoLibreController.updateListingS
 // Eliminar publicación
 router.delete('/listings/:propertyId', MercadoLibreController.deleteListingSync.bind(MercadoLibreController));
 
+// ====================================
+// PREGUNTAS / CONSULTAS
+// ====================================
+
+// Obtener todas las preguntas sin responder
+router.get('/questions', MercadoLibreController.getQuestions.bind(MercadoLibreController));
+
+// Responder una pregunta
+router.post('/questions/:questionId/answer', MercadoLibreController.answerQuestion.bind(MercadoLibreController));
+
 module.exports = router;

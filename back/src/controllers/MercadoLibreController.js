@@ -775,6 +775,108 @@ class MercadoLibreController {
     }
   }
   
+  // ========================================
+  // 3. PREGUNTAS / CONSULTAS
+  // ========================================
+
+  /**
+   * Obtener preguntas de todas las publicaciones del tenant
+   */
+  async getQuestions(req, res) {
+    const { tenantId } = req.user;
+    try {
+      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
+      if (!mlConfig) {
+        return res.status(400).json({ success: false, message: 'No estás conectado a MercadoLibre' });
+      }
+
+      let accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
+      if (mlConfig.tokenExpiresAt < new Date()) {
+        const refreshed = await this.refreshAccessToken(mlConfig);
+        accessToken = this.decryptStoredToken(refreshed, 'accessToken');
+      }
+
+      // Obtener todas las publicaciones activas del tenant
+      const listings = await prisma.PropertyMLListings.findMany({
+        where: { tenantId },
+        include: { Property: { select: { address: true, typeProperty: true } } },
+      });
+
+      if (listings.length === 0) {
+        return res.json({ success: true, questions: [] });
+      }
+
+      meli.setAccessToken(accessToken);
+
+      // Obtener preguntas de cada publicación en paralelo
+      const questionsPerListing = await Promise.allSettled(
+        listings.map(async (listing) => {
+          try {
+            const data = await meli.get(`/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`);
+            const questions = (data.questions || []).map((q) => ({
+              questionId: q.id,
+              text: q.text,
+              status: q.status,
+              dateCreated: q.date_created,
+              buyerId: q.from?.id,
+              mlListingId: listing.mlListingId,
+              mlPermalink: listing.mlPermalink,
+              propertyAddress: listing.Property?.address || 'Sin dirección',
+              propertyType: listing.Property?.typeProperty || '',
+              answer: q.answer || null,
+            }));
+            return questions;
+          } catch {
+            return [];
+          }
+        })
+      );
+
+      const allQuestions = questionsPerListing
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap((r) => r.value)
+        .sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
+
+      res.json({ success: true, questions: allQuestions });
+    } catch (error) {
+      logger.error('Error al obtener preguntas ML', { tenantId, error: error.message });
+      res.status(500).json({ success: false, message: 'Error al obtener preguntas' });
+    }
+  }
+
+  /**
+   * Responder una pregunta
+   */
+  async answerQuestion(req, res) {
+    const { tenantId } = req.user;
+    const { questionId } = req.params;
+    const { text } = req.body;
+    try {
+      if (!text || !text.trim()) {
+        return res.status(400).json({ success: false, message: 'El texto de la respuesta es requerido' });
+      }
+      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
+      if (!mlConfig) {
+        return res.status(400).json({ success: false, message: 'No estás conectado a MercadoLibre' });
+      }
+
+      let accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
+      if (mlConfig.tokenExpiresAt < new Date()) {
+        const refreshed = await this.refreshAccessToken(mlConfig);
+        accessToken = this.decryptStoredToken(refreshed, 'accessToken');
+      }
+
+      meli.setAccessToken(accessToken);
+      await meli.post('/answers', { question_id: parseInt(questionId), text: text.trim() });
+
+      logger.info('Pregunta ML respondida', { tenantId, questionId });
+      res.json({ success: true, message: 'Respuesta enviada correctamente' });
+    } catch (error) {
+      logger.error('Error al responder pregunta ML', { tenantId, questionId, error: error.message });
+      res.status(500).json({ success: false, message: error.message || 'Error al responder la pregunta' });
+    }
+  }
+
   /**
    * Obtener lista de publicaciones del tenant
    */

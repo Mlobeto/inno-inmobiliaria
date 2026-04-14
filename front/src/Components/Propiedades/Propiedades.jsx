@@ -132,8 +132,9 @@ const CreateProperty = () => {
   const [availableCiudades, setAvailableCiudades] = useState([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
-  const [newClientData, setNewClientData] = useState({ name: '', cuil: '', email: '', mobilePhone: '' });
+  const [newClientData, setNewClientData] = useState({ name: '', cuil: '', email: '', mobilePhone: '', provincia: '', ciudad: '', codigoPostal: '', direccion: '' });
   const [newClientErrors, setNewClientErrors] = useState({});
+  const [newClientCities, setNewClientCities] = useState([]);
 
   const legalStatusOptions = useMemo(
     () => getLegalStatusOptionsByOperationType(formData.operationType),
@@ -155,9 +156,24 @@ const CreateProperty = () => {
     }
   }, [formData.provincia]);
 
+  useEffect(() => {
+    if (newClientData.provincia) {
+      const provinciaObj = PROVINCIAS_ARGENTINA.find(p => p.name === newClientData.provincia);
+      if (provinciaObj) {
+        setNewClientCities(getCiudadesByProvincia(provinciaObj.id));
+      }
+    } else {
+      setNewClientCities([]);
+    }
+  }, [newClientData.provincia]);
+
   const handleNewClientChange = (e) => {
     const { name, value } = e.target;
-    setNewClientData((prev) => ({ ...prev, [name]: value }));
+    setNewClientData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'provincia' ? { ciudad: '' } : {}),
+    }));
     if (newClientErrors[name]) setNewClientErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -176,7 +192,7 @@ const CreateProperty = () => {
       }
       toast.success(`Cliente "${newClientData.name}" creado y seleccionado`);
       setShowNewClientModal(false);
-      setNewClientData({ name: '', cuil: '', email: '', mobilePhone: '' });
+      setNewClientData({ name: '', cuil: '', email: '', mobilePhone: '', provincia: '', ciudad: '', codigoPostal: '', direccion: '' });
     } catch (err) {
       const msg = err?.data?.error || err?.data?.details || 'Error al crear el cliente';
       toast.error(msg);
@@ -1371,9 +1387,66 @@ const CreateProperty = () => {
                 />
               </div>
 
-              <p className="text-slate-400 text-xs">
-                Podés completar el resto de la información del cliente luego desde el panel de clientes.
-              </p>
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Información de Domicilio</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-1">Provincia</label>
+                    <select
+                      name="provincia"
+                      value={newClientData.provincia}
+                      onChange={handleNewClientChange}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-sm"
+                    >
+                      <option value="" className="bg-slate-800">Seleccionar provincia</option>
+                      {PROVINCIAS_ARGENTINA.map((prov) => (
+                        <option key={prov.id} value={prov.name} className="bg-slate-800">{prov.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-1">Ciudad</label>
+                    <select
+                      name="ciudad"
+                      value={newClientData.ciudad}
+                      onChange={handleNewClientChange}
+                      disabled={!newClientData.provincia}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="" className="bg-slate-800">
+                        {newClientData.provincia ? 'Seleccione ciudad' : 'Primero seleccione provincia'}
+                      </option>
+                      {newClientCities.map((ciudad, i) => (
+                        <option key={i} value={ciudad} className="bg-slate-800">{ciudad}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-1">Código Postal</label>
+                    <input
+                      type="text"
+                      name="codigoPostal"
+                      value={newClientData.codigoPostal}
+                      onChange={handleNewClientChange}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-sm"
+                      placeholder="Ej: 4700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm font-medium mb-1">Dirección Completa</label>
+                    <input
+                      type="text"
+                      name="direccion"
+                      value={newClientData.direccion}
+                      onChange={handleNewClientChange}
+                      className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all text-sm"
+                      placeholder="Calle, número, piso, depto"
+                    />
+                  </div>
+                </div>
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button
