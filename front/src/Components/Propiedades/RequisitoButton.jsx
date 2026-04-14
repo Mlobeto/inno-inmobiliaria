@@ -41,9 +41,13 @@ const RequisitoButton = ({ property }) => {
       let requisitoText = property.requisito || template;
       
       // Reemplazar variables dinámicas
+      const formattedPrice = property.price
+        ? `$${parseFloat(property.price).toLocaleString('es-AR')}`
+        : '[Precio no especificado]';
       requisitoText = requisitoText
         .replace(/{address}/g, property.address || '[Dirección no especificada]')
-        .replace(/{price}/g, property.price ? `$${parseFloat(property.price).toLocaleString('es-AR')}` : '[Precio no especificado]');
+        .replace(/{price}/g, formattedPrice)
+        .replace(/\$\$\$\$\$\$\$\$\$\$/g, formattedPrice); // compatibilidad con props guardadas antes del fix
       
       // Copiar al portapapeles
       await navigator.clipboard.writeText(requisitoText);
@@ -80,7 +84,7 @@ Correo electrónico:
 
 4. Los garantes firman el contrato ante escribano para que les certifique la firma, y cuando firme ante escribano deberá ser legalizado por el colegio de Escribanos.
 
-5. Monto del alquiler mensual: 1º Cuatrimestre {price} - Para los cuatrimestres siguientes de locación el precio será actualizado conforme el índice de precio al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC).
+5. Monto del alquiler mensual: 1º Cuatrimestre {price} Para los cuatrimestres siguientes de locación el precio será actualizado conforme el índice de precio al consumidor (IPC) que confecciona y publica el Instituto Nacional de Estadísticas y Censos (INDEC).
 
 6. Honorarios de contratos ante escribano y favor de firma inmobiliaria: Igual al monto del alquiler
 

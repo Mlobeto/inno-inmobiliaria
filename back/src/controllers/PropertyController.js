@@ -618,11 +618,9 @@ exports.getWhatsAppText = async (req, res) => {
     const settings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     // Plantilla por defecto si no existe una personalizada
-    const defaultTemplate = `Gracias por ponerte en contacto con nosotros! Estamos encantados de poder ayudar. 
+    const defaultTemplate = `Gracias por ponerte en contacto con *{empresa}*! Estamos encantados de poder ayudar. 
 
 {descripcion}
-
-Te comento que estamos en lanzamiento de ofertas y este es el primero!
 
 Precio: {precio}
 Ubicación: {direccion}
@@ -657,6 +655,7 @@ Estamos a tu entera disposición por dudas, precio o consultas.`;
 
     // Reemplazar variables en la plantilla
     let whatsappText = template
+      .replace(/{empresa}/g, settings?.company_name || '')
       .replace(/{precio}/g, formattedPrice)
       .replace(/{direccion}/g, property.address)
       .replace(/{ciudad}/g, property.city || '')
@@ -690,7 +689,7 @@ Estamos a tu entera disposición por dudas, precio o consultas.`;
       whatsappText: whatsappText,
       template: template,
       availableVariables: [
-        '{precio}', '{direccion}', '{ciudad}', '{barrio}',
+        '{empresa}', '{precio}', '{direccion}', '{ciudad}', '{barrio}',
         '{tipo}', '{tipoOperacion}', '{habitaciones}', '{baños}',
         '{superficieTotal}', '{superficieCubierta}', '{descripcion}',
         '{destacados}', '{escritura}'

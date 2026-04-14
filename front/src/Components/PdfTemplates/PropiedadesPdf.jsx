@@ -1,15 +1,12 @@
 /* eslint-disable react/prop-types */
 
 import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
 import html2pdf from "html2pdf.js";
 
 const PropiedadesPDF = ({ property }) => {
   const [loading, setLoading] = useState(false);
   const [template, setTemplate] = useState(null);
   const [settings, setSettings] = useState(null);
-
-  const token = useSelector((state) => state.token);
 
   const getDefaultTemplate = () => {
     return `
@@ -94,6 +91,7 @@ const PropiedadesPDF = ({ property }) => {
 
   useEffect(() => {
     const loadTemplateAndSettings = async () => {
+      const token = localStorage.getItem('token');
       if (!token) return;
       try {
         // Cargar template de tipo FICHA_PROPIEDAD
@@ -144,7 +142,7 @@ const PropiedadesPDF = ({ property }) => {
     };
 
     loadTemplateAndSettings();
-  }, [token]);
+  }, []);
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("es-AR", {
