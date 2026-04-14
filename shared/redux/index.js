@@ -127,6 +127,15 @@ export {
   useDeletePaymentMutation,
 } from './api/paymentApi';
 
+// ==================== LEAD API ====================
+export {
+  leadApi,
+  useGetAllLeadsQuery,
+  useCreateLeadMutation,
+  useUpdateLeadMutation,
+  useDeleteLeadMutation,
+} from './api/leadApi';
+
 // ==================== AUTH SLICE ====================
 export {
   default as authReducer,

@@ -73,6 +73,7 @@ router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
+router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./leads")); // Leads/CRM
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

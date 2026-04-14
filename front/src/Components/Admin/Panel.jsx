@@ -25,7 +25,8 @@ import {
   IoCheckmarkCircleOutline,
   IoHelpCircleOutline,
   IoCardOutline,
-  IoGlobeOutline
+  IoGlobeOutline,
+  IoFunnelOutline,
 } from 'react-icons/io5';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
@@ -201,8 +202,15 @@ const Panel = () => {
       gradient: 'from-purple-500 to-purple-600',
       hoverGradient: 'from-purple-600 to-purple-700',
       description: 'Generar recibos'
-    }
-  ];
+    },
+    {
+      title: 'Leads / CRM',
+      path: '/panelLeads',
+      icon: IoFunnelOutline,
+      gradient: 'from-pink-500 to-rose-500',
+      hoverGradient: 'from-pink-600 to-rose-600',
+      description: 'Seguimiento de prospectos'
+    },  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

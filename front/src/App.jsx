@@ -7,6 +7,7 @@ import EstadoContratos from "./Components/Contratos/EstadoContratos";
 import PanelClientes from "./Components/Admin/PanelClientes";
 import PanelContratos from "./Components/Admin/PanelContratos";
 import PanelPropiedades from "./Components/Admin/PanelPropiedades";
+import PanelLeads from "./Components/Admin/PanelLeads";
 import ListadoDeClientes from "./Components/Clientes/ListadoDeClientes";
 import Listado from "./Components/Propiedades/Listado";
 import FiltroPropiedades from "./Components/Propiedades/FiltroPropiedades"
@@ -64,6 +65,8 @@ function App() {
       <Route path="/panelContratos" element={<ProtectedRoute><PanelContratos /></ProtectedRoute>} />
 
       <Route path="/panelPropiedades" element={<ProtectedRoute><PanelPropiedades /></ProtectedRoute>} />
+
+      <Route path="/panelLeads" element={<ProtectedRoute><PanelLeads /></ProtectedRoute>} />
 
       <Route path="/PanelInformes" element={<ProtectedRoute><PanelInformes /></ProtectedRoute>} />
 

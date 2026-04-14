@@ -97,6 +97,9 @@ export const baseApi = createApi({
     // PDF Templates
     'PdfTemplates',
     'PdfTemplateTypes',
+
+    // Leads/CRM
+    'Lead',
   ],
   endpoints: () => ({}), // Los endpoints se agregan en archivos separados
 });
