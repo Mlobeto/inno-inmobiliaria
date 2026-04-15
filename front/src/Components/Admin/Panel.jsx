@@ -55,7 +55,10 @@ const Panel = () => {
   
   // Obtener subdomain y features
   const tenantSubdomain = tenantData?.data?.subdomain || null;
-  const hasLandingFeature = subscriptionData?.subscription?.Plan?.features?.landingPage === true;
+  const planFeatures = subscriptionData?.subscription?.Plan?.features || {};
+  const hasLandingFeature = planFeatures.landingPage === true;
+  const hasLeadsFeature   = planFeatures.leads === true;
+  const hasLoteosFeature  = planFeatures.loteos === true;
 
   // Debug: ver valores
   useEffect(() => {
@@ -211,7 +214,8 @@ const Panel = () => {
       icon: IoFunnelOutline,
       gradient: 'from-pink-500 to-rose-500',
       hoverGradient: 'from-pink-600 to-rose-600',
-      description: 'Seguimiento de prospectos'
+      description: 'Seguimiento de prospectos',
+      feature: 'leads',
     },
     {
       title: 'Soporte',
@@ -219,7 +223,7 @@ const Panel = () => {
       icon: IoChatbubblesOutline,
       gradient: 'from-teal-500 to-cyan-500',
       hoverGradient: 'from-teal-600 to-cyan-600',
-      description: 'Tickets de ayuda'
+      description: 'Tickets de ayuda',
     },
     {
       title: 'Loteos',
@@ -227,9 +231,17 @@ const Panel = () => {
       icon: IoMapOutline,
       gradient: 'from-lime-500 to-green-600',
       hoverGradient: 'from-lime-600 to-green-700',
-      description: 'Venta de lotes'
+      description: 'Venta de lotes',
+      feature: 'loteos',
     },
   ];
+
+  // Filtrar items según features del plan
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.feature === 'leads')  return hasLeadsFeature;
+    if (item.feature === 'loteos') return hasLoteosFeature;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -406,7 +418,7 @@ const Panel = () => {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const IconComponent = item.icon;
             return (
               <Link

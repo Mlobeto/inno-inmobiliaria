@@ -3,6 +3,7 @@ const { requireTenantScope } = require("../middlewares/platformAdminMiddleware")
 const authMiddleware = require("../middlewares/authMiddleware");
 const { tenancyMiddleware } = require("../middlewares/tenancyMiddleware");
 const { tenantLimiter } = require("../middlewares/rateLimiter");
+const { checkSubscription, checkFeature } = require("../middlewares/subscriptionMiddleware");
 const prisma = require('../utils/prismaClient');
 
 const router = Router();
@@ -73,9 +74,9 @@ router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
-router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./leads")); // Leads/CRM
+router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('leads'), require("./leads")); // Leads/CRM
 router.use("/tickets", require("./tickets")); // Soporte / Tickets (maneja auth internamente)
-router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./loteos")); // Loteos y lotes
+router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('loteos'), require("./loteos")); // Loteos y lotes
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

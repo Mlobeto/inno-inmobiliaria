@@ -12,7 +12,9 @@ import {
   IoCloseCircle,
   IoGlobeOutline,
   IoStorefrontOutline,
-  IoPeopleCircleOutline
+  IoPeopleCircleOutline,
+  IoMapOutline,
+  IoFunnelOutline,
 } from 'react-icons/io5';
 
 /**
@@ -259,6 +261,31 @@ const PlanSelector = () => {
                       <div className="flex items-center text-gray-600">
                         <IoCheckmarkCircle className="text-green-500 mr-2 flex-shrink-0" />
                         <span>Soporte prioritario</span>
+                      </div>
+                    )}
+
+                    {/* Features premium: Leads y Loteos */}
+                    {plan.features?.leads !== undefined && (
+                      <div className={`flex items-center font-medium ${plan.features.leads ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {plan.features.leads ? (
+                          <IoCheckmarkCircle className="text-green-500 mr-2 flex-shrink-0 text-lg" />
+                        ) : (
+                          <IoCloseCircle className="text-gray-300 mr-2 flex-shrink-0 text-lg" />
+                        )}
+                        <IoFunnelOutline className={`mr-1 ${plan.features.leads ? 'text-pink-500' : 'text-gray-300'}`} />
+                        <span>CRM Leads / Prospectos</span>
+                      </div>
+                    )}
+
+                    {plan.features?.loteos !== undefined && (
+                      <div className={`flex items-center font-medium ${plan.features.loteos ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {plan.features.loteos ? (
+                          <IoCheckmarkCircle className="text-green-500 mr-2 flex-shrink-0 text-lg" />
+                        ) : (
+                          <IoCloseCircle className="text-gray-300 mr-2 flex-shrink-0 text-lg" />
+                        )}
+                        <IoMapOutline className={`mr-1 ${plan.features.loteos ? 'text-lime-500' : 'text-gray-300'}`} />
+                        <span>Gestión de Loteos</span>
                       </div>
                     )}
                   </div>
