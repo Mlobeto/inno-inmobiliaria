@@ -26,6 +26,8 @@ router.get('/tenants/:tenantId', platformAdminController.getTenantDetail);
 router.put('/tenants/:tenantId', platformAdminController.updateTenant);
 router.post('/tenants/:tenantId/suspend', platformAdminController.suspendTenant);
 router.post('/tenants/:tenantId/activate', platformAdminController.activateTenant);
+router.post('/tenants/:tenantId/impersonate', platformAdminController.impersonateTenant);
+router.get('/tenants/:tenantId/operational', platformAdminController.getTenantOperational);
 router.delete('/tenants/:tenantId', platformAdminController.deleteTenant);
 
 /**

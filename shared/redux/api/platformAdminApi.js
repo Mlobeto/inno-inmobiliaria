@@ -213,6 +213,26 @@ export const platformAdminApi = baseApi.injectEndpoints({
       ],
     }),
 
+    // ============================================
+    // 🔑 IMPERSONACIÓN DE TENANT
+    // ============================================
+
+    impersonateTenant: builder.mutation({
+      query: (tenantId) => ({
+        url: `/platform-admin/tenants/${tenantId}/impersonate`,
+        method: 'POST',
+      }),
+    }),
+
+    // ============================================
+    // 📊 DATOS OPERACIONALES DEL TENANT
+    // ============================================
+
+    getTenantOperational: builder.query({
+      query: (tenantId) => `/platform-admin/tenants/${tenantId}/operational`,
+      providesTags: (r, e, id) => [{ type: 'Tenants', id }],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -244,6 +264,10 @@ export const {
   useUpdatePlanMutation,
   useDeletePlanMutation,
   useTogglePlanStatusMutation,
+
+  // Impersonation + Operational
+  useImpersonateTenantMutation,
+  useGetTenantOperationalQuery,
 } = platformAdminApi;
 
 export default platformAdminApi;

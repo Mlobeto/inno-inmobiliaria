@@ -12,6 +12,8 @@ import {
   useActivateTenantMutation,
   useDeleteTenantMutation,
   useListPlansQuery,
+  useImpersonateTenantMutation,
+  useGetTenantOperationalQuery,
 } from '@shared/redux';
 
 const TenantDetail = () => {
@@ -24,6 +26,8 @@ const TenantDetail = () => {
   const [activateTenant, { isLoading: isActivating }] = useActivateTenantMutation();
   const [deleteTenant, { isLoading: isDeleting }] = useDeleteTenantMutation();
   const { data: plansData } = useListPlansQuery();
+  const [impersonateTenant, { isLoading: isImpersonating }] = useImpersonateTenantMutation();
+  const { data: operationalData } = useGetTenantOperationalQuery(tenantId);
 
   // Modales
   const [showEditModal, setShowEditModal] = useState(false);
@@ -135,6 +139,22 @@ const TenantDetail = () => {
       navigate('/platform-admin/tenants');
     } catch (err) {
       setActionError(err?.data?.message || 'Error al eliminar tenant');
+    }
+  };
+
+  const handleImpersonate = async () => {
+    setActionError('');
+    try {
+      const res = await impersonateTenant(parseInt(tenantId)).unwrap();
+      const token = res?.data?.token || res?.token;
+      if (!token) throw new Error('Token no recibido');
+      // Guardar token de impersonación y redirigir al panel del tenant
+      localStorage.setItem('impersonation_token', token);
+      localStorage.setItem('impersonation_tenantId', tenantId);
+      // Abrir en nueva pestaña para no perder la sesión admin
+      window.open('/', '_blank');
+    } catch (err) {
+      setActionError(err?.data?.message || err?.message || 'Error al impersonar tenant');
     }
   };
 
@@ -421,8 +441,72 @@ const TenantDetail = () => {
                 >
                   🗑️ Eliminar Tenant
                 </button>
+                <button
+                  onClick={handleImpersonate}
+                  disabled={isImpersonating}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-left disabled:opacity-50"
+                >
+                  {isImpersonating ? '⏳ Generando token...' : '🎭 Impersonar Tenant'}
+                </button>
               </div>
             </div>
+
+            {/* Panel Operacional */}
+            {operationalData && (() => {
+              const op = operationalData?.data || operationalData;
+              const counts = op?.counts || {};
+              const recentPayments = op?.recentPayments || [];
+              const openTickets = op?.openTickets || [];
+              return (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Panel Operacional</h2>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[
+                      { label: 'Clientes', value: counts.clients },
+                      { label: 'Propiedades', value: counts.properties },
+                      { label: 'Contratos', value: counts.leases },
+                      { label: 'Pagos', value: counts.payments },
+                      { label: 'Leads', value: counts.leads },
+                      { label: 'Tickets', value: counts.tickets },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
+                        <p className="text-2xl font-bold text-gray-800">{value ?? 0}</p>
+                        <p className="text-xs text-gray-500">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {recentPayments.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Pagos Recientes</p>
+                      <div className="space-y-1.5">
+                        {recentPayments.slice(0, 3).map((p) => (
+                          <div key={p.id} className="flex justify-between text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                            <span>{p.concept || 'Pago'}</span>
+                            <span className="font-semibold">${p.amount?.toLocaleString('es-AR')}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {openTickets.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold text-gray-700 mb-2">Tickets Abiertos</p>
+                      <div className="space-y-1.5">
+                        {openTickets.slice(0, 3).map((t) => (
+                          <div key={t.id} className="flex items-center justify-between text-xs text-gray-600 bg-blue-50 rounded px-2 py-1">
+                            <span className="truncate flex-1">{t.title}</span>
+                            <span className={`ml-2 shrink-0 font-medium ${
+                              t.priority === 'CRITICA' ? 'text-red-600' :
+                              t.priority === 'ALTA' ? 'text-orange-500' : 'text-gray-500'
+                            }`}>{t.priority}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             
           </div>
         </div>

@@ -74,6 +74,7 @@ router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
 router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./leads")); // Leads/CRM
+router.use("/tickets", require("./tickets")); // Soporte / Tickets (maneja auth internamente)
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

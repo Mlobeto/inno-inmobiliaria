@@ -704,6 +704,7 @@ model tenants {
   FiscalAuditLog       FiscalAuditLog[]
   subscription_payment_logs subscription_payment_logs[]
   leads                leads[]
+  support_tickets      support_tickets[]
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
   @@index([cuit], map: "tenants_cuit")
@@ -991,4 +992,59 @@ enum enum_leads_status {
   EN_SEGUIMIENTO
   CERRADO_GANADO
   CERRADO_PERDIDO
+}
+
+// ============================================================
+// MÓDULO: SOPORTE / TICKETS
+// ============================================================
+
+model support_tickets {
+  id          Int                        @id @default(autoincrement())
+  tenantId    Int
+  title       String                     @db.VarChar(255)
+  description String
+  category    enum_ticket_category       @default(CONSULTA)
+  priority    enum_ticket_priority       @default(MEDIA)
+  status      enum_ticket_status         @default(ABIERTO)
+  createdAt   DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime                   @default(now()) @updatedAt @db.Timestamptz(6)
+  tenants     tenants                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  messages    ticket_messages[]
+
+  @@index([tenantId], map: "idx_tickets_tenant")
+  @@index([status], map: "idx_tickets_status")
+  @@index([createdAt], map: "idx_tickets_created")
+}
+
+model ticket_messages {
+  id         Int             @id @default(autoincrement())
+  ticketId   Int
+  authorRole String          @db.VarChar(20)  // TENANT | PLATFORM_ADMIN
+  message    String
+  createdAt  DateTime        @default(now()) @db.Timestamptz(6)
+  ticket     support_tickets @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId], map: "idx_ticket_messages_ticket")
+}
+
+enum enum_ticket_category {
+  BUG
+  CONSULTA
+  FACTURACION
+  MEJORA
+  OTRO
+}
+
+enum enum_ticket_priority {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum enum_ticket_status {
+  ABIERTO
+  EN_PROGRESO
+  RESUELTO
+  CERRADO
 }

@@ -921,3 +921,119 @@ exports.createManualTenant = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * @route POST /api/platform-admin/tenants/:tenantId/impersonate
+ * @desc Genera un token temporal de corta duración para acceder al panel de un tenant
+ * @access Private (PLATFORM_ADMIN only)
+ */
+const jwt = require('jsonwebtoken');
+
+exports.impersonateTenant = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+
+    const tenant = await prisma.tenants.findUnique({
+      where: { tenantId },
+      include: {
+        admins: { where: { role: 'ADMIN' }, take: 1, orderBy: { createdAt: 'asc' } },
+      },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant no encontrado' });
+    }
+
+    if (tenant.admins.length === 0) {
+      return res.status(400).json({ success: false, message: 'Este tenant no tiene usuarios admin' });
+    }
+
+    const adminUser = tenant.admins[0];
+
+    // Token de impersonación: 2 horas, marcado con impersonatedBy
+    const impersonationToken = jwt.sign(
+      {
+        id: adminUser.adminId,
+        role: adminUser.role,
+        tenantId: adminUser.tenantId,
+        impersonatedBy: req.user.id,
+        impersonation: true,
+      },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: '2h' }
+    );
+
+    logger.info('Platform admin impersonating tenant', {
+      platformAdminId: req.user.id,
+      tenantId,
+      adminUserId: adminUser.adminId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      token: impersonationToken,
+      expiresIn: '2h',
+      tenant: {
+        tenantId: tenant.tenantId,
+        businessName: tenant.businessName,
+        subdomain: tenant.subdomain,
+      },
+      user: {
+        adminId: adminUser.adminId,
+        username: adminUser.username,
+        email: adminUser.email,
+        role: adminUser.role,
+      },
+    });
+  } catch (error) {
+    logger.error('Error en impersonateTenant', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al impersonar tenant', error: error.message });
+  }
+};
+
+/**
+ * @route GET /api/platform-admin/tenants/:tenantId/operational
+ * @desc Datos operacionales de un tenant (clientes, propiedades, contratos, pagos recientes)
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.getTenantOperational = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+
+    const [clients, properties, leases, payments, leads, tickets] = await Promise.all([
+      prisma.Clients.count({ where: { tenantId } }),
+      prisma.Property.count({ where: { tenantId } }),
+      prisma.Leases.count({ where: { tenantId } }),
+      prisma.PaymentReceipts.count({ where: { tenantId } }),
+      prisma.leads.count({ where: { tenantId } }),
+      prisma.support_tickets.count({ where: { tenantId } }),
+    ]);
+
+    const recentActivity = await prisma.PaymentReceipts.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, createdAt: true, status: true, amount: true },
+    });
+
+    const openTickets = await prisma.support_tickets.findMany({
+      where: { tenantId, status: { in: ['ABIERTO', 'EN_PROGRESO'] } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, title: true, status: true, priority: true, createdAt: true },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        counts: { clients, properties, leases, payments, leads, tickets },
+        recentActivity,
+        openTickets,
+      },
+    });
+  } catch (error) {
+    logger.error('Error en getTenantOperational', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al obtener datos operacionales' });
+  }
+};

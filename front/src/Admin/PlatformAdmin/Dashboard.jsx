@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useGetDashboardQuery } from '../../redux/platformAdmin';
 import CreateManualTenantForm from './CreateManualTenantForm';
 import PlanManagement from './PlanManagement';
+import TicketsAdmin from './TicketsAdmin';
 
 function PlatformAdminDashboard() {
   const navigate = useNavigate();
   const { data, isLoading, isError, error, refetch } = useGetDashboardQuery();
   const [showCreateTenant, setShowCreateTenant] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, plans
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, plans, tickets
 
   if (isLoading) {
     return (
@@ -67,6 +68,16 @@ function PlatformAdminDashboard() {
               }`}
             >
               📋 Planes
+            </button>
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'tickets'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              🎫 Tickets Soporte
             </button>
           </nav>
         </div>
@@ -165,6 +176,11 @@ function PlatformAdminDashboard() {
         {/* Tab de Planes */}
         {activeTab === 'plans' && (
           <PlanManagement />
+        )}
+
+        {/* Tab de Tickets */}
+        {activeTab === 'tickets' && (
+          <TicketsAdmin />
         )}
       </div>
 

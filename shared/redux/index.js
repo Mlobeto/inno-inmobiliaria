@@ -57,6 +57,8 @@ export {
   useUpdatePlanMutation,
   useDeletePlanMutation,
   useTogglePlanStatusMutation,
+  useImpersonateTenantMutation,
+  useGetTenantOperationalQuery,
 } from './api/platformAdminApi';
 
 // ==================== SUBSCRIPTION API ====================
@@ -135,6 +137,19 @@ export {
   useUpdateLeadMutation,
   useDeleteLeadMutation,
 } from './api/leadApi';
+
+// ==================== TICKET API ====================
+export {
+  ticketApi,
+  useGetMyTicketsQuery,
+  useCreateTicketMutation,
+  useAddTenantMessageMutation,
+  useGetTicketStatsQuery,
+  useGetAllTicketsQuery,
+  useGetTicketByIdQuery,
+  useAddAdminMessageMutation,
+  useUpdateTicketStatusMutation,
+} from './api/ticketApi';
 
 // ==================== AUTH SLICE ====================
 export {

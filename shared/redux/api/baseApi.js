@@ -100,6 +100,9 @@ export const baseApi = createApi({
 
     // Leads/CRM
     'Lead',
+
+    // Soporte / Tickets
+    'Ticket',
   ],
   endpoints: () => ({}), // Los endpoints se agregan en archivos separados
 });

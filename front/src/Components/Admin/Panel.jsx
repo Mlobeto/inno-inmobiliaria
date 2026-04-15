@@ -27,6 +27,7 @@ import {
   IoCardOutline,
   IoGlobeOutline,
   IoFunnelOutline,
+  IoChatbubblesOutline,
 } from 'react-icons/io5';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
@@ -210,6 +211,14 @@ const Panel = () => {
       gradient: 'from-pink-500 to-rose-500',
       hoverGradient: 'from-pink-600 to-rose-600',
       description: 'Seguimiento de prospectos'
+    },
+    {
+      title: 'Soporte',
+      path: '/soporte',
+      icon: IoChatbubblesOutline,
+      gradient: 'from-teal-500 to-cyan-500',
+      hoverGradient: 'from-teal-600 to-cyan-600',
+      description: 'Tickets de ayuda'
     },  ];
 
   return (
