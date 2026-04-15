@@ -82,6 +82,7 @@ export const baseApi = createApi({
     // Platform Admin
     'PlatformAdmin',
     'Tenants',
+    'Plans',
     'Subscriptions',
     'Dashboard',
     'Metrics',

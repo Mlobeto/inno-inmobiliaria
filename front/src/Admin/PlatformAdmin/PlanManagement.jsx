@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
-import { IoAdd, IoTrash, IoCreate, IoPower, IoCheckmark, IoClose } from 'react-icons/io5';
+import { IoAdd, IoTrash, IoCreate, IoPower, IoCheckmark, IoClose, IoRefresh } from 'react-icons/io5';
 import {
   useListPlansQuery,
   useCreatePlanMutation,
@@ -12,7 +12,7 @@ import {
 
 function PlanManagement() {
   // RTK Query hooks
-  const { data: plansData, isLoading: isLoadingPlans, error: plansError } = useListPlansQuery();
+  const { data: plansData, isLoading: isLoadingPlans, error: plansError, refetch: refetchPlans } = useListPlansQuery();
   const [createPlan, { isLoading: isCreating }] = useCreatePlanMutation();
   const [updatePlan, { isLoading: isUpdating }] = useUpdatePlanMutation();
   const [deletePlan] = useDeletePlanMutation();
@@ -243,16 +243,26 @@ function PlanManagement() {
           <h2 className="text-2xl font-bold text-gray-900">Gestión de Planes</h2>
           <p className="text-gray-600 mt-1">Administra los planes de suscripción</p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-        >
-          <IoAdd size={20} />
-          Crear Plan
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={refetchPlans}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+            title="Recargar lista de planes"
+          >
+            <IoRefresh size={20} />
+            Refrescar
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowCreateModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          >
+            <IoAdd size={20} />
+            Crear Plan
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
