@@ -8,7 +8,7 @@ function LandingFooter() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company info */}
           <div>
-            <h3 className="text-white text-2xl font-bold mb-4">GestiónProp</h3>
+            <h3 className="text-white text-2xl font-bold mb-4">AdminProp</h3>
             <p className="text-sm mb-4">
               La plataforma completa para gestionar tu inmobiliaria de forma profesional y eficiente.
             </p>
@@ -50,7 +50,7 @@ function LandingFooter() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
                 <IoMail className="flex-shrink-0" />
-                <span>contacto@GestiónProp.com</span>
+                <span>contacto@AdminProp.com</span>
               </li>
               <li className="flex items-center gap-2">
                 <IoLogoWhatsapp className="flex-shrink-0" />
@@ -67,7 +67,7 @@ function LandingFooter() {
         {/* Bottom bar */}
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm">
-            © 2026 GestiónProp. Todos los derechos reservados.
+            © 2026 AdminProp. Todos los derechos reservados.
           </p>
           <div className="flex gap-6 text-sm">
             <a href="#" className="hover:text-white transition">Términos de Servicio</a>
