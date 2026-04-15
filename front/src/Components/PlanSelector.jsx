@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetPublicPlansQuery } from '@shared/redux';
+import Logo from './Logo';
 import {
   IoCheckmarkCircle,
   IoCloseCircle,
@@ -79,6 +80,9 @@ const PlanSelector = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
       {/* Hero header */}
       <div className="text-center pt-16 pb-10 px-4">
+        <div className="flex justify-center mb-6">
+          <Logo color="#a5b4fc" size={80} />
+        </div>
         <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
           <IoSparkles className="text-indigo-400" />
           Planes para tu inmobiliaria
