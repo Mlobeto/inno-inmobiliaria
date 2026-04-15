@@ -77,6 +77,8 @@ router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integrat
 router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('leads'), require("./leads")); // Leads/CRM
 router.use("/tickets", require("./tickets")); // Soporte / Tickets (maneja auth internamente)
 router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('loteos'), require("./loteos")); // Loteos y lotes
+router.use("/agents", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./agents")); // Gestión de agentes/usuarios del tenant
+router.use("/commissions", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./commissions")); // Comisiones de agentes
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

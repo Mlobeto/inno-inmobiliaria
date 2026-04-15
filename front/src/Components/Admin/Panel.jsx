@@ -29,6 +29,8 @@ import {
   IoFunnelOutline,
   IoChatbubblesOutline,
   IoMapOutline,
+  IoPeopleOutline as IoPeopleSharpOutline,
+  IoCashOutline,
 } from 'react-icons/io5';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
@@ -56,9 +58,10 @@ const Panel = () => {
   // Obtener subdomain y features
   const tenantSubdomain = tenantData?.data?.subdomain || null;
   const planFeatures = subscriptionData?.subscription?.Plan?.features || {};
-  const hasLandingFeature = planFeatures.landingPage === true;
-  const hasLeadsFeature   = planFeatures.leads === true;
-  const hasLoteosFeature  = planFeatures.loteos === true;
+  const hasLandingFeature   = planFeatures.landingPage === true;
+  const hasLeadsFeature     = planFeatures.leads === true;
+  const hasLoteosFeature    = planFeatures.loteos === true;
+  const hasAgentRoleFeature = planFeatures.agentRole === true;
 
   // Debug: ver valores
   useEffect(() => {
@@ -234,12 +237,31 @@ const Panel = () => {
       description: 'Venta de lotes',
       feature: 'loteos',
     },
+    {
+      title: 'Agentes',
+      path: '/panelAgentes',
+      icon: IoPeopleSharpOutline,
+      gradient: 'from-indigo-500 to-indigo-600',
+      hoverGradient: 'from-indigo-600 to-indigo-700',
+      description: 'Gestionar equipo',
+      feature: 'agentRole',
+    },
+    {
+      title: 'Comisiones',
+      path: '/panelComisiones',
+      icon: IoCashOutline,
+      gradient: 'from-emerald-600 to-teal-600',
+      hoverGradient: 'from-emerald-700 to-teal-700',
+      description: 'Liquidar comisiones',
+      feature: 'agentRole',
+    },
   ];
 
   // Filtrar items según features del plan
   const visibleMenuItems = menuItems.filter(item => {
-    if (item.feature === 'leads')  return hasLeadsFeature;
-    if (item.feature === 'loteos') return hasLoteosFeature;
+    if (item.feature === 'leads')     return hasLeadsFeature;
+    if (item.feature === 'loteos')    return hasLoteosFeature;
+    if (item.feature === 'agentRole') return hasAgentRoleFeature;
     return true;
   });
 

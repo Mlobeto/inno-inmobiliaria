@@ -165,6 +165,30 @@ export {
   useDeleteLoteMutation,
 } from './api/loteoApi';
 
+// ==================== AGENT API ====================
+export {
+  agentApi,
+  useGetAgentsQuery,
+  useGetAgentByIdQuery,
+  useCreateAgentMutation,
+  useUpdateAgentMutation,
+  useDeactivateAgentMutation,
+  useReactivateAgentMutation,
+} from './api/agentApi';
+
+// ==================== COMMISSION API ====================
+export {
+  commissionApi,
+  useGetCommissionsQuery,
+  useGetSettlementQuery,
+  useGetCommissionByIdQuery,
+  useCreateCommissionMutation,
+  useUpdateCommissionMutation,
+  useApproveCommissionMutation,
+  useMarkCommissionPaidMutation,
+  useCancelCommissionMutation,
+} from './api/commissionApi';
+
 // ==================== AUTH SLICE ====================
 export {
   default as authReducer,

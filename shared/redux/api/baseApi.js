@@ -106,6 +106,10 @@ export const baseApi = createApi({
 
     // Loteos
     'Loteo',
+
+    // Agentes y Comisiones
+    'Agent',
+    'Commission',
   ],
   endpoints: () => ({}), // Los endpoints se agregan en archivos separados
 });
