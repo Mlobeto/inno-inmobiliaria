@@ -56,7 +56,7 @@ export const LoginScreen = () => {
         {/* Logo/Title */}
         <View style={styles.header}>
           <Text style={styles.logo}>🏢</Text>
-          <Text style={styles.title}>AdminProp</Text>
+          <Text style={styles.title}>SentaProp</Text>
           <Text style={styles.subtitle}>Gestión Inmobiliaria</Text>
         </View>
 
