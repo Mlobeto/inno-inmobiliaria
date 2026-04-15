@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -19,49 +18,20 @@ import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
 /** Logo AdminProp — 3 barras de distinta altura + arco inferior */
 const AppLogo = () => (
-  <View style={logo.wrapper}>
+  <View className="w-16 h-14 items-center justify-end">
     {/* Barras */}
-    <View style={logo.barsRow}>
-      <View style={[logo.bar, logo.barShort]} />
-      <View style={[logo.bar, logo.barTall]} />
-      <View style={[logo.bar, logo.barMid]} />
+    <View className="flex-row items-end gap-1.5 mb-1">
+      <View className="w-3 h-[22px] rounded bg-indigo-300" />
+      <View className="w-3 h-[38px] rounded bg-indigo-300" />
+      <View className="w-3 h-[14px] rounded bg-indigo-300" />
     </View>
     {/* Arco inferior */}
-    <View style={logo.arc} />
+    <View
+      className="w-14 h-3.5 border-2 border-t-0 border-indigo-400"
+      style={{ borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}
+    />
   </View>
 );
-
-const logo = StyleSheet.create({
-  wrapper: {
-    width: 68,
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-  },
-  barsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 6,
-    marginBottom: 4,
-  },
-  bar: {
-    width: 12,
-    borderRadius: 3,
-    backgroundColor: '#a5b4fc',
-  },
-  barShort: { height: 22 },
-  barTall:  { height: 38 },
-  barMid:   { height: 14 },
-  arc: {
-    width: 56,
-    height: 14,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    borderWidth: 2.5,
-    borderTopWidth: 0,
-    borderColor: '#818cf8',
-  },
-});
 
 export const LoginScreen = () => {
   const [username, setUsername] = useState('');
@@ -92,44 +62,55 @@ export const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      className="flex-1 bg-slate-900"
     >
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Bloque superior decorativo */}
-        <View style={styles.topBlob} />
+        <View
+          className="absolute -top-20 -left-16 w-72 h-72 rounded-full bg-indigo-700 opacity-25"
+        />
 
-        <View style={styles.content}>
+        <View className="flex-1 justify-center px-6 py-16">
           {/* Header */}
-          <View style={styles.header}>
+          <View className="items-center mb-10">
             <AppLogo />
-            <Text style={styles.title}>AdminProp</Text>
-            <Text style={styles.subtitle}>Gestión Inmobiliaria</Text>
+            <Text className="text-4xl font-extrabold text-slate-100 mt-4 tracking-tight">
+              AdminProp
+            </Text>
+            <Text className="text-sm text-slate-400 mt-1 tracking-wide">
+              Gestión Inmobiliaria
+            </Text>
           </View>
 
           {/* Card del formulario */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Iniciá sesión</Text>
+          <View className="bg-slate-800 rounded-2xl p-6 border border-slate-700 shadow-xl">
+            <Text className="text-lg font-bold text-slate-200 mb-5">Iniciá sesión</Text>
 
             {!isConnected && (
-              <View style={styles.offlineBadge}>
-                <Text style={styles.offlineBadgeText}>📵 Sin conexión a internet</Text>
+              <View className="bg-amber-950 rounded-xl p-3 mb-4 border border-amber-800">
+                <Text className="text-yellow-300 text-sm text-center">📵 Sin conexión a internet</Text>
               </View>
             )}
 
             {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>❌ {error}</Text>
+              <View className="bg-red-950 rounded-xl p-3 mb-4 border border-red-800">
+                <Text className="text-red-300 text-sm">❌ {error}</Text>
               </View>
             )}
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Usuario</Text>
+            {/* Campo usuario */}
+            <View className="mb-4">
+              <Text className="text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-widest">
+                Usuario
+              </Text>
               <TextInput
-                style={[styles.input, userFocused && styles.inputFocused]}
+                className={`bg-slate-900 border-2 rounded-xl px-4 py-3 text-base text-slate-100 ${
+                  userFocused ? 'border-indigo-500' : 'border-slate-600'
+                }`}
                 placeholder="Ingresá tu usuario"
                 placeholderTextColor="#9ca3af"
                 value={username}
@@ -142,10 +123,15 @@ export const LoginScreen = () => {
               />
             </View>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Contraseña</Text>
+            {/* Campo contraseña */}
+            <View className="mb-4">
+              <Text className="text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-widest">
+                Contraseña
+              </Text>
               <TextInput
-                style={[styles.input, passFocused && styles.inputFocused]}
+                className={`bg-slate-900 border-2 rounded-xl px-4 py-3 text-base text-slate-100 ${
+                  passFocused ? 'border-indigo-500' : 'border-slate-600'
+                }`}
                 placeholder="Ingresá tu contraseña"
                 placeholderTextColor="#9ca3af"
                 value={password}
@@ -158,7 +144,9 @@ export const LoginScreen = () => {
             </View>
 
             <TouchableOpacity
-              style={[styles.button, isLoading && styles.buttonDisabled]}
+              className={`rounded-xl py-4 items-center mt-2 ${
+                isLoading ? 'bg-slate-600' : 'bg-indigo-500'
+              }`}
               onPress={handleLogin}
               disabled={isLoading}
               activeOpacity={0.85}
@@ -166,16 +154,16 @@ export const LoginScreen = () => {
               {isLoading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.buttonText}>Iniciar Sesión</Text>
+                <Text className="text-white text-base font-bold tracking-wide">Iniciar Sesión</Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Acceso inquilinos */}
-          <View style={styles.inquilinoSection}>
-            <Text style={styles.inquilinoHint}>¿Sos inquilino?</Text>
+          <View className="mt-7 items-center gap-1.5">
+            <Text className="text-sm text-slate-500">¿Sos inquilino?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('PortalLogin')} activeOpacity={0.7}>
-              <Text style={styles.inquilinoLink}>Accedé al portal de pagos →</Text>
+              <Text className="text-sm font-bold text-emerald-400">Accedé al portal de pagos →</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -183,150 +171,3 @@ export const LoginScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  scroll: {
-    flexGrow: 1,
-  },
-  topBlob: {
-    position: 'absolute',
-    top: -80,
-    left: -60,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: '#4338ca',
-    opacity: 0.25,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 60,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#f1f5f9',
-    marginTop: 14,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#334155',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#e2e8f0',
-    marginBottom: 20,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#94a3b8',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  input: {
-    backgroundColor: '#0f172a',
-    borderWidth: 1.5,
-    borderColor: '#334155',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 15,
-    color: '#f1f5f9',
-  },
-  inputFocused: {
-    borderColor: '#6366f1',
-  },
-  button: {
-    backgroundColor: '#6366f1',
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  buttonDisabled: {
-    backgroundColor: '#475569',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  errorContainer: {
-    backgroundColor: '#450a0a',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#991b1b',
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 13,
-  },
-  offlineBadge: {
-    backgroundColor: '#451a03',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#92400e',
-  },
-  offlineBadgeText: {
-    color: '#fcd34d',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  inquilinoSection: {
-    marginTop: 28,
-    alignItems: 'center',
-    gap: 6,
-  },
-  inquilinoHint: {
-    fontSize: 13,
-    color: '#64748b',
-  },
-  inquilinoLink: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#34d399',
-  },
-});
