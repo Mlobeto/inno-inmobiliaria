@@ -12,6 +12,7 @@ export const ticketApi = baseApi.injectEndpoints({
     // ── TENANT ──
     getMyTickets: builder.query({
       query: () => '/tickets',
+      transformResponse: (res) => res.tickets || [],
       providesTags: ['Ticket'],
     }),
 
@@ -32,16 +33,19 @@ export const ticketApi = baseApi.injectEndpoints({
     // ── PLATFORM ADMIN ──
     getTicketStats: builder.query({
       query: () => '/tickets/admin/stats',
+      transformResponse: (res) => res.stats || {},
       providesTags: ['Ticket'],
     }),
 
     getAllTickets: builder.query({
       query: (params = {}) => ({ url: '/tickets/admin', params }),
+      transformResponse: (res) => res.tickets || [],
       providesTags: ['Ticket'],
     }),
 
     getTicketById: builder.query({
       query: (ticketId) => `/tickets/admin/${ticketId}`,
+      transformResponse: (res) => res.ticket || null,
       providesTags: (r, e, id) => [{ type: 'Ticket', id }],
     }),
 

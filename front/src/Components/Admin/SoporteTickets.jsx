@@ -202,7 +202,7 @@ function TicketThread({ ticket, onBack }) {
           </div>
         </div>
 
-        {(ticket.ticket_messages || []).map((msg) => {
+        {(ticket.messages || []).map((msg) => {
           const isAdmin = msg.authorRole === 'PLATFORM_ADMIN';
           return (
             <div key={msg.id} className={`flex ${isAdmin ? 'justify-start' : 'justify-end'}`}>
@@ -253,6 +253,7 @@ function TicketThread({ ticket, onBack }) {
 
 export default function SoporteTickets() {
   const { data: tickets = [], isLoading } = useGetMyTicketsQuery();
+  // transformResponse ya devuelve el array directamente
   const [showForm, setShowForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
 
@@ -330,11 +331,11 @@ export default function SoporteTickets() {
                   <span className={PRIORITY_STYLES[ticket.priority]?.color}>
                     {PRIORITY_STYLES[ticket.priority]?.label}
                   </span>
-                  {ticket.ticket_messages?.length > 0 && (
+                  {ticket.messages?.length > 0 && (
                     <>
                       <span>·</span>
                       <span className="flex items-center gap-1">
-                        <IoChatbubbleOutline size={12} /> {ticket.ticket_messages.length}
+                        <IoChatbubbleOutline size={12} /> {ticket.messages.length}
                       </span>
                     </>
                   )}

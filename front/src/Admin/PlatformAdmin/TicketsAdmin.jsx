@@ -54,7 +54,7 @@ function TicketDetail({ ticketId, onBack }) {
   const [updateStatus, { isLoading: updatingStatus }] = useUpdateTicketStatusMutation();
   const [message, setMessage] = useState('');
 
-  const ticket = data?.data || data;
+  const ticket = data;
 
   const handleSend = async () => {
     const trimmed = message.trim();
@@ -126,7 +126,7 @@ function TicketDetail({ ticketId, onBack }) {
           </div>
         </div>
 
-        {(ticket.ticket_messages || []).map((msg) => {
+        {(ticket.messages || []).map((msg) => {
           const isAdmin = msg.authorRole === 'PLATFORM_ADMIN';
           return (
             <div key={msg.id} className={`flex ${isAdmin ? 'justify-start' : 'justify-end'}`}>
@@ -179,8 +179,8 @@ export default function TicketsAdmin() {
   const [selectedId, setSelectedId] = useState(null);
   const [filterStatus, setFilterStatus] = useState('');
 
-  const stats = statsData?.data || statsData || {};
-  const tickets = ticketsData?.data || ticketsData || [];
+  const stats = statsData || {};
+  const tickets = ticketsData || [];
 
   const filtered = filterStatus ? tickets.filter((t) => t.status === filterStatus) : tickets;
 
@@ -204,7 +204,7 @@ export default function TicketsAdmin() {
               filterStatus === key ? 'border-indigo-500 shadow-md' : 'border-transparent'
             } ${cfg.bg}`}
           >
-            <p className={`text-2xl font-bold ${cfg.text}`}>{stats[key.toLowerCase()] ?? stats[key] ?? 0}</p>
+            <p className={`text-2xl font-bold ${cfg.text}`}>{stats[key.toLowerCase()] ?? 0}</p>
             <p className={`text-xs font-medium ${cfg.text} mt-0.5`}>{cfg.label}</p>
           </button>
         ))}
@@ -254,11 +254,11 @@ export default function TicketsAdmin() {
               </div>
               <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-400">
                 <span>{CATEGORY_LABELS[ticket.category]}</span>
-                {ticket.ticket_messages?.length > 0 && (
+                {ticket.messages?.length > 0 && (
                   <>
                     <span>·</span>
                     <span className="flex items-center gap-1">
-                      <IoChatbubbleOutline size={11} /> {ticket.ticket_messages.length}
+                      <IoChatbubbleOutline size={11} /> {ticket.messages.length}
                     </span>
                   </>
                 )}
