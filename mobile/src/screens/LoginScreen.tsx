@@ -16,7 +16,7 @@ import { login } from '@inno/shared';
 import { AppDispatch, RootState } from '../store/store';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 
-/** Logo AdminProp — 3 barras de distinta altura + arco inferior */
+/** Logo SentaProp — 3 barras de distinta altura + arco inferior */
 const AppLogo = () => (
   <View className="w-16 h-14 items-center justify-end">
     {/* Barras */}
@@ -79,7 +79,7 @@ export const LoginScreen = () => {
           <View className="items-center mb-10">
             <AppLogo />
             <Text className="text-4xl font-extrabold text-slate-100 mt-4 tracking-tight">
-              AdminProp
+              SentaProp
             </Text>
             <Text className="text-sm text-slate-400 mt-1 tracking-wide">
               Gestión Inmobiliaria
