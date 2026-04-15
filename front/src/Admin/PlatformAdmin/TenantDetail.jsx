@@ -253,7 +253,7 @@ const TenantDetail = () => {
                 <div>
                   <p className="text-sm text-gray-600">Subdomain</p>
                   <a
-                    href={`https://inno-inmobiliaria.vercel.app/${tenant.subdomain}`}
+                    href={`yellow-mud-000b27d0f.6.azurestaticapps.net/${tenant.subdomain}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-semibold text-blue-600 hover:underline"

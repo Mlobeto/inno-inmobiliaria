@@ -234,7 +234,7 @@ const TenantList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <a
-                          href={`https://inno-inmobiliaria.vercel.app/${tenant.subdomain}`}
+                          href={`yellow-mud-000b27d0f.6.azurestaticapps.net/${tenant.subdomain}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-sm text-blue-600 hover:underline"

@@ -908,7 +908,7 @@ exports.createManualTenant = async (req, res) => {
               temporaryPassword: adminPassword,
             }
           : null,
-        loginUrl: `${process.env.FRONTEND_URL || 'https://inno-inmobiliaria.vercel.app'}/${subdomain}/login`,
+        loginUrl: `${process.env.FRONTEND_URL || 'yellow-mud-000b27d0f.6.azurestaticapps.net'}/${subdomain}/login`,
         expiresAt: endDate,
       },
     });

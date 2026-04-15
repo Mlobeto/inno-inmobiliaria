@@ -166,28 +166,13 @@ async function seedPlans() {
   try {
     console.log('\n🚀 Iniciando creación de planes...\n');
 
-    const tables = await prisma.$queryRawUnsafe(
-      "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'plans'"
-    );
-
-    if (!tables.length) {
-      console.error('❌ ERROR: La tabla "plans" no existe.');
-      process.exit(1);
-    }
-
     for (const planData of plans) {
-      const existing = await prisma.plans.findUnique({ where: { planId: planData.planId } });
-
-      if (existing) {
-        await prisma.plans.update({
-          where: { planId: planData.planId },
-          data: planData,
-        });
-        console.log(`🔄 Plan "${planData.name}" actualizado`);
-      } else {
-        await prisma.plans.create({ data: planData });
-        console.log(`✅ Plan "${planData.name}" creado`);
-      }
+      await prisma.plans.upsert({
+        where: { planId: planData.planId },
+        update: planData,
+        create: planData,
+      });
+      console.log(`✅ Plan "${planData.name}" sincronizado`);
     }
 
     const allPlans = await prisma.plans.findMany({ orderBy: { sortOrder: 'asc' } });
