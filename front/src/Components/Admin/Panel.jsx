@@ -28,6 +28,7 @@ import {
   IoGlobeOutline,
   IoFunnelOutline,
   IoChatbubblesOutline,
+  IoMapOutline,
 } from 'react-icons/io5';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
@@ -219,7 +220,16 @@ const Panel = () => {
       gradient: 'from-teal-500 to-cyan-500',
       hoverGradient: 'from-teal-600 to-cyan-600',
       description: 'Tickets de ayuda'
-    },  ];
+    },
+    {
+      title: 'Loteos',
+      path: '/panelLoteos',
+      icon: IoMapOutline,
+      gradient: 'from-lime-500 to-green-600',
+      hoverGradient: 'from-lime-600 to-green-700',
+      description: 'Venta de lotes'
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

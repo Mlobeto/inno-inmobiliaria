@@ -26,6 +26,8 @@ import SubscriptionSuccess from "./Components/SubscriptionSuccess";
 // 🆕 NUEVO - Landing Pages Públicas
 import TenantLanding from "./Components/Landing/TenantLanding";
 import PropertyDetail from "./Components/Landing/PropertyDetail";
+import LoteoDetail from "./Components/Landing/LoteoDetail";
+import PanelLoteos from "./Components/Admin/PanelLoteos";
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
@@ -58,6 +60,7 @@ function App() {
       {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
       <Route path="/landing/:subdomain" element={<TenantLanding />} />
       <Route path="/landing/:subdomain/property/:propertyId" element={<PropertyDetail />} />
+      <Route path="/landing/:subdomain/loteo/:loteoId" element={<LoteoDetail />} />
       
       {/* Ruta protegida: solo los administradores pueden ver el Panel */}
       <Route path="/panel" element={<ProtectedRoute><Panel /></ProtectedRoute>} />
@@ -69,6 +72,7 @@ function App() {
 
       <Route path="/panelLeads" element={<ProtectedRoute><PanelLeads /></ProtectedRoute>} />
       <Route path="/soporte" element={<ProtectedRoute><SoporteTickets /></ProtectedRoute>} />
+      <Route path="/panelLoteos" element={<ProtectedRoute><PanelLoteos /></ProtectedRoute>} />
 
       <Route path="/PanelInformes" element={<ProtectedRoute><PanelInformes /></ProtectedRoute>} />
 

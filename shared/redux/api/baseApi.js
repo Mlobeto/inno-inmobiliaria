@@ -103,6 +103,9 @@ export const baseApi = createApi({
 
     // Soporte / Tickets
     'Ticket',
+
+    // Loteos
+    'Loteo',
   ],
   endpoints: () => ({}), // Los endpoints se agregan en archivos separados
 });

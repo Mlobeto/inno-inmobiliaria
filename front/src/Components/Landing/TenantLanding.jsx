@@ -10,7 +10,9 @@ import {
   IoCarOutline,
   IoExpandOutline,
   IoArrowBackOutline,
-  IoLogoWhatsapp
+  IoLogoWhatsapp,
+  IoMapOutline,
+  IoGridOutline,
 } from 'react-icons/io5';
 
 const TenantLanding = () => {
@@ -20,6 +22,7 @@ const TenantLanding = () => {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [filter, setFilter] = useState('all'); // all, venta, alquiler, temporal
+  const [loteos, setLoteos] = useState([]);
 
   useEffect(() => {
     const fetchLandingData = async () => {
@@ -41,6 +44,15 @@ const TenantLanding = () => {
     if (subdomain) {
       fetchLandingData();
     }
+  }, [subdomain]);
+
+  // Fetch loteos publicados
+  useEffect(() => {
+    if (!subdomain) return;
+    axios
+      .get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/public/${subdomain}/loteos`)
+      .then(res => setLoteos(res.data?.loteos || []))
+      .catch(() => setLoteos([]));
   }, [subdomain]);
 
   const filteredProperties = data?.properties.filter(prop => {
@@ -295,6 +307,58 @@ const TenantLanding = () => {
           </div>
         )}
       </main>
+
+      {/* Sección Loteos */}
+      {loteos.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+          <div className="flex items-center space-x-3 mb-6">
+            <IoMapOutline className="w-7 h-7 text-lime-400" />
+            <h2 className="text-2xl font-bold text-white">Loteos en venta</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loteos.map(loteo => (
+              <Link
+                key={loteo.id}
+                to={`/landing/${subdomain}/loteo/${loteo.id}`}
+                className="group bg-white/5 border border-white/10 hover:border-lime-500/50 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02]"
+              >
+                <div className="relative h-44 bg-slate-700 overflow-hidden">
+                  {loteo.photos?.[0] ? (
+                    <img
+                      src={loteo.photos[0]}
+                      alt={loteo.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <IoMapOutline className="w-14 h-14 text-slate-500" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 left-3 px-3 py-1 bg-lime-500 rounded-full text-xs font-bold text-white">
+                    LOTEO
+                  </div>
+                </div>
+                <div className="p-4">
+                  <h3 className="text-white font-bold text-lg mb-1 group-hover:text-lime-400 transition">{loteo.name}</h3>
+                  {(loteo.city || loteo.province) && (
+                    <p className="text-slate-400 text-sm flex items-center gap-1 mb-2">
+                      <IoLocationOutline className="w-4 h-4" />
+                      {[loteo.city, loteo.province].filter(Boolean).join(', ')}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-slate-400 text-sm">
+                      <IoGridOutline className="w-4 h-4" />
+                      {loteo.totalLotes || 0} lotes
+                    </span>
+                    <span className="text-lime-400 text-sm group-hover:translate-x-1 transition-transform">Ver lotes →</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="bg-white/5 border-t border-white/10 mt-16 py-8">

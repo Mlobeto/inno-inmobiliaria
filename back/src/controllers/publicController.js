@@ -243,3 +243,79 @@ exports.getPropertyDetail = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/public/:subdomain/loteos
+ * Lista los loteos publicados del tenant
+ */
+exports.getPublicLoteos = async (req, res) => {
+  try {
+    const { subdomain } = req.params;
+
+    const tenant = await prisma.tenants.findFirst({
+      where: { subdomain: subdomain.toLowerCase() },
+      select: { tenantId: true, businessName: true, features: true },
+    });
+
+    if (!tenant) return res.status(404).json({ error: 'Inmobiliaria no encontrada' });
+    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Landing no disponible' });
+
+    const loteos = await prisma.loteos.findMany({
+      where: { tenantId: tenant.tenantId, isPublished: true },
+      include: {
+        lotes: { orderBy: { number: 'asc' } },
+        _count: { select: { lotes: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.status(200).json({ success: true, loteos });
+  } catch (error) {
+    console.error('Error en getPublicLoteos:', error);
+    return res.status(500).json({ error: 'Error al cargar loteos' });
+  }
+};
+
+/**
+ * GET /api/public/:subdomain/loteos/:loteoId
+ * Detalle de un loteo con todos sus lotes
+ */
+exports.getPublicLoteoDetail = async (req, res) => {
+  try {
+    const { subdomain, loteoId } = req.params;
+
+    const tenant = await prisma.tenants.findFirst({
+      where: { subdomain: subdomain.toLowerCase() },
+      select: { tenantId: true, businessName: true, features: true },
+    });
+
+    if (!tenant) return res.status(404).json({ error: 'Inmobiliaria no encontrada' });
+    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Landing no disponible' });
+
+    const loteo = await prisma.loteos.findFirst({
+      where: { id: Number(loteoId), tenantId: tenant.tenantId, isPublished: true },
+      include: { lotes: { orderBy: { number: 'asc' } } },
+    });
+
+    if (!loteo) return res.status(404).json({ error: 'Loteo no encontrado' });
+
+    const companySettings = await prisma.admin_settings.findFirst({
+      where: { tenant_id: tenant.tenantId },
+      select: { company_name: true, company_phone: true, company_whatsapp: true, company_logo_url: true },
+    });
+
+    return res.status(200).json({
+      success: true,
+      loteo,
+      tenant: {
+        name: companySettings?.company_name || tenant.businessName,
+        logo: companySettings?.company_logo_url || null,
+        phone: companySettings?.company_phone || null,
+        whatsapp: companySettings?.company_whatsapp || null,
+      },
+    });
+  } catch (error) {
+    console.error('Error en getPublicLoteoDetail:', error);
+    return res.status(500).json({ error: 'Error al cargar loteo' });
+  }
+};

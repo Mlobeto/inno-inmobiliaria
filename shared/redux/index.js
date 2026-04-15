@@ -151,6 +151,20 @@ export {
   useUpdateTicketStatusMutation,
 } from './api/ticketApi';
 
+// ==================== LOTEO API ====================
+export {
+  loteoApi,
+  useGetLoteosQuery,
+  useGetLoteoByIdQuery,
+  useCreateLoteoMutation,
+  useUpdateLoteoMutation,
+  useDeleteLoteoMutation,
+  useTogglePublishLoteoMutation,
+  useCreateLoteMutation,
+  useUpdateLoteMutation,
+  useDeleteLoteMutation,
+} from './api/loteoApi';
+
 // ==================== AUTH SLICE ====================
 export {
   default as authReducer,

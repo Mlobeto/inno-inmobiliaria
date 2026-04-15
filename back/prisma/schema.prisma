@@ -705,6 +705,7 @@ model tenants {
   subscription_payment_logs subscription_payment_logs[]
   leads                leads[]
   support_tickets      support_tickets[]
+  loteos               loteos[]
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
   @@index([cuit], map: "tenants_cuit")
@@ -1047,4 +1048,59 @@ enum enum_ticket_status {
   EN_PROGRESO
   RESUELTO
   CERRADO
+}
+
+// ═══════════════════════════════════════════════
+// LOTEOS
+// ═══════════════════════════════════════════════
+
+model loteos {
+  id          Int               @id @default(autoincrement())
+  tenantId    Int
+  name        String            @db.VarChar(200)
+  description String?
+  address     String?
+  city        String?
+  province    String?
+  totalLotes  Int               @default(0)
+  status      enum_loteo_status @default(ACTIVO)
+  photos      String[]          @default([])
+  isPublished Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  tenants     tenants           @relation(fields: [tenantId], references: [tenantId])
+  lotes       lotes[]
+
+  @@index([tenantId], map: "idx_loteos_tenant")
+}
+
+model lotes {
+  id          Int              @id @default(autoincrement())
+  loteoId     Int
+  number      String           @db.VarChar(50)
+  surface     Float?
+  price       Float?
+  currency    String           @default("ARS") @db.VarChar(10)
+  status      enum_lote_status @default(DISPONIBLE)
+  description String?
+  photos      String[]         @default([])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  loteo       loteos           @relation(fields: [loteoId], references: [id], onDelete: Cascade)
+
+  @@index([loteoId], map: "idx_lotes_loteo")
+}
+
+enum enum_loteo_status {
+  ACTIVO
+  INACTIVO
+  VENDIDO
+}
+
+enum enum_lote_status {
+  DISPONIBLE
+  RESERVADO
+  VENDIDO
 }

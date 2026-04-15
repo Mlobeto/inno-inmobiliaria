@@ -69,4 +69,16 @@ router.get('/:subdomain', publicController.getTenantLanding);
  */
 router.get('/:subdomain/property/:propertyId', publicController.getPropertyDetail);
 
+/**
+ * GET /api/public/:subdomain/loteos
+ * Lista de loteos publicados del tenant
+ */
+router.get('/:subdomain/loteos', publicController.getPublicLoteos);
+
+/**
+ * GET /api/public/:subdomain/loteos/:loteoId
+ * Detalle de un loteo con todos sus lotes
+ */
+router.get('/:subdomain/loteos/:loteoId', publicController.getPublicLoteoDetail);
+
 module.exports = router;
