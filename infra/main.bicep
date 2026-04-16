@@ -230,7 +230,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             }
             {
               name: 'ACS_SENDER_ADDRESS'
-              value: 'DoNotReply@${emailDomain.properties.mailFromSenderDomain}'
+              value: 'DoNotReply@gestionprops.com.ar'
             }
           ]
         }
