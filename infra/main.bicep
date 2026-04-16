@@ -38,6 +38,9 @@ param containerMemory string = '1Gi'
 @description('Imagen Docker inicial del backend (se actualiza por CI/CD)')
 param backendImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
+@description('Crear role assignments (solo necesario en el primer deploy)')
+param createRoleAssignments bool = false
+
 // ---------- Variables ----------
 var prefix = '${projectName}-${environment}'
 var acrName = replace('${projectName}acr${environment}', '-', '') // ACR no acepta guiones
@@ -251,7 +254,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
 }
 
 // Asignar rol AcrPull al Managed Identity del Container App
-resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+// Solo se crea en el primer deploy (createRoleAssignments=true) para evitar
+// el error RoleAssignmentExists en deploys incrementales
+resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(acr.id, containerApp.id, 'acrpull')
   scope: acr
   properties: {
@@ -262,7 +267,7 @@ resource acrPullRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 // Asignar rol Key Vault Secrets User al Managed Identity
-resource kvSecretsRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource kvSecretsRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (createRoleAssignments) {
   name: guid(keyVault.id, containerApp.id, 'kvsecrets')
   scope: keyVault
   properties: {
