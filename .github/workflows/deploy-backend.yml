@@ -43,16 +43,30 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ env.ACR_NAME }}
 
-      # Build y push de la imagen Docker
-      - name: Build and push Docker image
-        working-directory: back
+      # Build y push usando ACR Tasks (se compila en Azure, sin depender de Docker Hub desde el runner)
+      - name: Build and push Docker image via ACR Tasks
         run: |
           IMAGE_TAG=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          IMAGE_LATEST=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
-          docker build -t "$IMAGE_TAG" -t "$IMAGE_LATEST" .
-          docker push "$IMAGE_TAG"
-          docker push "$IMAGE_LATEST"
+          az acr build \
+            --registry ${{ env.ACR_NAME }} \
+            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --image ${{ env.IMAGE_NAME }}:latest \
+            ./back
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      # Registrar/actualizar los secretos en el Container App desde GitHub Secrets.
+      # az containerapp secret set hace upsert: crea si no existen, actualiza si ya existen.
+      - name: Sync secrets to Container App
+        run: |
+          az containerapp secret set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --secrets \
+              "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
+              "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
+              "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
+              "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}"
 
       # Actualizar la imagen en Container Apps y referenciar secrets como env vars
       - name: Deploy to Container Apps
