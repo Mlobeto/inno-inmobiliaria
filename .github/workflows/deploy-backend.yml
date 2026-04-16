@@ -89,7 +89,8 @@ jobs:
               "ML_CLIENT_ID=6081765459956502" \
               "ML_REDIRECT_URI=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io/api/mercadolibre/callback" \
               "PLATFORM_ADMIN_EMAIL=admin@innoinmo.com" \
-              "PLATFORM_ADMIN_EMAILS=admin@innoinmo.com"
+              "PLATFORM_ADMIN_EMAILS=admin@innoinmo.com" \
+              "CONTACT_EMAIL=${{ secrets.CONTACT_EMAIL }}"
 
       # Verificar que el deployment quedó activo
       - name: Verify deployment
