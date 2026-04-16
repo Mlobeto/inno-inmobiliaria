@@ -202,6 +202,7 @@ const sendPasswordChangedEmail = async (to, username) => {
 };
 
 module.exports = {
+  sendEmail,
   sendPasswordResetEmail,
   sendPasswordChangedEmail
 };
