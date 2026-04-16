@@ -21,6 +21,10 @@ import TenantList from "./Admin/PlatformAdmin/TenantList"; // 🆕 NUEVO
 import TenantDetail from "./Admin/PlatformAdmin/TenantDetail"; // 🆕 NUEVO
 // 🆕 NUEVO - Componentes de Suscripción
 import PlanSelector from "./Components/PlanSelector";
+// Páginas públicas
+import ContactForm from "./Components/ContactForm";
+import TermsOfService from "./Components/TermsOfService";
+import PrivacyPolicy from "./Components/PrivacyPolicy";
 
 import SubscriptionSuccess from "./Components/SubscriptionSuccess";
 // 🆕 NUEVO - Landing Pages Públicas
@@ -156,6 +160,11 @@ function App() {
       {/* 🆕 NUEVO - Suscripciones y Planes */}
       <Route path="/plans" element={<PlanSelector />} /> {/* Selector de planes (público/autenticado) */}
       <Route path="/subscription/success" element={<SubscriptionSuccess />} /> {/* Callback de MercadoPago */}
+
+      {/* Páginas públicas */}
+      <Route path="/contacto" element={<ContactForm />} />
+      <Route path="/terminos" element={<TermsOfService />} />
+      <Route path="/privacidad" element={<PrivacyPolicy />} />
     </Routes>
     </>
   );

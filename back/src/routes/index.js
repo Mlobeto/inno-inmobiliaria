@@ -21,6 +21,7 @@ try {
 
 // Rutas públicas (sin requireTenantScope)
 router.use("/auth", require("./auth"));
+router.use("/contact", require("./contact")); // Formulario de contacto público
 router.use("/portal", require("./portal")); // Portal Inquilinos (auth propio)
 router.use("/webhooks", require("./webhookRoutes")); // Payment webhooks
 router.use("/public", require("./publicRoutes")); // Rutas públicas (planes, etc.)
