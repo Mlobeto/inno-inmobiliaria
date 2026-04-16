@@ -193,6 +193,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           // Construir DATABASE_URL usando los parámetros del servidor PostgreSQL
           value: 'postgresql://${pgAdminUser}:${pgAdminPassword}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDbName}?sslmode=require'
         }
+        {
+          name: 'acs-connection-string'
+          value: communicationService.listKeys().primaryConnectionString
+        }
       ]
     }
     template: {
@@ -216,6 +220,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'PORT'
               value: '3001'
+            }
+            {
+              name: 'ACS_CONNECTION_STRING'
+              secretRef: 'acs-connection-string'
+            }
+            {
+              name: 'ACS_SENDER_ADDRESS'
+              value: 'DoNotReply@${emailDomain.properties.mailFromSenderDomain}'
             }
           ]
         }
@@ -309,6 +321,46 @@ resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containe
 
 // Nota: el rol Storage Blob Data Contributor ya está asignado al Managed Identity del Container App (asignado en deploy inicial)
 
+// ---------- Azure Communication Services — Email ----------
+
+resource emailService 'Microsoft.Communication/emailServices@2023-04-01' = {
+  name: '${prefix}-email'
+  location: 'global'
+  properties: {
+    dataLocation: 'United States'
+  }
+}
+
+// Dominio gestionado por Azure (gratuito, usa @azurecomm.net — sin verificar dominio propio)
+resource emailDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' = {
+  parent: emailService
+  name: 'AzureManagedDomain'
+  location: 'global'
+  properties: {
+    domainManagement: 'AzureManaged'
+  }
+}
+
+resource communicationService 'Microsoft.Communication/communicationServices@2023-04-01' = {
+  name: '${prefix}-acs'
+  location: 'global'
+  properties: {
+    dataLocation: 'United States'
+    linkedDomains: [
+      emailDomain.id
+    ]
+  }
+}
+
+// Guardar connection string de ACS en Key Vault
+resource acsConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'acs-connection-string'
+  properties: {
+    value: communicationService.listKeys().primaryConnectionString
+  }
+}
+
 // ---------- Static Web App — Frontend (React/Vite) ----------
 resource staticWebApp 'Microsoft.Web/staticSites@2023-12-01' = {
   name: staticWebAppName
@@ -334,3 +386,5 @@ output pgServerFqdn string = pgServer.properties.fullyQualifiedDomainName
 output pgConnectionString string = 'postgresql://${pgAdminUser}@${pgServer.properties.fullyQualifiedDomainName}:5432/${pgDbName}?sslmode=require'
 output storageAccountName string = storageAccount.name
 output storageBlobEndpoint string = storageAccount.properties.primaryEndpoints.blob
+output acsEndpoint string = communicationService.properties.hostName
+output emailSenderDomain string = emailDomain.properties.mailFromSenderDomain

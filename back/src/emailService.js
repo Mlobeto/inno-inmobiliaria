@@ -1,16 +1,65 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Configurar el transporter de nodemailer
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-  port: process.env.EMAIL_PORT || 587,
-  secure: false, // true para 465, false para otros puertos
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
+// ============================================================
+// Estrategia dual:
+//  - En producción (ACS_CONNECTION_STRING presente): usa Azure
+//    Communication Services Email SDK.
+//  - En desarrollo/local: usa nodemailer con SMTP (Gmail, etc.)
+// ============================================================
+
+const useAzure = !!process.env.ACS_CONNECTION_STRING;
+
+// --- Cliente Azure Communication Services (producción) ---
+let acsClient = null;
+if (useAzure) {
+  const { EmailClient } = require('@azure/communication-email');
+  acsClient = new EmailClient(process.env.ACS_CONNECTION_STRING);
+}
+
+// --- Transporter nodemailer (desarrollo) ---
+const transporter = useAzure
+  ? null
+  : nodemailer.createTransport({
+      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+      port: process.env.EMAIL_PORT || 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+/**
+ * Envía un email usando ACS (producción) o nodemailer (desarrollo).
+ * @param {{ to: string, subject: string, html: string }} options
+ */
+const sendEmail = async ({ to, subject, html }) => {
+  if (useAzure) {
+    const senderAddress =
+      process.env.ACS_SENDER_ADDRESS || 'DoNotReply@azurecomm.net';
+
+    const message = {
+      senderAddress,
+      recipients: { to: [{ address: to }] },
+      content: { subject, html },
+    };
+
+    const poller = await acsClient.beginSend(message);
+    const result = await poller.pollUntilDone();
+    return { success: true, messageId: result.id };
+  } else {
+    const fromName = process.env.EMAIL_FROM_NAME || 'AdminProp';
+    const fromUser = process.env.EMAIL_USER;
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromUser}>`,
+      to,
+      subject,
+      html,
+    });
+    return { success: true, messageId: info.messageId };
   }
-});
+};
 
 /**
  * Envía un email para resetear contraseña
@@ -21,12 +70,8 @@ const transporter = nodemailer.createTransport({
  */
 const sendPasswordResetEmail = async (to, token, username) => {
   const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${token}`;
-  
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'InnoInmo'}" <${process.env.EMAIL_USER}>`,
-    to,
-    subject: 'Recuperación de Contraseña - InnoInmo',
-    html: `
+
+  const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -93,17 +138,9 @@ const sendPasswordResetEmail = async (to, token, username) => {
           </div>
         </body>
       </html>
-    `
-  };
+  `;
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email enviado:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error al enviar email:', error);
-    throw error;
-  }
+  return sendEmail({ to, subject: 'Recuperación de Contraseña - AdminProp', html });
 };
 
 /**
@@ -113,11 +150,7 @@ const sendPasswordResetEmail = async (to, token, username) => {
  * @returns {Promise} Promesa con resultado del envío
  */
 const sendPasswordChangedEmail = async (to, username) => {
-  const mailOptions = {
-    from: `"${process.env.EMAIL_FROM_NAME || 'InnoInmo'}" <${process.env.EMAIL_USER}>`,
-    to,
-    subject: 'Contraseña Actualizada - InnoInmo',
-    html: `
+  const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -163,17 +196,9 @@ const sendPasswordChangedEmail = async (to, username) => {
           </div>
         </body>
       </html>
-    `
-  };
+  `;
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email de confirmación enviado:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error al enviar email de confirmación:', error);
-    throw error;
-  }
+  return sendEmail({ to, subject: 'Contraseña Actualizada - AdminProp', html });
 };
 
 module.exports = {
