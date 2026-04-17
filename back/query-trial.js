@@ -1,22 +1,25 @@
+require("dotenv").config();
 const prisma = require("./src/utils/prismaClient");
 
 async function main() {
-  const user = await prisma.user.findFirst({
-    where: { email: "mercedeslobeto@gmail.com" },
-    include: {
-      tenant: {
-        include: { subscriptions: true },
-      },
+  // Buscar el usuario por email en admins o en tenants directamente
+  const tenant = await prisma.tenants.findFirst({
+    where: {
+      OR: [
+        { email: "mercedeslobeto@gmail.com" },
+        { admins: { some: { email: "mercedeslobeto@gmail.com" } } },
+      ],
     },
+    include: { subscriptions: true, admins: true },
   });
 
-  if (!user) {
-    console.log("Usuario no encontrado");
+  if (!tenant) {
+    console.log("Tenant no encontrado");
     return;
   }
 
-  console.log("Tenant:", user.tenant.id, user.tenant.name);
-  console.log("Subscriptions:", JSON.stringify(user.tenant.subscriptions, null, 2));
+  console.log("Tenant:", tenant.id, tenant.name, tenant.email);
+  console.log("Subscriptions:", JSON.stringify(tenant.subscriptions, null, 2));
 }
 
 main()
