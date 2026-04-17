@@ -233,6 +233,15 @@ export const platformAdminApi = baseApi.injectEndpoints({
       providesTags: (r, e, id) => [{ type: 'Tenants', id }],
     }),
 
+    updateTenantSubscription: builder.mutation({
+      query: ({ tenantId, ...body }) => ({
+        url: `/platform-admin/tenants/${tenantId}/subscription`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: (r, e, { tenantId }) => [{ type: 'Tenants', id: tenantId }],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -268,6 +277,9 @@ export const {
   // Impersonation + Operational
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
+
+  // Subscription management
+  useUpdateTenantSubscriptionMutation,
 } = platformAdminApi;
 
 export default platformAdminApi;

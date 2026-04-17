@@ -14,6 +14,7 @@ import {
   useListPlansQuery,
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
+  useUpdateTenantSubscriptionMutation,
 } from '@shared/redux';
 
 const TenantDetail = () => {
@@ -27,6 +28,7 @@ const TenantDetail = () => {
   const [deleteTenant, { isLoading: isDeleting }] = useDeleteTenantMutation();
   const { data: plansData } = useListPlansQuery();
   const [impersonateTenant, { isLoading: isImpersonating }] = useImpersonateTenantMutation();
+  const [updateTenantSubscription, { isLoading: isUpdatingSubscription }] = useUpdateTenantSubscriptionMutation();
   const { data: operationalData } = useGetTenantOperationalQuery(tenantId);
 
   // Modales
@@ -34,6 +36,8 @@ const TenantDetail = () => {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showChangePlanModal, setShowChangePlanModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [subscriptionForm, setSubscriptionForm] = useState({ status: '', trialEnd: '', currentPeriodEnd: '' });
 
   // Estado local del formulario de edición
   const [editForm, setEditForm] = useState({});
@@ -139,6 +143,47 @@ const TenantDetail = () => {
       navigate('/platform-admin/tenants');
     } catch (err) {
       setActionError(err?.data?.message || 'Error al eliminar tenant');
+    }
+  };
+
+  const openSubscriptionModal = () => {
+    const sub = data?.data?.subscription;
+    setSubscriptionForm({
+      status: sub?.status || '',
+      trialEnd: sub?.trialEnd ? new Date(sub.trialEnd).toISOString().slice(0, 16) : '',
+      currentPeriodEnd: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString().slice(0, 16) : '',
+    });
+    setActionError('');
+    setShowSubscriptionModal(true);
+  };
+
+  const handleUpdateSubscription = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    try {
+      const payload = { tenantId: parseInt(tenantId) };
+      if (subscriptionForm.status) payload.status = subscriptionForm.status;
+      if (subscriptionForm.trialEnd) payload.trialEnd = subscriptionForm.trialEnd;
+      if (subscriptionForm.currentPeriodEnd) payload.currentPeriodEnd = subscriptionForm.currentPeriodEnd;
+      await updateTenantSubscription(payload).unwrap();
+      setShowSubscriptionModal(false);
+      refetch();
+    } catch (err) {
+      setActionError(err?.data?.message || 'Error al actualizar suscripción');
+    }
+  };
+
+  const handleExpireTrial = async () => {
+    try {
+      await updateTenantSubscription({
+        tenantId: parseInt(tenantId),
+        status: 'past_due',
+        trialEnd: new Date(Date.now() - 86400000).toISOString(),
+        currentPeriodEnd: new Date(Date.now() - 86400000).toISOString(),
+      }).unwrap();
+      refetch();
+    } catch (err) {
+      setActionError(err?.data?.message || 'Error al expirar trial');
     }
   };
 
@@ -448,6 +493,19 @@ const TenantDetail = () => {
                 >
                   {isImpersonating ? '⏳ Generando token...' : '🎭 Impersonar Tenant'}
                 </button>
+                <button
+                  onClick={openSubscriptionModal}
+                  className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-left"
+                >
+                  💳 Editar Suscripción
+                </button>
+                <button
+                  onClick={handleExpireTrial}
+                  disabled={isUpdatingSubscription}
+                  className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 text-left disabled:opacity-50"
+                >
+                  {isUpdatingSubscription ? '⏳ Procesando...' : '⏱️ Simular Trial Vencido'}
+                </button>
               </div>
             </div>
 
@@ -615,6 +673,57 @@ const TenantDetail = () => {
                 <button type="button" onClick={() => setShowChangePlanModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={isUpdating} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
                   {isUpdating ? 'Cambiando...' : 'Confirmar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Editar Suscripción ── */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">💳 Editar Suscripción</h3>
+            <form onSubmit={handleUpdateSubscription}>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={subscriptionForm.status}
+                  onChange={e => setSubscriptionForm(f => ({ ...f, status: e.target.value }))}
+                >
+                  <option value="">-- Sin cambiar --</option>
+                  <option value="trialing">trialing</option>
+                  <option value="active">active</option>
+                  <option value="past_due">past_due</option>
+                  <option value="canceled">canceled</option>
+                  <option value="suspended">suspended</option>
+                </select>
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fin del Trial</label>
+                <input
+                  type="datetime-local"
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={subscriptionForm.trialEnd}
+                  onChange={e => setSubscriptionForm(f => ({ ...f, trialEnd: e.target.value }))}
+                />
+              </div>
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fin del Período Actual</label>
+                <input
+                  type="datetime-local"
+                  className="w-full border rounded-lg px-3 py-2"
+                  value={subscriptionForm.currentPeriodEnd}
+                  onChange={e => setSubscriptionForm(f => ({ ...f, currentPeriodEnd: e.target.value }))}
+                />
+              </div>
+              {actionError && <p className="text-red-600 text-sm mb-2">{actionError}</p>}
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setShowSubscriptionModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button type="submit" disabled={isUpdatingSubscription} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50">
+                  {isUpdatingSubscription ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>

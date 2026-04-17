@@ -59,6 +59,7 @@ export {
   useTogglePlanStatusMutation,
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
+  useUpdateTenantSubscriptionMutation,
 } from './api/platformAdminApi';
 
 // ==================== SUBSCRIPTION API ====================

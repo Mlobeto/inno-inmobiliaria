@@ -993,6 +993,64 @@ exports.impersonateTenant = async (req, res) => {
 };
 
 /**
+ * @route PATCH /api/platform-admin/tenants/:tenantId/subscription
+ * @desc Actualiza el estado y/o fechas de la suscripción de un tenant (útil para testing y gestión manual)
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.updateTenantSubscription = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const { status, trialEnd, currentPeriodEnd, trialStart, currentPeriodStart } = req.body;
+
+    const subscription = await prisma.subscriptions.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!subscription) {
+      return res.status(404).json({ success: false, message: 'Suscripción no encontrada para este tenant' });
+    }
+
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (trialEnd !== undefined) updateData.trialEnd = new Date(trialEnd);
+    if (trialStart !== undefined) updateData.trialStart = new Date(trialStart);
+    if (currentPeriodEnd !== undefined) updateData.currentPeriodEnd = new Date(currentPeriodEnd);
+    if (currentPeriodStart !== undefined) updateData.currentPeriodStart = new Date(currentPeriodStart);
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, message: 'No se proporcionaron campos para actualizar' });
+    }
+
+    const updated = await prisma.subscriptions.update({
+      where: { subscriptionId: subscription.subscriptionId },
+      data: updateData,
+    });
+
+    // Sincronizar trialEndsAt en el tenant si se actualizó trialEnd
+    if (trialEnd !== undefined) {
+      await prisma.tenants.update({
+        where: { tenantId },
+        data: { trialEndsAt: new Date(trialEnd) },
+      });
+    }
+
+    await invalidateTenantCache(tenantId, null, null);
+
+    logger.info('Suscripción actualizada por platform admin', { tenantId, updateData });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Suscripción actualizada exitosamente',
+      data: updated,
+    });
+  } catch (error) {
+    logger.error('Error en updateTenantSubscription', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al actualizar suscripción', error: error.message });
+  }
+};
+
+/**
  * @route GET /api/platform-admin/tenants/:tenantId/operational
  * @desc Datos operacionales de un tenant (clientes, propiedades, contratos, pagos recientes)
  * @access Private (PLATFORM_ADMIN only)
