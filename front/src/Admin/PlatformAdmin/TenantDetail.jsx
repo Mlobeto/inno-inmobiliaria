@@ -15,6 +15,12 @@ import {
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
   useUpdateTenantSubscriptionMutation,
+  useResetTenantAdminPasswordMutation,
+  useGetTenantPaymentsQuery,
+  useSendEmailToTenantMutation,
+  useGetTenantActivityQuery,
+  useGetTenantErrorsQuery,
+  useCheckSubdomainAvailabilityQuery,
 } from '@shared/redux';
 
 const TenantDetail = () => {
@@ -29,7 +35,15 @@ const TenantDetail = () => {
   const { data: plansData } = useListPlansQuery();
   const [impersonateTenant, { isLoading: isImpersonating }] = useImpersonateTenantMutation();
   const [updateTenantSubscription, { isLoading: isUpdatingSubscription }] = useUpdateTenantSubscriptionMutation();
+  const [resetTenantAdminPassword, { isLoading: isResettingPassword }] = useResetTenantAdminPasswordMutation();
   const { data: operationalData } = useGetTenantOperationalQuery(tenantId);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const { data: paymentsData, isFetching: isLoadingPayments } = useGetTenantPaymentsQuery({ tenantId, page: paymentsPage, limit: 10 });
+  const [sendEmailToTenant, { isLoading: isSendingEmail }] = useSendEmailToTenantMutation();
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailForm, setEmailForm] = useState({ subject: '', body: '' });
+  const { data: activityData, isFetching: isLoadingActivity } = useGetTenantActivityQuery({ tenantId, limit: 50 });
+  const { data: errorsData, isFetching: isLoadingErrors } = useGetTenantErrorsQuery(tenantId);
 
   // Modales
   const [showEditModal, setShowEditModal] = useState(false);
@@ -38,9 +52,17 @@ const TenantDetail = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [subscriptionForm, setSubscriptionForm] = useState({ status: '', trialEnd: '', currentPeriodEnd: '' });
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordForm, setResetPasswordForm] = useState({ newPassword: '' });
+  const [resetLink, setResetLink] = useState('');
 
   // Estado local del formulario de edición
   const [editForm, setEditForm] = useState({});
+  const [subdomainToCheck, setSubdomainToCheck] = useState('');
+  const { data: subdomainCheckData, isFetching: checkingSubdomain } = useCheckSubdomainAvailabilityQuery(
+    subdomainToCheck,
+    { skip: !subdomainToCheck || subdomainToCheck.length < 3 },
+  );
   const [suspendReason, setSuspendReason] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [actionError, setActionError] = useState('');
@@ -90,7 +112,9 @@ const TenantDetail = () => {
       address: tenant.address || '',
       maxAgents: tenant.maxAgents || 5,
       maxProperties: tenant.maxProperties || 100,
+      subdomain: tenant.subdomain || '',
     });
+    setSubdomainToCheck('');
     setActionError('');
     setShowEditModal(true);
   };
@@ -146,6 +170,25 @@ const TenantDetail = () => {
     }
   };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setActionError('');
+    setResetLink('');
+    try {
+      const payload = { tenantId: parseInt(tenantId) };
+      if (resetPasswordForm.newPassword) payload.newPassword = resetPasswordForm.newPassword;
+      const res = await resetTenantAdminPassword(payload).unwrap();
+      if (res.data?.resetLink) {
+        setResetLink(res.data.resetLink);
+      } else {
+        setShowResetPasswordModal(false);
+        setResetPasswordForm({ newPassword: '' });
+      }
+    } catch (err) {
+      setActionError(err?.data?.message || 'Error al resetear contraseña');
+    }
+  };
+
   const openSubscriptionModal = () => {
     const sub = data?.data?.subscription;
     setSubscriptionForm({
@@ -193,11 +236,10 @@ const TenantDetail = () => {
       const res = await impersonateTenant(parseInt(tenantId)).unwrap();
       const token = res?.data?.token || res?.token;
       if (!token) throw new Error('Token no recibido');
-      // Guardar token de impersonación y redirigir al panel del tenant
-      localStorage.setItem('impersonation_token', token);
-      localStorage.setItem('impersonation_tenantId', tenantId);
-      // Abrir en nueva pestaña para no perder la sesión admin
-      window.open('/', '_blank');
+      const tenantInfo = res?.data?.tenant || res?.tenant || {};
+      const tenantParam = encodeURIComponent(JSON.stringify(tenantInfo));
+      // Abrir en nueva pestaña pasando el token por URL (sin guardarlo en localStorage de esta sesión)
+      window.open(`/?impersonate=${token}&impersonateTenant=${tenantParam}`, '_blank');
     } catch (err) {
       setActionError(err?.data?.message || err?.message || 'Error al impersonar tenant');
     }
@@ -500,6 +542,18 @@ const TenantDetail = () => {
                   💳 Editar Suscripción
                 </button>
                 <button
+                  onClick={() => { setResetLink(''); setResetPasswordForm({ newPassword: '' }); setActionError(''); setShowResetPasswordModal(true); }}
+                  className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-left"
+                >
+                  🔑 Resetear Contraseña Admin
+                </button>
+                <button
+                  onClick={() => { setEmailForm({ subject: '', body: '' }); setActionError(''); setShowEmailModal(true); }}
+                  className="w-full px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 text-left"
+                >
+                  ✉️ Enviar Email al Tenant
+                </button>
+                <button
                   onClick={handleExpireTrial}
                   disabled={isUpdatingSubscription}
                   className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 text-left disabled:opacity-50"
@@ -507,6 +561,164 @@ const TenantDetail = () => {
                   {isUpdatingSubscription ? '⏳ Procesando...' : '⏱️ Simular Trial Vencido'}
                 </button>
               </div>
+            </div>
+
+            {/* Historial de Pagos de Suscripción */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">💳 Historial de Pagos</h2>
+              {isLoadingPayments ? (
+                <p className="text-sm text-gray-500 text-center py-4">Cargando...</p>
+              ) : paymentsData?.data?.payments?.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-xs text-gray-500 uppercase">
+                          <th className="pb-2 pr-4">Fecha</th>
+                          <th className="pb-2 pr-4">Estado</th>
+                          <th className="pb-2 pr-4">Monto</th>
+                          <th className="pb-2 pr-4">Período</th>
+                          <th className="pb-2">ID MP</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paymentsData.data.payments.map((p) => (
+                          <tr key={p.id} className="text-gray-700">
+                            <td className="py-2 pr-4 whitespace-nowrap">
+                              {new Date(p.createdAt).toLocaleDateString('es-AR')}
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                                p.status === 'approved' ? 'bg-green-100 text-green-700' :
+                                p.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                p.status === 'authorized' ? 'bg-blue-100 text-blue-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>{p.status}</span>
+                            </td>
+                            <td className="py-2 pr-4 font-semibold">
+                              {p.amount ? `${p.currency} ${Number(p.amount).toLocaleString('es-AR')}` : '—'}
+                            </td>
+                            <td className="py-2 pr-4 text-xs text-gray-500 whitespace-nowrap">
+                              {p.periodStart ? new Date(p.periodStart).toLocaleDateString('es-AR') : '—'}
+                              {p.periodEnd ? ` → ${new Date(p.periodEnd).toLocaleDateString('es-AR')}` : ''}
+                            </td>
+                            <td className="py-2 text-xs text-gray-400 font-mono">
+                              {p.mpPaymentId || '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {paymentsData.data.pagination?.totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t">
+                      <span className="text-xs text-gray-500">
+                        Página {paymentsPage} de {paymentsData.data.pagination.totalPages} ({paymentsData.data.pagination.total} registros)
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPaymentsPage(p => Math.max(1, p - 1))}
+                          disabled={paymentsPage === 1}
+                          className="px-3 py-1 text-sm border rounded disabled:opacity-40 hover:bg-gray-50"
+                        >← Anterior</button>
+                        <button
+                          onClick={() => setPaymentsPage(p => Math.min(paymentsData.data.pagination.totalPages, p + 1))}
+                          disabled={paymentsPage === paymentsData.data.pagination.totalPages}
+                          className="px-3 py-1 text-sm border rounded disabled:opacity-40 hover:bg-gray-50"
+                        >Siguiente →</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">Sin registros de pagos de suscripción.</p>
+              )}
+            </div>
+
+            {/* Errores Recientes */}
+            {(() => {
+              const summary = errorsData?.data?.summary;
+              const errs = errorsData?.data?.errors || [];
+              const hasErrors = errs.length > 0;
+              return (
+                <div className={`rounded-lg shadow p-6 ${hasErrors ? 'bg-red-50 border border-red-200' : 'bg-white'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-900">
+                      {hasErrors ? '🚨 Errores Recientes' : '✅ Sin Errores Recientes'}
+                    </h2>
+                    {summary && hasErrors && (
+                      <div className="flex gap-2">
+                        {summary.fiscal > 0 && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">{summary.fiscal} fiscal</span>
+                        )}
+                        {summary.payments > 0 && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">{summary.payments} pagos</span>
+                        )}
+                        {summary.tickets > 0 && (
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-semibold">{summary.tickets} tickets</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {isLoadingErrors ? (
+                    <p className="text-sm text-gray-500 text-center py-4">Cargando...</p>
+                  ) : hasErrors ? (
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {errs.map((e) => (
+                        <div key={e.id} className={`flex items-start gap-3 p-3 rounded-lg border ${
+                          e.severity === 'critical' ? 'bg-red-100 border-red-300' :
+                          e.severity === 'error' ? 'bg-orange-50 border-orange-200' :
+                          'bg-yellow-50 border-yellow-200'
+                        }`}>
+                          <span className="text-xl shrink-0 mt-0.5">{e.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800">{e.title}</p>
+                            <p className="text-xs text-gray-600 truncate">{e.detail}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {new Date(e.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                              <span className="ml-2 uppercase tracking-wide opacity-60">{e.source}</span>
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No se registraron errores en los últimos 30 días.</p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Logs de Actividad */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">📋 Actividad Reciente</h2>
+              {isLoadingActivity ? (
+                <p className="text-sm text-gray-500 text-center py-4">Cargando...</p>
+              ) : activityData?.data?.events?.length > 0 ? (
+                <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                  {activityData.data.events.map((ev) => (
+                    <div key={ev.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50">
+                      <span className="text-lg shrink-0 mt-0.5">{ev.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-800 truncate">{ev.description}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(ev.date).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${
+                        ev.type === 'cliente' ? 'bg-blue-100 text-blue-700' :
+                        ev.type === 'propiedad' ? 'bg-green-100 text-green-700' :
+                        ev.type === 'contrato' ? 'bg-purple-100 text-purple-700' :
+                        ev.type === 'pago' ? 'bg-yellow-100 text-yellow-700' :
+                        ev.type === 'ticket' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>{ev.type}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">Sin actividad registrada.</p>
+              )}
             </div>
 
             {/* Panel Operacional */}
@@ -593,6 +805,40 @@ const TenantDetail = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
                 <input className="w-full border rounded-lg px-3 py-2" value={editForm.address || ''} onChange={e => setEditForm(p => ({ ...p, address: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subdominio</label>
+                <div className="relative">
+                  <input
+                    className="w-full border rounded-lg px-3 py-2 pr-24"
+                    value={editForm.subdomain || ''}
+                    onChange={e => {
+                      const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+                      setEditForm(p => ({ ...p, subdomain: val }));
+                      setSubdomainToCheck('');
+                    }}
+                    onBlur={() => {
+                      const val = editForm.subdomain || '';
+                      if (val.length >= 3 && val !== tenant.subdomain) {
+                        setSubdomainToCheck(val);
+                      }
+                    }}
+                    placeholder={tenant.subdomain}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">.innoinmo.com</span>
+                </div>
+                {editForm.subdomain === tenant.subdomain && (
+                  <p className="text-xs text-gray-400 mt-1">Subdominio actual</p>
+                )}
+                {editForm.subdomain !== tenant.subdomain && editForm.subdomain?.length >= 3 && (
+                  checkingSubdomain
+                    ? <p className="text-xs text-blue-500 mt-1">Verificando...</p>
+                    : subdomainCheckData?.available === true
+                      ? <p className="text-xs text-green-600 mt-1">✓ Disponible</p>
+                      : subdomainCheckData?.available === false
+                        ? <p className="text-xs text-red-600 mt-1">✗ Ya está en uso</p>
+                        : null
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -724,6 +970,119 @@ const TenantDetail = () => {
                 <button type="button" onClick={() => setShowSubscriptionModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={isUpdatingSubscription} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50">
                   {isUpdatingSubscription ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Resetear Contraseña ── */}
+      {showResetPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-2">🔑 Resetear Contraseña Admin</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Admin: <strong>{data?.data?.admins?.[0]?.email || data?.data?.tenant?.email || '(principal del tenant)'}</strong>
+            </p>
+
+            {resetLink ? (
+              <div>
+                <p className="text-sm text-green-700 mb-2 font-medium">✅ Link generado (válido 24 horas):</p>
+                <div className="bg-gray-100 rounded p-2 text-xs break-all mb-3 select-all">{resetLink}</div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(resetLink); }}
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    📋 Copiar link
+                  </button>
+                  <button
+                    onClick={() => { setShowResetPasswordModal(false); setResetLink(''); }}
+                    className="px-3 py-2 border rounded text-sm hover:bg-gray-50"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword}>
+                <p className="text-sm text-gray-600 mb-4">
+                  Podés generar un <strong>link de reset</strong> para enviarle al usuario, o forzar una <strong>contraseña nueva</strong> directamente.
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nueva contraseña (opcional — dejá vacío para generar link)
+                  </label>
+                  <input
+                    type="password"
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Mínimo 8 caracteres"
+                    value={resetPasswordForm.newPassword}
+                    onChange={e => setResetPasswordForm({ newPassword: e.target.value })}
+                  />
+                </div>
+                {actionError && <p className="text-red-600 text-sm mb-2">{actionError}</p>}
+                <div className="flex gap-3 justify-end">
+                  <button type="button" onClick={() => setShowResetPasswordModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                  <button type="submit" disabled={isResettingPassword} className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50">
+                    {isResettingPassword ? 'Procesando...' : resetPasswordForm.newPassword ? 'Forzar contraseña' : 'Generar link'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Enviar Email ── */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 className="text-lg font-bold mb-1">✉️ Enviar Email al Tenant</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Destinatario: <span className="font-medium text-gray-700">{tenant.email}</span>
+            </p>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setActionError('');
+                try {
+                  const res = await sendEmailToTenant({ tenantId, subject: emailForm.subject, body: emailForm.body }).unwrap();
+                  alert(res.message || 'Email enviado correctamente');
+                  setShowEmailModal(false);
+                } catch (err) {
+                  setActionError(err?.data?.message || 'Error al enviar el email');
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Asunto</label>
+                <input
+                  type="text"
+                  className="w-full border rounded-lg px-3 py-2"
+                  placeholder="Ej: Actualización importante de tu cuenta"
+                  value={emailForm.subject}
+                  onChange={e => setEmailForm(p => ({ ...p, subject: e.target.value }))}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mensaje</label>
+                <textarea
+                  className="w-full border rounded-lg px-3 py-2 h-40 resize-none"
+                  placeholder="Escribí el mensaje aquí..."
+                  value={emailForm.body}
+                  onChange={e => setEmailForm(p => ({ ...p, body: e.target.value }))}
+                  required
+                />
+              </div>
+              {actionError && <p className="text-red-600 text-sm">{actionError}</p>}
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setShowEmailModal(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
+                <button type="submit" disabled={isSendingEmail} className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50">
+                  {isSendingEmail ? 'Enviando...' : 'Enviar Email'}
                 </button>
               </div>
             </form>

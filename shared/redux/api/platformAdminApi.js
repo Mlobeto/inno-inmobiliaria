@@ -242,6 +242,43 @@ export const platformAdminApi = baseApi.injectEndpoints({
       invalidatesTags: (r, e, { tenantId }) => [{ type: 'Tenants', id: tenantId }],
     }),
 
+    resetTenantAdminPassword: builder.mutation({
+      query: ({ tenantId, ...body }) => ({
+        url: `/platform-admin/tenants/${tenantId}/reset-password`,
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    getTenantPayments: builder.query({
+      query: ({ tenantId, page = 1, limit = 20 }) => ({
+        url: `/platform-admin/tenants/${tenantId}/payments`,
+        params: { page, limit },
+      }),
+      providesTags: (r, e, { tenantId }) => [{ type: 'TenantPayments', id: tenantId }],
+    }),
+
+    sendEmailToTenant: builder.mutation({
+      query: ({ tenantId, subject, body }) => ({
+        url: `/platform-admin/tenants/${tenantId}/send-email`,
+        method: 'POST',
+        body: { subject, body },
+      }),
+    }),
+
+    getTenantActivity: builder.query({
+      query: ({ tenantId, limit = 50 }) => ({
+        url: `/platform-admin/tenants/${tenantId}/activity`,
+        params: { limit },
+      }),
+      providesTags: (r, e, { tenantId }) => [{ type: 'TenantActivity', id: tenantId }],
+    }),
+
+    getTenantErrors: builder.query({
+      query: (tenantId) => `/platform-admin/tenants/${tenantId}/errors`,
+      providesTags: (r, e, tenantId) => [{ type: 'TenantErrors', id: tenantId }],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -280,6 +317,21 @@ export const {
 
   // Subscription management
   useUpdateTenantSubscriptionMutation,
+
+  // Password reset
+  useResetTenantAdminPasswordMutation,
+
+  // Payment history
+  useGetTenantPaymentsQuery,
+
+  // Send email
+  useSendEmailToTenantMutation,
+
+  // Activity feed
+  useGetTenantActivityQuery,
+
+  // Errors
+  useGetTenantErrorsQuery,
 } = platformAdminApi;
 
 export default platformAdminApi;

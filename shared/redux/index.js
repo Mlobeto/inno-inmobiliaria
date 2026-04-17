@@ -60,6 +60,11 @@ export {
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
   useUpdateTenantSubscriptionMutation,
+  useResetTenantAdminPasswordMutation,
+  useGetTenantPaymentsQuery,
+  useSendEmailToTenantMutation,
+  useGetTenantActivityQuery,
+  useGetTenantErrorsQuery,
 } from './api/platformAdminApi';
 
 // ==================== SUBSCRIPTION API ====================
@@ -203,6 +208,8 @@ export {
   selectCurrentToken,
   selectIsAuthenticated,
   selectIsPlatformAdmin,
+  selectIsImpersonating,
+  selectImpersonatedTenant,
   selectAuthError,
   selectAuthLoading,
   selectTenantId,

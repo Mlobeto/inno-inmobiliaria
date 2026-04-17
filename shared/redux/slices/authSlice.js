@@ -17,6 +17,8 @@ const initialState = {
   user: null, // { adminId, username, role, tenantId }
   isAuthenticated: false,
   isPlatformAdmin: false,
+  isImpersonating: false,
+  impersonatedTenant: null, // { tenantId, businessName, subdomain }
   loading: false,
   error: null,
 };
@@ -59,6 +61,37 @@ const authSlice = createSlice({
     // Acción para restaurar sesión desde localStorage
     restoreSession: (state) => {
       if (typeof window !== 'undefined') {
+        // Detectar token de impersonación en query param (?impersonate=TOKEN)
+        const params = new URLSearchParams(window.location.search);
+        const impersonateToken = params.get('impersonate');
+        const impersonateTenantRaw = params.get('impersonateTenant');
+
+        if (impersonateToken) {
+          // Limpiar URL sin recargar la página
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
+
+          try {
+            const tenantInfo = impersonateTenantRaw ? JSON.parse(decodeURIComponent(impersonateTenantRaw)) : null;
+            // Decodificar el payload del JWT para obtener el usuario
+            const payload = JSON.parse(atob(impersonateToken.split('.')[1]));
+            state.token = impersonateToken;
+            state.user = {
+              adminId: payload.id,
+              role: payload.role,
+              tenantId: payload.tenantId,
+              username: payload.username || '',
+            };
+            state.isAuthenticated = true;
+            state.isPlatformAdmin = false;
+            state.isImpersonating = true;
+            state.impersonatedTenant = tenantInfo;
+            return;
+          } catch (e) {
+            console.error('Error al cargar token de impersonación:', e);
+          }
+        }
+
         const token = localStorage.getItem('token');
         const userStr = localStorage.getItem('user');
         
@@ -118,6 +151,8 @@ export const selectCurrentUser = (state) => state.auth.user;
 export const selectCurrentToken = (state) => state.auth.token;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectIsPlatformAdmin = (state) => state.auth.isPlatformAdmin;
+export const selectIsImpersonating = (state) => state.auth.isImpersonating;
+export const selectImpersonatedTenant = (state) => state.auth.impersonatedTenant;
 export const selectAuthError = (state) => state.auth.error;
 export const selectAuthLoading = (state) => state.auth.loading;
 

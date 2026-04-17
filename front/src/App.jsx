@@ -54,13 +54,33 @@ import PdfTemplateManager from "./Components/Admin/PdfTemplateManager"; // 🆕 
 import InstallPWA from "./Components/InstallPWA";
 import ProtectedRoute from "./Components/Guards/ProtectedRoute"; // 🆕 Guard combinado
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
+import { useSelector } from "react-redux";
+import { selectIsImpersonating, selectImpersonatedTenant } from "@shared/redux";
 
 function App() {
   useTokenExpiry();
+  const isImpersonating = useSelector(selectIsImpersonating);
+  const impersonatedTenant = useSelector(selectImpersonatedTenant);
+
   return (
     <>
-      <InstallPWA />
-      <Routes>
+      {isImpersonating && (
+        <div className="fixed top-0 left-0 right-0 z-[9999] bg-orange-500 text-white text-sm py-2 px-4 flex items-center justify-between shadow-lg">
+          <span>
+            🎭 <strong>Modo Impersonación</strong> — Estás viendo la app como{' '}
+            <strong>{impersonatedTenant?.businessName || 'un tenant'}</strong>
+          </span>
+          <button
+            onClick={() => window.close()}
+            className="ml-4 px-3 py-1 bg-white text-orange-600 rounded text-xs font-bold hover:bg-orange-100"
+          >
+            Cerrar pestaña
+          </button>
+        </div>
+      )}
+      <div className={isImpersonating ? 'pt-10' : ''}>
+        <InstallPWA />
+        <Routes>
       <Route path="/" element={<Landing />} />
       
       {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
@@ -166,6 +186,7 @@ function App() {
       <Route path="/terminos" element={<TermsOfService />} />
       <Route path="/privacidad" element={<PrivacyPolicy />} />
     </Routes>
+      </div>
     </>
   );
 }

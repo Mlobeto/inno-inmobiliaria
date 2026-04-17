@@ -1,6 +1,9 @@
 const prisma = require('../utils/prismaClient');
 const { invalidateTenantCache } = require('../utils/tenantCache');
 const logger = require('../utils/logger');
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
+const { sendEmail } = require('../emailService');
 
 /**
  * @route GET /api/platform-admin/dashboard
@@ -269,7 +272,7 @@ exports.getTenantDetail = async (req, res) => {
 exports.updateTenant = async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId, 10);
-    const { businessName, email, phone, address, plan, status, maxAgents, maxProperties, features } = req.body;
+    const { businessName, email, phone, address, plan, status, maxAgents, maxProperties, features, subdomain } = req.body;
 
     const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
     if (!tenant) {
@@ -277,6 +280,26 @@ exports.updateTenant = async (req, res) => {
         success: false,
         message: 'Tenant no encontrado',
       });
+    }
+
+    // Validar y verificar unicidad del subdomain si se quiere cambiar
+    if (subdomain !== undefined && subdomain !== tenant.subdomain) {
+      const subdomainRegex = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
+      if (!subdomainRegex.test(subdomain) || subdomain.length < 3 || subdomain.length > 50) {
+        return res.status(400).json({
+          success: false,
+          message: 'El subdominio debe contener solo letras minúsculas, números y guiones (3-50 caracteres)',
+        });
+      }
+      const existing = await prisma.tenants.findFirst({
+        where: { subdomain, tenantId: { not: tenantId } },
+      });
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: 'Este subdominio ya está en uso por otro tenant',
+        });
+      }
     }
 
     // Si se cambió el plan, sincronizar features/límites desde la BD de planes
@@ -307,10 +330,15 @@ exports.updateTenant = async (req, res) => {
         maxAgents: resolvedMaxAgents,
         maxProperties: resolvedMaxProperties,
         features: resolvedFeatures,
+        subdomain: subdomain !== undefined ? subdomain : tenant.subdomain,
       },
     });
 
+    // Invalidar caché del subdomain viejo Y del nuevo si cambió
     await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
+    if (subdomain !== undefined && subdomain !== tenant.subdomain) {
+      await invalidateTenantCache(tenant.tenantId, subdomain, null);
+    }
 
     res.status(200).json({
       success: true,
@@ -1051,10 +1079,385 @@ exports.updateTenantSubscription = async (req, res) => {
 };
 
 /**
+ * @route POST /api/platform-admin/tenants/:tenantId/reset-password
+ * @desc Genera un link de reset de contraseña para el admin principal de un tenant,
+ *       o fuerza una nueva contraseña directamente si se pasa `newPassword` en el body.
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.resetTenantAdminPassword = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const { newPassword } = req.body;
+
+    // Obtener el admin principal del tenant
+    const admin = await prisma.admins.findFirst({
+      where: { tenantId, deletedAt: null },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'No se encontró un usuario admin para este tenant' });
+    }
+
+    // --- Opción A: forzar nueva contraseña directamente ---
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+      }
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await prisma.admins.update({
+        where: { adminId: admin.adminId },
+        data: { password: hashed },
+      });
+      // Invalidar todos los tokens de reset pendientes
+      await prisma.password_reset_tokens.updateMany({
+        where: { adminId: admin.adminId, used: false },
+        data: { used: true },
+      });
+      logger.info('Platform admin forzó cambio de contraseña', { tenantId, adminId: admin.adminId, platformAdminId: req.user.id });
+      return res.status(200).json({
+        success: true,
+        message: `Contraseña actualizada para ${admin.email || admin.username}`,
+      });
+    }
+
+    // --- Opción B: generar link de reset para enviar al usuario ---
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+    await prisma.password_reset_tokens.updateMany({
+      where: { adminId: admin.adminId, used: false },
+      data: { used: true },
+    });
+    await prisma.password_reset_tokens.create({
+      data: {
+        adminId: admin.adminId,
+        email: admin.email || admin.username,
+        token: hashedToken,
+        expiresAt,
+        used: false,
+      },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.gestionprops.com.ar';
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    logger.info('Platform admin generó link de reset', { tenantId, adminId: admin.adminId, platformAdminId: req.user.id });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Link de reset generado',
+      data: {
+        resetLink,
+        expiresAt,
+        admin: { adminId: admin.adminId, email: admin.email, username: admin.username },
+      },
+    });
+  } catch (error) {
+    logger.error('Error en resetTenantAdminPassword', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al resetear contraseña', error: error.message });
+  }
+};
+
+/**
  * @route GET /api/platform-admin/tenants/:tenantId/operational
  * @desc Datos operacionales de un tenant (clientes, propiedades, contratos, pagos recientes)
  * @access Private (PLATFORM_ADMIN only)
  */
+/**
+ * @route GET /api/platform-admin/tenants/:tenantId/errors
+ * @desc Errores recientes del tenant: fallos AFIP/fiscal, pagos rechazados, tickets críticos
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.getTenantErrors = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // últimos 30 días
+
+    const [fiscalErrors, paymentFailures, criticalTickets] = await Promise.all([
+      // Errores AFIP / ARCA
+      prisma.FiscalAuditLog.findMany({
+        where: { tenantId, status: 'failure', createdAt: { gte: since } },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { id: true, action: true, entityType: true, entityId: true, errorMessage: true, createdAt: true },
+      }),
+      // Pagos de suscripción rechazados o fallidos
+      prisma.subscription_payment_logs.findMany({
+        where: {
+          tenantId,
+          status: { notIn: ['approved', 'authorized', 'pending', 'in_process'] },
+          createdAt: { gte: since },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+        select: { id: true, status: true, amount: true, currency: true, mpPaymentId: true, rawData: true, createdAt: true },
+      }),
+      // Tickets de soporte con prioridad alta o crítica aún abiertos
+      prisma.support_tickets.findMany({
+        where: {
+          tenantId,
+          priority: { in: ['CRITICA', 'ALTA'] },
+          status: { in: ['ABIERTO', 'EN_PROGRESO'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, title: true, description: true, priority: true, status: true, category: true, createdAt: true },
+      }),
+    ]);
+
+    const errors = [
+      ...fiscalErrors.map((e) => ({
+        id: `fiscal-${e.id}`,
+        severity: 'error',
+        source: 'fiscal',
+        icon: '🧾',
+        title: `Error AFIP: ${e.action}`,
+        detail: e.errorMessage || `Entidad: ${e.entityType} #${e.entityId || '?'}`,
+        date: e.createdAt,
+      })),
+      ...paymentFailures.map((p) => ({
+        id: `payment-${p.id}`,
+        severity: 'warning',
+        source: 'suscripcion',
+        icon: '💳',
+        title: `Pago rechazado/fallido: ${p.status}`,
+        detail: `${p.currency} ${p.amount ? Number(p.amount).toLocaleString('es-AR') : '—'}${p.rawData?.paymentStatusDetail ? ` — ${p.rawData.paymentStatusDetail}` : ''}`,
+        date: p.createdAt,
+      })),
+      ...criticalTickets.map((t) => ({
+        id: `ticket-${t.id}`,
+        severity: t.priority === 'CRITICA' ? 'critical' : 'warning',
+        source: 'soporte',
+        icon: t.priority === 'CRITICA' ? '🚨' : '⚠️',
+        title: `Ticket ${t.priority}: ${t.title}`,
+        detail: `${t.category} — ${t.status}`,
+        date: t.createdAt,
+      })),
+    ];
+
+    errors.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        errors,
+        summary: {
+          total: errors.length,
+          fiscal: fiscalErrors.length,
+          payments: paymentFailures.length,
+          tickets: criticalTickets.length,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error('Error en getTenantErrors', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al obtener errores del tenant' });
+  }
+};
+
+/**
+ * @route GET /api/platform-admin/tenants/:tenantId/activity
+ * @desc Feed de actividad reciente del tenant (eventos combinados de múltiples modelos)
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.getTenantActivity = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+
+    const [clients, properties, leases, payments, tickets, fiscalLogs] = await Promise.all([
+      prisma.Clients.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: { idClient: true, name: true, createdAt: true },
+      }),
+      prisma.Property.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: { propertyId: true, address: true, type: true, createdAt: true },
+      }),
+      prisma.Leases.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: { id: true, status: true, createdAt: true },
+      }),
+      prisma.PaymentReceipts.findMany({
+        where: { tenantId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 15,
+        select: { id: true, amount: true, status: true, period: true, createdAt: true },
+      }),
+      prisma.support_tickets.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, title: true, priority: true, status: true, createdAt: true },
+      }),
+      prisma.FiscalAuditLog.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { id: true, action: true, entityType: true, status: true, createdAt: true },
+      }),
+    ]);
+
+    const events = [
+      ...clients.map((c) => ({
+        id: `client-${c.idClient}`,
+        type: 'cliente',
+        icon: '👤',
+        description: `Cliente creado: ${c.name}`,
+        date: c.createdAt,
+      })),
+      ...properties.map((p) => ({
+        id: `prop-${p.propertyId}`,
+        type: 'propiedad',
+        icon: '🏠',
+        description: `Propiedad añadida: ${p.address}`,
+        date: p.createdAt,
+      })),
+      ...leases.map((l) => ({
+        id: `lease-${l.id}`,
+        type: 'contrato',
+        icon: '📄',
+        description: `Contrato creado (estado: ${l.status || 'activo'})`,
+        date: l.createdAt,
+      })),
+      ...payments.map((p) => ({
+        id: `pay-${p.id}`,
+        type: 'pago',
+        icon: '💰',
+        description: `Pago registrado: $${Number(p.amount).toLocaleString('es-AR')} — ${p.period} (${p.status})`,
+        date: p.createdAt,
+      })),
+      ...tickets.map((t) => ({
+        id: `ticket-${t.id}`,
+        type: 'ticket',
+        icon: '🎫',
+        description: `Ticket: ${t.title} [${t.priority}]`,
+        date: t.createdAt,
+      })),
+      ...fiscalLogs.map((f) => ({
+        id: `fiscal-${f.id}`,
+        type: 'fiscal',
+        icon: '🧾',
+        description: `Acción fiscal: ${f.action} — ${f.entityType} (${f.status})`,
+        date: f.createdAt,
+      })),
+    ];
+
+    events.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const result = events.slice(0, limit);
+
+    return res.status(200).json({ success: true, data: { events: result, total: result.length } });
+  } catch (error) {
+    logger.error('Error en getTenantActivity', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al obtener logs de actividad' });
+  }
+};
+
+/**
+ * @route POST /api/platform-admin/tenants/:tenantId/send-email
+ * @desc Envía un email al admin del tenant desde la plataforma
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.sendEmailToTenant = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const { subject, body } = req.body;
+
+    if (!subject?.trim() || !body?.trim()) {
+      return res.status(400).json({ success: false, message: 'Asunto y cuerpo son requeridos' });
+    }
+
+    // Obtener email del admin del tenant
+    const adminUser = await prisma.Users.findFirst({
+      where: { tenantId, role: 'TENANT_ADMIN' },
+      select: { email: true, firstName: true, lastName: true },
+    });
+
+    if (!adminUser) {
+      return res.status(404).json({ success: false, message: 'No se encontró admin del tenant' });
+    }
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1e40af; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="color: white; margin: 0;">Mensaje desde GestiónProps</h2>
+        </div>
+        <div style="padding: 24px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #374151; white-space: pre-wrap;">${body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+          <p style="color: #9ca3af; font-size: 12px;">Este mensaje fue enviado por el equipo de soporte de GestiónProps.</p>
+        </div>
+      </div>
+    `;
+
+    await sendEmail({ to: adminUser.email, subject: subject.trim(), html });
+
+    logger.info('Email enviado a tenant desde plataforma', { tenantId, to: adminUser.email, subject });
+
+    return res.status(200).json({
+      success: true,
+      message: `Email enviado a ${adminUser.email}`,
+    });
+  } catch (error) {
+    logger.error('Error en sendEmailToTenant', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al enviar el email' });
+  }
+};
+
+/**
+ * @route GET /api/platform-admin/tenants/:tenantId/payments
+ * @desc Historial de pagos de suscripción del tenant
+ * @access Private (PLATFORM_ADMIN only)
+ */
+exports.getTenantPayments = async (req, res) => {
+  try {
+    const tenantId = parseInt(req.params.tenantId, 10);
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+    const skip = (page - 1) * limit;
+
+    const [total, payments] = await Promise.all([
+      prisma.subscription_payment_logs.count({ where: { tenantId } }),
+      prisma.subscription_payment_logs.findMany({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          status: true,
+          amount: true,
+          currency: true,
+          mpPaymentId: true,
+          mpPreapprovalId: true,
+          periodStart: true,
+          periodEnd: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        payments,
+        pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      },
+    });
+  } catch (error) {
+    logger.error('Error en getTenantPayments', { tenantId: req.params.tenantId, error: error.message });
+    return res.status(500).json({ success: false, message: 'Error al obtener historial de pagos' });
+  }
+};
+
 exports.getTenantOperational = async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId, 10);

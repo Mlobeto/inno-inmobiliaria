@@ -28,7 +28,12 @@ router.post('/tenants/:tenantId/suspend', platformAdminController.suspendTenant)
 router.post('/tenants/:tenantId/activate', platformAdminController.activateTenant);
 router.post('/tenants/:tenantId/impersonate', platformAdminController.impersonateTenant);
 router.get('/tenants/:tenantId/operational', platformAdminController.getTenantOperational);
+router.get('/tenants/:tenantId/payments', platformAdminController.getTenantPayments);
+router.get('/tenants/:tenantId/activity', platformAdminController.getTenantActivity);
+router.get('/tenants/:tenantId/errors', platformAdminController.getTenantErrors);
 router.patch('/tenants/:tenantId/subscription', platformAdminController.updateTenantSubscription);
+router.post('/tenants/:tenantId/reset-password', platformAdminController.resetTenantAdminPassword);
+router.post('/tenants/:tenantId/send-email', platformAdminController.sendEmailToTenant);
 router.delete('/tenants/:tenantId', platformAdminController.deleteTenant);
 
 /**
