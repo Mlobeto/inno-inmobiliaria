@@ -39,7 +39,7 @@ router.post("/", async (req, res) => {
       subject: `Nueva consulta de contacto: ${name}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #4f46e5;">Nueva consulta desde SentaProp</h2>
+          <h2 style="color: #4f46e5;">Nueva consulta desde ZentaProp</h2>
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="padding: 8px; font-weight: bold; width: 30%;">Nombre:</td>
@@ -60,7 +60,7 @@ router.post("/", async (req, res) => {
           </table>
           <hr style="margin-top: 24px; border-color: #e5e7eb;" />
           <p style="color: #6b7280; font-size: 12px;">
-            Este mensaje fue enviado desde el formulario de contacto de sentaprop.com
+            Este mensaje fue enviado desde el formulario de contacto de ZentaProp.com
           </p>
         </div>
       `,

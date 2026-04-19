@@ -9,7 +9,7 @@ function Navbar() {
     <nav className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-3">
         <AppLogo />
-        <span className="text-white font-semibold text-lg">SentaProp</span>
+        <span className="text-white font-semibold text-lg">ZentaProp</span>
       </Link>
       <Link to="/login" className="text-slate-400 hover:text-white text-sm transition-colors">
         Iniciar sesión

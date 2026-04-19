@@ -57,7 +57,7 @@ const plans = [
       mercadoLibreIntegration: true,
       agentRole: true,
       leads: false,
-      loteos: false,
+      loteos: true,
     },
     trialDays: 7,
     isActive: true,

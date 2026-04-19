@@ -56,12 +56,15 @@ const Panel = () => {
   );
   
   // Obtener subdomain y features
+  // Merge: plan features base + tenant-level feature overrides (el admin puede activar features individualmente)
   const tenantSubdomain = tenantData?.data?.subdomain || null;
   const planFeatures = subscriptionData?.subscription?.Plan?.features || {};
-  const hasLandingFeature   = planFeatures.landingPage === true;
-  const hasLeadsFeature     = planFeatures.leads === true;
-  const hasLoteosFeature    = planFeatures.loteos === true;
-  const hasAgentRoleFeature = planFeatures.agentRole === true;
+  const tenantFeatures = tenantData?.data?.features || {};
+  const effectiveFeatures = { ...planFeatures, ...tenantFeatures };
+  const hasLandingFeature   = effectiveFeatures.landingPage === true;
+  const hasLeadsFeature     = effectiveFeatures.leads === true;
+  const hasLoteosFeature    = effectiveFeatures.loteos === true;
+  const hasAgentRoleFeature = effectiveFeatures.agentRole === true;
 
   // Debug: ver valores
   useEffect(() => {

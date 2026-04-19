@@ -5,7 +5,7 @@ function Section1() {
   return (
     
     <section className="bg-gray-950 text-center text-white py-16 ">
-    <h1 className="text-5xl font-bold mt-8"><br/>SentaProp<span> </span> 
+    <h1 className="text-5xl font-bold mt-8"><br/>ZentaProp<span> </span> 
       <span className="inline-flex items-center space-x-1">
         <br></br>
         

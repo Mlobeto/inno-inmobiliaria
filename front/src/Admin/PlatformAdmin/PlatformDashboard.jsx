@@ -93,7 +93,7 @@ const PlatformDashboard = () => {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Platform Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">Panel de control de SentaProp</p>
+        <p className="text-gray-600 mt-2">Panel de control de ZentaProp</p>
       </div>
       
       {/* Tabs Navigation */}

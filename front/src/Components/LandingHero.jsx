@@ -20,7 +20,7 @@ function LandingHero() {
 
           {/* Main heading */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-            SentaProp
+            ZentaProp
           </h1>
           <p className="text-2xl md:text-3xl mb-4 text-indigo-100">
             La Plataforma Completa para tu Inmobiliaria
