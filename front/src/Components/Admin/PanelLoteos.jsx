@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useDolarRate } from '../hooks/useDolarRate';
 import { Link } from 'react-router-dom';
 import {
   useGetLoteosQuery,
@@ -89,6 +90,12 @@ export default function PanelLoteos() {
   const [deleteLote]         = useDeleteLoteMutation();
 
   const loteos = loteosData?.loteos || [];
+  const { dolar, loading: dolarLoading } = useDolarRate();
+
+  const formatCurrency = (value, currency = 'ARS') =>
+    value != null
+      ? new Intl.NumberFormat('es-AR', { style: 'currency', currency, minimumFractionDigits: 0 }).format(value)
+      : '—';
 
   // Vista principal: null = lista, string = id del loteo seleccionado
   const [selectedLoteoId, setSelectedLoteoId] = useState(null);
@@ -703,6 +710,45 @@ export default function PanelLoteos() {
                   </select>
                 </div>
               </div>
+
+              {/* Widget cotización dólar */}
+              {loteForm.currency === 'USD' && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  {dolarLoading ? (
+                    <p className="text-amber-400 text-xs">Obteniendo cotización...</p>
+                  ) : dolar ? (
+                    <div className="space-y-1 text-xs">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Dólar Oficial venta:</span>
+                        <span className="text-white font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>Dólar Blue venta:</span>
+                        <span className="text-white font-semibold">{formatCurrency(dolar.blue?.venta, 'ARS')}</span>
+                      </div>
+                      {loteForm.price && (
+                        <div className="border-t border-amber-500/20 pt-1 mt-1">
+                          <div className="flex justify-between">
+                            <span className="text-amber-300">Equiv. Oficial:</span>
+                            <span className="text-amber-300 font-semibold">
+                              {formatCurrency(parseFloat(loteForm.price) * (dolar.oficial?.venta || 0), 'ARS')}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-blue-300">Equiv. Blue:</span>
+                            <span className="text-blue-300 font-semibold">
+                              {formatCurrency(parseFloat(loteForm.price) * (dolar.blue?.venta || 0), 'ARS')}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-slate-500 text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
+                    </div>
+                  ) : (
+                    <p className="text-red-400 text-xs">No se pudo obtener la cotización</p>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-300 text-sm mb-1">Estado</label>
