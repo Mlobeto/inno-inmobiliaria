@@ -2,7 +2,7 @@ const prisma = require('../utils/prismaClient');
 const { invalidateTenantCache } = require('../utils/tenantCache');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const { sendEmail } = require('../emailService');
 
 /**
@@ -890,7 +890,6 @@ exports.createManualTenant = async (req, res) => {
 
     let adminUser = null;
     if (adminUsername && adminPassword) {
-      const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
       adminUser = await prisma.admins.create({
