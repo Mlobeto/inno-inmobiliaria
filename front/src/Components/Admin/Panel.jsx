@@ -19,7 +19,6 @@ import {
   IoReceiptOutline, 
   IoStatsChartOutline,
   IoSettingsOutline,
-  IoBusiness,
   IoRocketOutline,
   IoCalendarOutline,
   IoCheckmarkCircleOutline,
@@ -274,65 +273,72 @@ const Panel = () => {
       <UpcomingExpiryPopup />
 
       {/* Header */}
-      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <Link 
-              to="/" 
-              className="text-white text-xl font-bold hover:text-blue-300 transition-colors duration-300 flex items-center space-x-2"
-            >
-              <IoBusiness className="w-6 h-6" />
-              <span className="hidden sm:inline">{currentUser?.username || 'Panel de Administración'}</span>
-            </Link>
-            {currentUser?.tenantId && (
-              <span className="hidden md:inline-flex items-center px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-sm">
-                <IoBusiness className="w-4 h-4 mr-1" />
-                Tenant ID: {currentUser.tenantId}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center space-x-3">
+      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 px-3 py-3 sm:p-4 shadow-lg">
+        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
+          {/* Logo + username */}
+          <Link
+            to="/"
+            className="text-white font-bold hover:text-blue-300 transition-colors duration-300 flex items-center space-x-2 flex-shrink-0 min-w-0"
+          >
+            {/* Logo: 3 barras + arco */}
+            <div className="flex flex-col items-center justify-end w-8 h-7 flex-shrink-0">
+              <div className="flex items-end gap-[3px] mb-0.5">
+                <div className="w-[6px] h-[10px] rounded-sm bg-indigo-300" />
+                <div className="w-[6px] h-[18px] rounded-sm bg-indigo-300" />
+                <div className="w-[6px] h-[6px] rounded-sm bg-indigo-300" />
+              </div>
+              <div
+                className="w-7 h-[7px] border-2 border-t-0 border-indigo-400"
+                style={{ borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}
+              />
+            </div>
+            <span className="hidden sm:inline text-base truncate max-w-[160px]">{currentUser?.username || 'Panel'}</span>
+          </Link>
+
+          {/* Botones derecha */}
+          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
             <button
               onClick={handleOpenTips}
-              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 transition-all duration-300"
+              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 transition-all duration-300"
               title="Ver guía de uso"
             >
-              <IoHelpCircleOutline className="w-5 h-5" />
-              <span className="hidden sm:inline">Ayuda</span>
+              <IoHelpCircleOutline className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden lg:inline text-sm">Ayuda</span>
             </button>
             <Link
               to="/subscription"
-              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all duration-300"
+              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all duration-300"
               title="Mi Suscripción"
             >
-              <IoCardOutline className="w-5 h-5" />
-              <span className="hidden sm:inline">Mi Plan</span>
+              <IoCardOutline className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden lg:inline text-sm">Mi Plan</span>
             </Link>
             {tenantSubdomain && hasLandingFeature && (
               <Link
                 to={`/landing/${tenantSubdomain}`}
                 target="_blank"
-                className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all duration-300"
+                className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all duration-300"
                 title="Ver mi Landing Page pública"
               >
-                <IoGlobeOutline className="w-5 h-5" />
-                <span className="hidden sm:inline">Mi Landing</span>
+                <IoGlobeOutline className="w-5 h-5 flex-shrink-0" />
+                <span className="hidden lg:inline text-sm">Mi Landing</span>
               </Link>
             )}
             <Link
               to="/company-settings"
-              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 transition-all duration-300"
+              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 transition-all duration-300"
+              title="Configuración"
             >
-              <IoSettingsOutline className="w-5 h-5" />
-              <span className="hidden sm:inline">Configuración</span>
+              <IoSettingsOutline className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden lg:inline text-sm">Configuración</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="text-white flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 transition-all duration-300"
+              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 transition-all duration-300 flex-shrink-0"
+              title="Cerrar sesión"
             >
-              <span className="hidden sm:inline">Cerrar Sesión</span>
-              <span className="sm:hidden">Salir</span>
-              <IoLogOutOutline className="w-5 h-5" />
+              <IoLogOutOutline className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden sm:inline text-sm">Salir</span>
             </button>
           </div>
         </div>
