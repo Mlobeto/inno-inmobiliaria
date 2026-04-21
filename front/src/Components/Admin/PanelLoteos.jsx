@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
+import LoteoVentaPdf from '../PdfTemplates/LoteoVentaPdf';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { Link } from 'react-router-dom';
 import {
@@ -1133,14 +1134,21 @@ export default function PanelLoteos() {
 
                 {/* Anular venta */}
                 <div className="pt-2 border-t border-white/10 flex justify-between items-center">
-                  <p className="text-slate-500 text-xs">Anular devolverá el lote a estado DISPONIBLE</p>
-                  <button
-                    onClick={handleDeleteVenta}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition-colors"
-                  >
-                    <IoAlertCircleOutline className="w-4 h-4" />
-                    Anular venta
-                  </button>
+                  <LoteoVentaPdf
+                    venta={venta}
+                    lote={selectedLoteForVenta}
+                    loteo={loteoDetail}
+                  />
+                  <div className="flex items-center gap-3">
+                    <p className="text-slate-500 text-xs">Anular devuelve el lote a DISPONIBLE</p>
+                    <button
+                      onClick={handleDeleteVenta}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition-colors"
+                    >
+                      <IoAlertCircleOutline className="w-4 h-4" />
+                      Anular venta
+                    </button>
+                  </div>
                 </div>
               </div>
 

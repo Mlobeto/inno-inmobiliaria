@@ -17,7 +17,6 @@ import {
 
 const CreateSaleContractForm = () => {
   const dispatch = useDispatch();
-  const property = useSelector(state => state.property);
   const clients = useSelector(state => state.clients);
   const { dolar, loading: dolarLoading } = useDolarRate();
 
