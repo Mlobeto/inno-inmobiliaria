@@ -1081,6 +1081,7 @@ model lotes {
   id          Int              @id @default(autoincrement())
   loteoId     Int
   number      String           @db.VarChar(50)
+  parcela     String?          @db.VarChar(100)
   surface     Float?
   price       Float?
   currency    String           @default("ARS") @db.VarChar(10)

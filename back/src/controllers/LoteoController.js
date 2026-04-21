@@ -148,7 +148,7 @@ exports.createLote = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { loteoId } = req.params;
-    const { number, surface, price, currency, status, description, photos } = req.body;
+    const { number, parcela, surface, price, currency, status, description, photos } = req.body;
 
     if (!number?.toString().trim()) {
       return res.status(400).json({ success: false, message: 'El número de lote es obligatorio' });
@@ -162,6 +162,7 @@ exports.createLote = async (req, res) => {
       data: {
         loteoId: Number(loteoId),
         number: number.toString().trim(),
+        parcela: parcela?.trim() || null,
         surface: surface ? Number(surface) : null,
         price: price ? Number(price) : null,
         currency: currency || 'USD',
@@ -188,7 +189,7 @@ exports.updateLote = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { loteoId, loteId } = req.params;
-    const { number, surface, price, currency, status, description, photos } = req.body;
+    const { number, parcela, surface, price, currency, status, description, photos } = req.body;
 
     // Verificar que el loteo pertenece al tenant
     const loteo = await prisma.loteos.findFirst({ where: { id: Number(loteoId), tenantId } });
@@ -198,6 +199,7 @@ exports.updateLote = async (req, res) => {
       where: { id: Number(loteId) },
       data: {
         ...(number !== undefined && { number: number.toString().trim() }),
+        ...(parcela !== undefined && { parcela: parcela?.trim() || null }),
         ...(surface !== undefined && { surface: surface ? Number(surface) : null }),
         ...(price !== undefined && { price: price ? Number(price) : null }),
         ...(currency && { currency }),

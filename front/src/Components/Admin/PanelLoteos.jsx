@@ -69,8 +69,6 @@ const EMPTY_LOTEO = {
   province: '',
   photos: [],
   totalLotes: '',
-  precioBase: '',
-  currency: 'ARS',
 };
 
 const EMPTY_VENTA = {
@@ -97,6 +95,7 @@ const PERIODICIDAD_OPTS = [
 
 const EMPTY_LOTE = {
   number: '',
+  parcela: '',
   surface: '',
   price: '',
   currency: 'ARS',
@@ -198,8 +197,6 @@ export default function PanelLoteos() {
       province:    loteo.province || '',
       photos:      loteo.photos || [],
       totalLotes:  String(loteo.totalLotes || ''),
-      precioBase:  String(loteo.precioBase || ''),
-      currency:    loteo.currency || 'ARS',
     });
     setError('');
     setShowLoteoModal(true);
@@ -230,7 +227,6 @@ export default function PanelLoteos() {
       const payload = {
         ...loteoForm,
         totalLotes: loteoForm.totalLotes !== '' ? Number(loteoForm.totalLotes) : undefined,
-        precioBase: loteoForm.precioBase !== '' ? Number(loteoForm.precioBase) : undefined,
       };
       if (editingLoteo) {
         await updateLoteo({ loteoId: editingLoteo.id, ...payload }).unwrap();
@@ -340,6 +336,7 @@ export default function PanelLoteos() {
     setEditingLote(lote);
     setLoteForm({
       number:      String(lote.number || ''),
+      parcela:     lote.parcela || '',
       surface:     String(lote.surface || ''),
       price:       String(lote.price || ''),
       currency:    lote.currency || 'ARS',
@@ -374,10 +371,11 @@ export default function PanelLoteos() {
     setError('');
     try {
       const payload = {
-        loteoId: selectedLoteoId,
-        number:  parseInt(loteForm.number, 10),
-        surface: loteForm.surface ? parseFloat(loteForm.surface) : null,
-        price:   loteForm.price ? parseFloat(loteForm.price) : null,
+        loteoId:     selectedLoteoId,
+        number:      parseInt(loteForm.number, 10),
+        parcela:     loteForm.parcela.trim() || null,
+        surface:     loteForm.surface ? parseFloat(loteForm.surface) : null,
+        price:       loteForm.price ? parseFloat(loteForm.price) : null,
         currency:    loteForm.currency,
         status:      loteForm.status,
         description: loteForm.description,
@@ -724,39 +722,16 @@ export default function PanelLoteos() {
               </div>
 
               {/* Cantidad de lotes y precio base */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 text-sm mb-1">Cantidad de lotes</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    value={loteoForm.totalLotes}
-                    onChange={e => setLoteoForm(f => ({ ...f, totalLotes: e.target.value }))}
-                    placeholder="Ej: 80"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 text-sm mb-1">Precio base por lote</label>
-                  <div className="flex gap-1">
-                    <select
-                      className="bg-slate-700 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none focus:border-emerald-500 text-sm"
-                      value={loteoForm.currency}
-                      onChange={e => setLoteoForm(f => ({ ...f, currency: e.target.value }))}
-                    >
-                      <option value="ARS">$</option>
-                      <option value="USD">U$D</option>
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                      value={loteoForm.precioBase}
-                      onChange={e => setLoteoForm(f => ({ ...f, precioBase: e.target.value }))}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-slate-300 text-sm mb-1">Cantidad de lotes</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  value={loteoForm.totalLotes}
+                  onChange={e => setLoteoForm(f => ({ ...f, totalLotes: e.target.value }))}
+                  placeholder="Ej: 80 (cantidad total de lotes del proyecto)"
+                />
               </div>
 
               {/* Fotos generales */}
@@ -834,6 +809,16 @@ export default function PanelLoteos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="block text-slate-300 text-sm mb-1">Parcela</label>
+                  <input
+                    type="text"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    value={loteForm.parcela}
+                    onChange={e => setLoteForm(f => ({ ...f, parcela: e.target.value }))}
+                    placeholder="Ej: Parcela 1 / Manzana A"
+                  />
+                </div>
+                <div>
                   <label className="block text-slate-300 text-sm mb-1">Número de lote *</label>
                   <input
                     type="number"
@@ -844,18 +829,19 @@ export default function PanelLoteos() {
                     placeholder="1"
                   />
                 </div>
-                <div>
-                  <label className="block text-slate-300 text-sm mb-1">Superficie (m²)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                    value={loteForm.surface}
-                    onChange={e => setLoteForm(f => ({ ...f, surface: e.target.value }))}
-                    placeholder="200"
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-sm mb-1">Superficie (m²)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  value={loteForm.surface}
+                  onChange={e => setLoteForm(f => ({ ...f, surface: e.target.value }))}
+                  placeholder="200"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
