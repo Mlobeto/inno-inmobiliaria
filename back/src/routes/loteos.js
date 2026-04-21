@@ -17,4 +17,11 @@ router.post('/:loteoId/lotes', ctrl.createLote);
 router.put('/:loteoId/lotes/:loteId', ctrl.updateLote);
 router.delete('/:loteoId/lotes/:loteId', ctrl.deleteLote);
 
+// ── Venta y plan de financiación de un lote ──
+router.get('/:loteoId/lotes/:loteId/venta', ctrl.getVentaLote);
+router.post('/:loteoId/lotes/:loteId/venta', ctrl.createVentaLote);
+router.put('/:loteoId/lotes/:loteId/venta', ctrl.updateVentaLote);
+router.delete('/:loteoId/lotes/:loteId/venta', ctrl.deleteVentaLote);
+router.patch('/:loteoId/lotes/:loteId/venta/cuotas/:cuotaId/pagar', ctrl.pagarCuota);
+
 module.exports = router;

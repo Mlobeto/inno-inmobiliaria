@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { Link } from 'react-router-dom';
 import {
@@ -11,6 +12,10 @@ import {
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,
+  useGetVentaLoteQuery,
+  useCreateVentaLoteMutation,
+  useDeleteVentaLoteMutation,
+  usePagarCuotaMutation,
 } from '@shared/redux';
 import {
   IoArrowBack,
@@ -25,6 +30,11 @@ import {
   IoChevronBackOutline,
   IoImagesOutline,
   IoGridOutline,
+  IoReceiptOutline,
+  IoCheckmarkCircleOutline,
+  IoTimeOutline,
+  IoCashOutline,
+  IoAlertCircleOutline,
 } from 'react-icons/io5';
 import { uploadMultipleFiles } from '../../utils/azureUpload';
 
@@ -57,7 +67,32 @@ const EMPTY_LOTEO = {
   city: '',
   province: '',
   photos: [],
+  totalLotes: '',
+  precioBase: '',
+  currency: 'ARS',
 };
+
+const EMPTY_VENTA = {
+  clienteNombre: '',
+  clienteCuil: '',
+  clienteTelefono: '',
+  fechaVenta: new Date().toISOString().split('T')[0],
+  precioTotal: '',
+  currency: 'ARS',
+  anticipo: '',
+  cantidadCuotas: '12',
+  interes: '',
+  periodicidad: 'MENSUAL',
+  notas: '',
+};
+
+const PERIODICIDAD_OPTS = [
+  { value: 'MENSUAL',    label: 'Mensual' },
+  { value: 'BIMESTRAL', label: 'Bimestral' },
+  { value: 'TRIMESTRAL',label: 'Trimestral' },
+  { value: 'SEMESTRAL', label: 'Semestral' },
+  { value: 'ANUAL',     label: 'Anual' },
+];
 
 const EMPTY_LOTE = {
   number: '',
@@ -77,6 +112,10 @@ const StatusBadge = ({ status }) => (
   </span>
 );
 
+StatusBadge.propTypes = {
+  status: PropTypes.string.isRequired,
+};
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function PanelLoteos() {
@@ -88,6 +127,9 @@ export default function PanelLoteos() {
   const [createLote]         = useCreateLoteMutation();
   const [updateLote]         = useUpdateLoteMutation();
   const [deleteLote]         = useDeleteLoteMutation();
+  const [createVentaLote]    = useCreateVentaLoteMutation();
+  const [deleteVentaLote]    = useDeleteVentaLoteMutation();
+  const [pagarCuota]         = usePagarCuotaMutation();
 
   const loteos = loteosData?.loteos || [];
   const { dolar, loading: dolarLoading } = useDolarRate();
@@ -112,6 +154,13 @@ export default function PanelLoteos() {
   const [loteForm, setLoteForm]               = useState(EMPTY_LOTE);
   const [uploadingLote, setUploadingLote]     = useState(false);
 
+  // Modal venta / plan de financiación
+  const [showVentaModal, setShowVentaModal]   = useState(false);
+  const [selectedLoteForVenta, setSelectedLoteForVenta] = useState(null);
+  const [ventaForm, setVentaForm]             = useState(EMPTY_VENTA);
+  const [savingVenta, setSavingVenta]         = useState(false);
+  const [ventaError, setVentaError]           = useState('');
+
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
 
@@ -121,6 +170,13 @@ export default function PanelLoteos() {
     { skip: !selectedLoteoId }
   );
   const loteoDetail = loteoDetailData?.loteo || null;
+
+  // Venta del lote seleccionado para el modal
+  const { data: ventaData, isLoading: loadingVenta } = useGetVentaLoteQuery(
+    { loteoId: selectedLoteoId, loteId: selectedLoteForVenta?.id },
+    { skip: !showVentaModal || !selectedLoteForVenta }
+  );
+  const venta = ventaData?.venta || null;
 
   // ── Modal Loteo ────────────────────────────────────────────────────────────
 
@@ -140,6 +196,9 @@ export default function PanelLoteos() {
       city:        loteo.city || '',
       province:    loteo.province || '',
       photos:      loteo.photos || [],
+      totalLotes:  String(loteo.totalLotes || ''),
+      precioBase:  String(loteo.precioBase || ''),
+      currency:    loteo.currency || 'ARS',
     });
     setError('');
     setShowLoteoModal(true);
@@ -167,16 +226,85 @@ export default function PanelLoteos() {
     setSaving(true);
     setError('');
     try {
+      const payload = {
+        ...loteoForm,
+        totalLotes: loteoForm.totalLotes !== '' ? Number(loteoForm.totalLotes) : undefined,
+        precioBase: loteoForm.precioBase !== '' ? Number(loteoForm.precioBase) : undefined,
+      };
       if (editingLoteo) {
-        await updateLoteo({ loteoId: editingLoteo.id, ...loteoForm }).unwrap();
+        await updateLoteo({ loteoId: editingLoteo.id, ...payload }).unwrap();
       } else {
-        await createLoteo(loteoForm).unwrap();
+        await createLoteo(payload).unwrap();
       }
       setShowLoteoModal(false);
     } catch (err) {
       setError(err?.data?.message || 'Error al guardar el loteo');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Modal Venta / Financiación ─────────────────────────────────────────────
+
+  const openVentaModal = (lote) => {
+    setSelectedLoteForVenta(lote);
+    setVentaForm({
+      ...EMPTY_VENTA,
+      precioTotal: lote.price ? String(lote.price) : '',
+      currency:    lote.currency || 'ARS',
+    });
+    setVentaError('');
+    setShowVentaModal(true);
+  };
+
+  const closeVentaModal = () => {
+    setShowVentaModal(false);
+    setSelectedLoteForVenta(null);
+  };
+
+  const saveVenta = async () => {
+    if (!ventaForm.clienteNombre.trim()) { setVentaError('El nombre del comprador es obligatorio'); return; }
+    if (!ventaForm.precioTotal || Number(ventaForm.precioTotal) <= 0) { setVentaError('El precio total es obligatorio'); return; }
+    if (!ventaForm.cantidadCuotas || Number(ventaForm.cantidadCuotas) <= 0) { setVentaError('La cantidad de cuotas es obligatoria'); return; }
+    setSavingVenta(true);
+    setVentaError('');
+    try {
+      await createVentaLote({
+        loteoId: selectedLoteoId,
+        loteId:  selectedLoteForVenta.id,
+        ...ventaForm,
+        precioTotal:     parseFloat(ventaForm.precioTotal),
+        anticipo:        parseFloat(ventaForm.anticipo || 0),
+        cantidadCuotas:  parseInt(ventaForm.cantidadCuotas, 10),
+        interes:         ventaForm.interes ? parseFloat(ventaForm.interes) : null,
+      }).unwrap();
+    } catch (err) {
+      setVentaError(err?.data?.message || 'Error al registrar la venta');
+    } finally {
+      setSavingVenta(false);
+    }
+  };
+
+  const handlePagarCuota = async (cuotaId, pagado) => {
+    try {
+      await pagarCuota({
+        loteoId: selectedLoteoId,
+        loteId:  selectedLoteForVenta.id,
+        cuotaId,
+        pagado,
+      }).unwrap();
+    } catch {
+      alert('Error al registrar el pago');
+    }
+  };
+
+  const handleDeleteVenta = async () => {
+    if (!window.confirm('¿Anular la venta y volver el lote a DISPONIBLE?')) return;
+    try {
+      await deleteVentaLote({ loteoId: selectedLoteoId, loteId: selectedLoteForVenta.id }).unwrap();
+      closeVentaModal();
+    } catch {
+      alert('Error al anular la venta');
     }
   };
 
@@ -495,6 +623,13 @@ export default function PanelLoteos() {
 
                         <div className="flex space-x-1 pt-1">
                           <button
+                            onClick={() => openVentaModal(lote)}
+                            className="flex-1 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded text-xs transition-colors"
+                            title="Plan de venta / financiación"
+                          >
+                            <IoReceiptOutline className="w-3.5 h-3.5 mx-auto" />
+                          </button>
+                          <button
                             onClick={() => openEditLote(lote)}
                             className="flex-1 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded text-xs transition-colors"
                           >
@@ -584,6 +719,42 @@ export default function PanelLoteos() {
                     onChange={e => setLoteoForm(f => ({ ...f, province: e.target.value }))}
                     placeholder="Provincia"
                   />
+                </div>
+              </div>
+
+              {/* Cantidad de lotes y precio base */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 text-sm mb-1">Cantidad de lotes</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    value={loteoForm.totalLotes}
+                    onChange={e => setLoteoForm(f => ({ ...f, totalLotes: e.target.value }))}
+                    placeholder="Ej: 80"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm mb-1">Precio base por lote</label>
+                  <div className="flex gap-1">
+                    <select
+                      className="bg-slate-700 border border-white/10 rounded-lg px-2 py-2 text-white focus:outline-none focus:border-emerald-500 text-sm"
+                      value={loteoForm.currency}
+                      onChange={e => setLoteoForm(f => ({ ...f, currency: e.target.value }))}
+                    >
+                      <option value="ARS">$</option>
+                      <option value="USD">U$D</option>
+                    </select>
+                    <input
+                      type="number"
+                      min="0"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      value={loteoForm.precioBase}
+                      onChange={e => setLoteoForm(f => ({ ...f, precioBase: e.target.value }))}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -825,6 +996,353 @@ export default function PanelLoteos() {
                 <span>{saving ? 'Guardando...' : 'Guardar'}</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Plan de Venta / Financiación ── */}
+      {showVentaModal && selectedLoteForVenta && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <div className="flex items-center space-x-3">
+                <IoReceiptOutline className="w-6 h-6 text-emerald-400" />
+                <div>
+                  <h2 className="text-white font-bold text-lg">Plan de Venta</h2>
+                  <p className="text-slate-400 text-sm">Lote {selectedLoteForVenta.number}</p>
+                </div>
+              </div>
+              <button onClick={closeVentaModal} className="text-slate-400 hover:text-white">
+                <IoCloseOutline className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Loading state */}
+            {loadingVenta ? (
+              <div className="p-10 flex justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400" />
+              </div>
+
+            /* Venta existente: mostrar plan y cuotas */
+            ) : venta ? (
+              <div className="p-5 space-y-5">
+
+                {/* Info de la venta */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                  <div>
+                    <p className="text-slate-400 text-xs mb-0.5">Comprador</p>
+                    <p className="text-white font-semibold">{venta.clienteNombre}</p>
+                    {venta.clienteCuil && <p className="text-slate-400 text-xs">{venta.clienteCuil}</p>}
+                    {venta.clienteTelefono && <p className="text-slate-400 text-xs">{venta.clienteTelefono}</p>}
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Fecha:</span>
+                      <span className="text-white">{new Date(venta.fechaVenta).toLocaleDateString('es-AR')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Precio total:</span>
+                      <span className="text-white font-semibold">{formatCurrency(venta.precioTotal, venta.currency)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Anticipo:</span>
+                      <span className="text-white">{formatCurrency(venta.anticipo, venta.currency)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Saldo:</span>
+                      <span className="text-emerald-300 font-semibold">{formatCurrency(venta.saldo, venta.currency)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Cuotas:</span>
+                      <span className="text-white">{venta.cantidadCuotas} × {formatCurrency(venta.montoCuota, venta.currency)}</span>
+                    </div>
+                    {venta.interes > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Interés:</span>
+                        <span className="text-amber-300">{venta.interes}%</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Periodicidad:</span>
+                      <span className="text-white">{venta.periodicidad}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cuotas */}
+                <div>
+                  <h3 className="text-slate-300 font-semibold mb-2 flex items-center gap-2">
+                    <IoCashOutline className="w-4 h-4" /> Cuotas
+                  </h3>
+                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <table className="w-full text-sm">
+                      <thead className="bg-white/5 text-slate-400 text-xs">
+                        <tr>
+                          <th className="px-3 py-2 text-left">#</th>
+                          <th className="px-3 py-2 text-left">Vencimiento</th>
+                          <th className="px-3 py-2 text-right">Monto</th>
+                          <th className="px-3 py-2 text-center">Estado</th>
+                          <th className="px-3 py-2 text-center">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(venta.cuotas || []).map(c => (
+                          <tr key={c.id} className={`border-t border-white/5 ${c.pagado ? 'opacity-60' : ''}`}>
+                            <td className="px-3 py-2 text-slate-300">{c.numeroCuota}</td>
+                            <td className="px-3 py-2 text-slate-300">
+                              {new Date(c.fechaVencimiento).toLocaleDateString('es-AR')}
+                            </td>
+                            <td className="px-3 py-2 text-right text-white font-medium">
+                              {formatCurrency(c.monto, venta.currency)}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              {c.pagado ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-400 text-xs">
+                                  <IoCheckmarkCircleOutline className="w-4 h-4" /> Pagada
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-amber-400 text-xs">
+                                  <IoTimeOutline className="w-4 h-4" /> Pendiente
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => handlePagarCuota(c.id, !c.pagado)}
+                                className={`px-2 py-1 rounded text-xs transition-colors ${
+                                  c.pagado
+                                    ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300'
+                                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                                }`}
+                              >
+                                {c.pagado ? 'Desmarcar' : 'Pagar'}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {venta.notas && (
+                  <p className="text-slate-400 text-sm bg-white/5 rounded-lg p-3">{venta.notas}</p>
+                )}
+
+                {/* Anular venta */}
+                <div className="pt-2 border-t border-white/10 flex justify-between items-center">
+                  <p className="text-slate-500 text-xs">Anular devolverá el lote a estado DISPONIBLE</p>
+                  <button
+                    onClick={handleDeleteVenta}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition-colors"
+                  >
+                    <IoAlertCircleOutline className="w-4 h-4" />
+                    Anular venta
+                  </button>
+                </div>
+              </div>
+
+            /* Sin venta: formulario para crear */
+            ) : (
+              <div className="p-5 space-y-5">
+                {ventaError && (
+                  <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{ventaError}</p>
+                )}
+
+                {/* Sección: Datos del comprador */}
+                <div>
+                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Datos del comprador</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-slate-300 text-sm mb-1">Nombre completo *</label>
+                      <input
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        value={ventaForm.clienteNombre}
+                        onChange={e => setVentaForm(f => ({ ...f, clienteNombre: e.target.value }))}
+                        placeholder="Apellido, Nombre"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">CUIL / DNI</label>
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.clienteCuil}
+                          onChange={e => setVentaForm(f => ({ ...f, clienteCuil: e.target.value }))}
+                          placeholder="20-12345678-5"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Teléfono</label>
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.clienteTelefono}
+                          onChange={e => setVentaForm(f => ({ ...f, clienteTelefono: e.target.value }))}
+                          placeholder="+54 9 ..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección: Condiciones de venta */}
+                <div>
+                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Condiciones de venta</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="col-span-2">
+                        <label className="block text-slate-300 text-sm mb-1">Precio total *</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.precioTotal}
+                          onChange={e => setVentaForm(f => ({ ...f, precioTotal: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Moneda</label>
+                        <select
+                          className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.currency}
+                          onChange={e => setVentaForm(f => ({ ...f, currency: e.target.value }))}
+                        >
+                          <option value="ARS">ARS $</option>
+                          <option value="USD">USD U$S</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Anticipo / Seña</label>
+                        <input
+                          type="number"
+                          min="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.anticipo}
+                          onChange={e => setVentaForm(f => ({ ...f, anticipo: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Fecha de venta</label>
+                        <input
+                          type="date"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.fechaVenta}
+                          onChange={e => setVentaForm(f => ({ ...f, fechaVenta: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección: Plan de financiación */}
+                <div>
+                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Plan de financiación</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Cant. cuotas *</label>
+                        <input
+                          type="number"
+                          min="1"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.cantidadCuotas}
+                          onChange={e => setVentaForm(f => ({ ...f, cantidadCuotas: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Interés (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.interes}
+                          onChange={e => setVentaForm(f => ({ ...f, interes: e.target.value }))}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Periodicidad</label>
+                        <select
+                          className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.periodicidad}
+                          onChange={e => setVentaForm(f => ({ ...f, periodicidad: e.target.value }))}
+                        >
+                          {PERIODICIDAD_OPTS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Preview en tiempo real */}
+                    {ventaForm.precioTotal && ventaForm.cantidadCuotas && (() => {
+                      const precio    = parseFloat(ventaForm.precioTotal) || 0;
+                      const anticipo  = parseFloat(ventaForm.anticipo) || 0;
+                      const interes   = parseFloat(ventaForm.interes) || 0;
+                      const cuotas    = parseInt(ventaForm.cantidadCuotas, 10) || 1;
+                      const saldo     = precio - anticipo;
+                      const total     = saldo * (1 + interes / 100);
+                      const cuotaMonto = total / cuotas;
+                      return (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg space-y-1 text-sm">
+                          <div className="flex justify-between text-slate-300">
+                            <span>Saldo a financiar:</span>
+                            <span className="text-white font-semibold">{formatCurrency(saldo, ventaForm.currency)}</span>
+                          </div>
+                          {interes > 0 && (
+                            <div className="flex justify-between text-slate-300">
+                              <span>Total con interés ({interes}%):</span>
+                              <span className="text-amber-300 font-semibold">{formatCurrency(total, ventaForm.currency)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-slate-300 border-t border-emerald-500/20 pt-1 mt-1">
+                            <span>Valor de cada cuota:</span>
+                            <span className="text-emerald-300 font-bold text-base">{formatCurrency(cuotaMonto, ventaForm.currency)}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                {/* Notas */}
+                <div>
+                  <label className="block text-slate-300 text-sm mb-1">Notas</label>
+                  <textarea
+                    rows={2}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                    value={ventaForm.notas}
+                    onChange={e => setVentaForm(f => ({ ...f, notas: e.target.value }))}
+                    placeholder="Condiciones especiales, observaciones..."
+                  />
+                </div>
+
+                {/* Botones */}
+                <div className="flex space-x-3 pt-2 border-t border-white/10">
+                  <button
+                    onClick={closeVentaModal}
+                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveVenta}
+                    disabled={savingVenta}
+                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <IoReceiptOutline className="w-5 h-5" />
+                    <span>{savingVenta ? 'Guardando...' : 'Registrar venta'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

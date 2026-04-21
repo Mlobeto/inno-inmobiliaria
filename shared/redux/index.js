@@ -169,6 +169,11 @@ export {
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,
+  useGetVentaLoteQuery,
+  useCreateVentaLoteMutation,
+  useUpdateVentaLoteMutation,
+  useDeleteVentaLoteMutation,
+  usePagarCuotaMutation,
 } from './api/loteoApi';
 
 // ==================== AGENT API ====================

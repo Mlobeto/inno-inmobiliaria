@@ -706,6 +706,7 @@ model tenants {
   leads                leads[]
   support_tickets      support_tickets[]
   loteos               loteos[]
+  lote_ventas          lote_ventas[]
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
   @@index([cuit], map: "tenants_cuit")
@@ -1063,6 +1064,7 @@ model loteos {
   city        String?
   province    String?
   totalLotes  Int               @default(0)
+  precioBase  Float?
   status      enum_loteo_status @default(ACTIVO)
   photos      String[]          @default([])
   isPublished Boolean           @default(false)
@@ -1089,8 +1091,52 @@ model lotes {
   updatedAt   DateTime         @updatedAt
 
   loteo       loteos           @relation(fields: [loteoId], references: [id], onDelete: Cascade)
+  venta       lote_ventas?
 
   @@index([loteoId], map: "idx_lotes_loteo")
+}
+
+model lote_ventas {
+  id               Int       @id @default(autoincrement())
+  loteId           Int       @unique
+  tenantId         Int
+  clienteNombre    String    @db.VarChar(200)
+  clienteCuil      String?   @db.VarChar(50)
+  clienteTelefono  String?   @db.VarChar(50)
+  fechaVenta       DateTime  @default(now())
+  precioTotal      Float
+  currency         String    @default("ARS") @db.VarChar(10)
+  anticipo         Float     @default(0)
+  saldo            Float
+  cantidadCuotas   Int
+  montoCuota       Float
+  interes          Float?
+  periodicidad     String    @default("MENSUAL") @db.VarChar(20)
+  notas            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  lote    lotes   @relation(fields: [loteId], references: [id], onDelete: Cascade)
+  tenants tenants @relation(fields: [tenantId], references: [tenantId])
+  cuotas  lote_cuotas[]
+
+  @@index([loteId], map: "idx_lote_ventas_lote")
+  @@index([tenantId], map: "idx_lote_ventas_tenant")
+}
+
+model lote_cuotas {
+  id               Int       @id @default(autoincrement())
+  ventaId          Int
+  numeroCuota      Int
+  fechaVencimiento DateTime
+  monto            Float
+  pagado           Boolean   @default(false)
+  fechaPago        DateTime?
+  notas            String?
+
+  venta lote_ventas @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+
+  @@index([ventaId], map: "idx_lote_cuotas_venta")
 }
 
 enum enum_loteo_status {

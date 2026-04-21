@@ -105,6 +105,61 @@ export const loteoApi = baseApi.injectEndpoints({
         'Loteo',
       ],
     }),
+
+    // ========== VENTA Y FINANCIACIÓN ==========
+
+    // Obtener venta/plan de financiación de un lote
+    getVentaLote: builder.query({
+      query: ({ loteoId, loteId }) => `/loteos/${loteoId}/lotes/${loteId}/venta`,
+      providesTags: (result, error, { loteId }) => [{ type: 'LoteVenta', id: loteId }],
+    }),
+
+    // Crear venta con plan de financiación
+    createVentaLote: builder.mutation({
+      query: ({ loteoId, loteId, ...data }) => ({
+        url: `/loteos/${loteoId}/lotes/${loteId}/venta`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { loteoId, loteId }) => [
+        { type: 'Loteo', id: loteoId },
+        { type: 'LoteVenta', id: loteId },
+        'Loteo',
+      ],
+    }),
+
+    // Actualizar datos del comprador / notas
+    updateVentaLote: builder.mutation({
+      query: ({ loteoId, loteId, ...data }) => ({
+        url: `/loteos/${loteoId}/lotes/${loteId}/venta`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { loteId }) => [{ type: 'LoteVenta', id: loteId }],
+    }),
+
+    // Eliminar venta (vuelve el lote a DISPONIBLE)
+    deleteVentaLote: builder.mutation({
+      query: ({ loteoId, loteId }) => ({
+        url: `/loteos/${loteoId}/lotes/${loteId}/venta`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (result, error, { loteoId, loteId }) => [
+        { type: 'Loteo', id: loteoId },
+        { type: 'LoteVenta', id: loteId },
+        'Loteo',
+      ],
+    }),
+
+    // Marcar/desmarcar cuota como pagada
+    pagarCuota: builder.mutation({
+      query: ({ loteoId, loteId, cuotaId, ...data }) => ({
+        url: `/loteos/${loteoId}/lotes/${loteId}/venta/cuotas/${cuotaId}/pagar`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { loteId }) => [{ type: 'LoteVenta', id: loteId }],
+    }),
   }),
 });
 
@@ -118,4 +173,9 @@ export const {
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,
+  useGetVentaLoteQuery,
+  useCreateVentaLoteMutation,
+  useUpdateVentaLoteMutation,
+  useDeleteVentaLoteMutation,
+  usePagarCuotaMutation,
 } = loteoApi;
