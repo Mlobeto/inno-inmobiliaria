@@ -29,6 +29,7 @@ const TRANSACTION_TYPES = [
   { value: 'VENTA', label: 'Venta', color: 'emerald' },
   { value: 'ALQUILER', label: 'Alquiler', color: 'blue' },
   { value: 'ALQUILER_TEMPORAL', label: 'Alquiler temporal', color: 'purple' },
+  { value: 'VENTA_LOTE', label: 'Venta de Lote', color: 'orange' },
 ];
 
 const STATUS_LIST = [
@@ -49,6 +50,7 @@ const TX_BADGE = {
   VENTA: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
   ALQUILER: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
   ALQUILER_TEMPORAL: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
+  VENTA_LOTE: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
 };
 
 const formatCurrency = (n) =>
@@ -120,7 +122,7 @@ export default function PanelComisiones() {
       agentId: String(comm.agentId),
       transactionType: comm.transactionType,
       transactionId: String(comm.transactionId || ''),
-      propertyId: String(comm.propertyId),
+      propertyId: comm.propertyId != null ? String(comm.propertyId) : '',
       clientId: String(comm.clientId || ''),
       transactionAmount: String(comm.transactionAmount),
       inmobiliariaCommissionPercent: comm.inmobiliariaCommissionPercent != null ? String(comm.inmobiliariaCommissionPercent) : '',
@@ -380,7 +382,9 @@ export default function PanelComisiones() {
                     {commissions.map((c) => {
                       const agentName = c.admins_commissions_agentIdToadmins?.fullName
                         || c.admins_commissions_agentIdToadmins?.username || '—';
-                      const propAddr = c.Property?.address || `#${c.propertyId}`;
+                      const propAddr = c.transactionType === 'VENTA_LOTE'
+                        ? (c.loteoNombre || `Lote #${c.transactionId}`)
+                        : (c.Property?.address || `#${c.propertyId}`);
                       return (
                         <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                           <td className="px-4 py-3 text-sm font-medium">{agentName}</td>

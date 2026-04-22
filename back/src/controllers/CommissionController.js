@@ -214,14 +214,15 @@ exports.createCommission = async (req, res) => {
     } = req.body;
 
     // Validaciones básicas
-    if (!agentId || !transactionType || !propertyId || transactionAmount === undefined) {
+    const isVentaLote = transactionType === 'VENTA_LOTE';
+    if (!agentId || !transactionType || (!propertyId && !isVentaLote) || transactionAmount === undefined) {
       return res.status(400).json({
         success: false,
         message: 'agentId, transactionType, propertyId y transactionAmount son obligatorios',
       });
     }
 
-    const validTypes = ['VENTA', 'ALQUILER', 'ALQUILER_TEMPORAL'];
+    const validTypes = ['VENTA', 'ALQUILER', 'ALQUILER_TEMPORAL', 'VENTA_LOTE'];
     if (!validTypes.includes(transactionType)) {
       return res.status(400).json({
         success: false,
@@ -235,11 +236,13 @@ exports.createCommission = async (req, res) => {
     });
     if (!agent) return res.status(404).json({ success: false, message: 'Agente no encontrado en este tenant' });
 
-    // Verificar que la propiedad pertenece al tenant
-    const property = await prisma.Property.findFirst({
-      where: { propertyId: Number(propertyId), tenantId },
-    });
-    if (!property) return res.status(404).json({ success: false, message: 'Propiedad no encontrada' });
+    // Verificar propiedad solo para transacciones de propiedades (no lotes)
+    if (!isVentaLote) {
+      const property = await prisma.Property.findFirst({
+        where: { propertyId: Number(propertyId), tenantId },
+      });
+      if (!property) return res.status(404).json({ success: false, message: 'Propiedad no encontrada' });
+    }
 
     // Calcular montos de comisión
     const txAmount = parseFloat(transactionAmount);
@@ -255,7 +258,7 @@ exports.createCommission = async (req, res) => {
         agentId: Number(agentId),
         transactionType,
         transactionId: transactionId ? Number(transactionId) : 0,
-        propertyId: Number(propertyId),
+        propertyId: propertyId ? Number(propertyId) : null,
         clientId: clientId ? Number(clientId) : null,
         transactionAmount: txAmount,
         inmobiliariaCommissionPercent: inmoPercent,

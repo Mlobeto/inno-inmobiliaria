@@ -82,6 +82,7 @@ const EMPTY_VENTA = {
   cantidadCuotas: '12',
   interes: '',
   periodicidad: 'MENSUAL',
+  comisionPercent: '',
   notas: '',
 };
 
@@ -274,6 +275,7 @@ export default function PanelLoteos() {
         anticipo:        parseFloat(ventaForm.anticipo || 0),
         cantidadCuotas:  parseInt(ventaForm.cantidadCuotas, 10),
         interes:         ventaForm.interes ? parseFloat(ventaForm.interes) : null,
+        comisionPercent: ventaForm.comisionPercent ? parseFloat(ventaForm.comisionPercent) : null,
       }).unwrap();
     } catch (err) {
       setVentaError(err?.data?.message || 'Error al registrar la venta');
@@ -1055,6 +1057,14 @@ export default function PanelLoteos() {
                       <span className="text-slate-400">Periodicidad:</span>
                       <span className="text-white">{venta.periodicidad}</span>
                     </div>
+                    {venta.comisionPercent > 0 && (
+                      <div className="flex justify-between border-t border-white/10 pt-1 mt-1">
+                        <span className="text-slate-400 flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob.:</span>
+                        <span className="text-orange-300 font-semibold">
+                          {venta.comisionPercent}% — {formatCurrency(venta.comisionMonto, venta.currency)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1209,7 +1219,7 @@ export default function PanelLoteos() {
                         </select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="block text-slate-300 text-sm mb-1">Anticipo / Seña</label>
                         <input
@@ -1219,6 +1229,18 @@ export default function PanelLoteos() {
                           value={ventaForm.anticipo}
                           onChange={e => setVentaForm(f => ({ ...f, anticipo: e.target.value }))}
                           placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-300 text-sm mb-1">Comisión inmob. (%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          value={ventaForm.comisionPercent}
+                          onChange={e => setVentaForm(f => ({ ...f, comisionPercent: e.target.value }))}
+                          placeholder="3"
                         />
                       </div>
                       <div>
@@ -1300,6 +1322,12 @@ export default function PanelLoteos() {
                             <span>Valor de cada cuota:</span>
                             <span className="text-emerald-300 font-bold text-base">{formatCurrency(cuotaMonto, ventaForm.currency)}</span>
                           </div>
+                          {ventaForm.comisionPercent && parseFloat(ventaForm.comisionPercent) > 0 && (
+                            <div className="flex justify-between text-slate-300 border-t border-emerald-500/20 pt-1 mt-1">
+                              <span className="flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob. ({ventaForm.comisionPercent}%):</span>
+                              <span className="text-orange-300 font-semibold">{formatCurrency(precio * parseFloat(ventaForm.comisionPercent) / 100, ventaForm.currency)}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })()}

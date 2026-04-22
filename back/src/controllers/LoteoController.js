@@ -270,6 +270,7 @@ exports.createVentaLote = async (req, res) => {
       clienteNombre, clienteCuil, clienteTelefono,
       fechaVenta, precioTotal, currency,
       anticipo, cantidadCuotas, interes, periodicidad, notas,
+      comisionPercent,
     } = req.body;
 
     if (!clienteNombre?.trim()) {
@@ -297,6 +298,10 @@ exports.createVentaLote = async (req, res) => {
     // Cálculo con interés simple sobre saldo
     const montoConInteres = interesDecimal > 0 ? saldo * (1 + interesDecimal) : saldo;
     const montoCuota = Math.ceil(montoConInteres / Number(cantidadCuotas));
+
+    // Comisión inmobiliaria sobre precio total
+    const comisionPct = comisionPercent ? Number(comisionPercent) : null;
+    const comisionMonto = comisionPct ? Math.round((Number(precioTotal) * comisionPct) / 100) : null;
 
     // Generar cuotas
     const fechaBase = fechaVenta ? new Date(fechaVenta) : new Date();
@@ -331,6 +336,8 @@ exports.createVentaLote = async (req, res) => {
         interes: interes ? Number(interes) : null,
         periodicidad: periodicidad || 'MENSUAL',
         notas: notas?.trim() || null,
+        comisionPercent: comisionPct,
+        comisionMonto,
         cuotas: { create: cuotasData },
       },
       include: { cuotas: { orderBy: { numeroCuota: 'asc' } } },
@@ -341,6 +348,33 @@ exports.createVentaLote = async (req, res) => {
       where: { id: Number(loteId) },
       data: { status: 'VENDIDO', price: Number(precioTotal), currency: currency || 'ARS' },
     });
+
+    // Si hay comisión, registrar en tabla de comisiones
+    if (comisionPct && comisionMonto) {
+      try {
+        await prisma.commissions.create({
+          data: {
+            tenantId,
+            agentId: req.user.adminId,
+            transactionType: 'VENTA_LOTE',
+            transactionId: venta.id,
+            propertyId: null,
+            loteVentaId: venta.id,
+            loteoNombre: `${loteo.name} — Lote #${lote.number}${lote.parcela ? ` (${lote.parcela})` : ''}`,
+            transactionAmount: Number(precioTotal),
+            inmobiliariaCommissionPercent: comisionPct,
+            inmobiliariaCommissionAmount: comisionMonto,
+            agentCommissionPercent: null,
+            agentCommissionAmount: null,
+            status: 'PENDING',
+            notes: `Venta de lote a ${clienteNombre.trim()}${notas ? ` — ${notas.trim()}` : ''}`,
+          },
+        });
+      } catch (commErr) {
+        // No fallar la venta si falla el registro de comisión
+        console.error('Error al registrar comisión de venta de lote:', commErr);
+      }
+    }
 
     return res.status(201).json({ success: true, venta });
   } catch (error) {

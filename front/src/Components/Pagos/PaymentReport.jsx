@@ -14,6 +14,7 @@ const PaymentReport = () => {
   const dispatch = useDispatch();
   
   // Selectores optimizados
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const payments = useSelector(state => state.allPayments) || [];
   const loading = useSelector(state => state.loading);
   const error = useSelector(state => state.error);
@@ -145,7 +146,7 @@ const PaymentReport = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Filtros de fecha */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 items-center gap-2">
                 <IoCalendarOutline className="text-indigo-500" />
                 Fecha Desde:
               </label>
@@ -160,7 +161,7 @@ const PaymentReport = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2 items-center gap-2">
                 <IoCalendarOutline className="text-indigo-500" />
                 Fecha Hasta:
               </label>
