@@ -606,69 +606,69 @@ const CompanySettings = () => {
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <nav className="flex -mb-px min-w-max sm:min-w-0">
               <button
                 onClick={() => setActiveTab('general')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'general'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
                   <IoBusinessOutline className="w-5 h-5" />
                   <span>Datos Generales</span>
                 </div>
               </button>
               <button
                 onClick={() => setActiveTab('messages')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'messages'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
                   <IoMailOutline className="w-5 h-5" />
                   <span>Mensajes</span>
                 </div>
               </button>
               <button
                 onClick={() => setActiveTab('templates')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'templates'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
                   <IoDocumentTextOutline className="w-5 h-5" />
                   <span>Plantillas PDF</span>
                 </div>
               </button>
               <button
                 onClick={() => setActiveTab('integrations')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'integrations'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
                   <IoExtensionPuzzleOutline className="w-5 h-5" />
                   <span>Integraciones</span>
                 </div>
               </button>
               <button
                 onClick={() => setActiveTab('payments')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
                   activeTab === 'payments'
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
                   <IoCardOutline className="w-5 h-5" />
                   <span>Métodos de Pago</span>
                 </div>
