@@ -7,7 +7,6 @@
 
 import  { useState } from 'react';
 import {
-  useUpdateTenantMutation,
   useSuspendTenantMutation,
   useActivateTenantMutation,
 } from '@shared/redux';
@@ -17,7 +16,6 @@ const TenantActions = ({ tenant, onSuccess }) => {
   const [suspendReason, setSuspendReason] = useState('');
   
   // Mutaciones RTK Query
-  const [updateTenant, { isLoading: isUpdating }] = useUpdateTenantMutation();
   const [suspendTenant, { isLoading: isSuspending }] = useSuspendTenantMutation();
   const [activateTenant, { isLoading: isActivating }] = useActivateTenantMutation();
   
@@ -57,21 +55,6 @@ const TenantActions = ({ tenant, onSuccess }) => {
       onSuccess?.();
     } catch (error) {
       alert(`❌ Error al activar: ${error.data?.message || error.message}`);
-    }
-  };
-  
-  // Handler para actualizar
-  const handleUpdateStatus = async (newStatus) => {
-    try {
-      await updateTenant({
-        tenantId: tenant.tenantId,
-        status: newStatus,
-      }).unwrap();
-      
-      alert('✅ Estado actualizado');
-      onSuccess?.();
-    } catch (error) {
-      alert(`❌ Error: ${error.data?.message || error.message}`);
     }
   };
   

@@ -383,43 +383,43 @@ const CompanySettings = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Navbar */}
       <nav className="bg-white shadow-md border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold text-gray-800">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h1 className="text-sm sm:text-xl font-bold text-gray-800 truncate">
                 {settings.company_name || 'ZentaProp'}
               </h1>
               {isIncomplete && (
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
+                <span className="hidden xs:inline-flex px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full whitespace-nowrap">
                   Configuración incompleta
                 </span>
               )}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {!isIncomplete && (
                 <>
                   <button
                     onClick={() => navigate('/panel')}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="flex items-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                   >
-                    <IoHomeOutline className="text-lg" />
-                    <span>Panel Principal</span>
+                    <IoHomeOutline className="text-base sm:text-lg flex-shrink-0" />
+                    <span className="hidden sm:inline">Panel Principal</span>
                   </button>
                   <button
                     onClick={() => navigate('/subscription')}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                    className="flex items-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg text-xs sm:text-sm"
                   >
-                    <IoCardOutline className="text-lg" />
-                    <span>Mi Plan</span>
+                    <IoCardOutline className="text-base sm:text-lg flex-shrink-0" />
+                    <span className="hidden sm:inline">Mi Plan</span>
                   </button>
                 </>
               )}
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                className="flex items-center gap-1 px-2 sm:px-4 py-1.5 sm:py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 text-xs sm:text-sm"
               >
-                <IoLogOutOutline className="text-lg" />
-                <span>Salir</span>
+                <IoLogOutOutline className="text-base sm:text-lg flex-shrink-0" />
+                <span className="hidden sm:inline">Salir</span>
               </button>
             </div>
           </div>
@@ -428,25 +428,23 @@ const CompanySettings = () => {
 
       <div className="max-w-4xl mx-auto p-6">
         
-        {/* Alerta de configuración incompleta */}
+        {/* Aviso de configuración pendiente */}
         {isIncomplete && (
-          <div className="bg-gradient-to-r from-red-500 to-red-600 border-2 border-red-700 rounded-xl shadow-2xl p-6 mb-6 text-white animate-pulse">
-            <div className="flex items-start space-x-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
-                <IoWarningOutline className="text-white text-3xl flex-shrink-0" />
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm p-5 mb-6">
+            <div className="flex items-start gap-4">
+              <div className="bg-blue-100 rounded-full p-3 flex-shrink-0">
+                <IoInformationCircleOutline className="text-blue-600 text-2xl" />
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-2 flex items-center">
-                  🚫 Acceso Bloqueado al Panel
+                <h3 className="text-lg font-semibold text-blue-800 mb-1">
+                  ¡Casi listo! Completá los datos de tu inmobiliaria
                 </h3>
-                <p className="text-red-50 text-base mb-3">
-                  No podrás navegar al panel ni acceder a las funciones del sistema hasta completar todos los <strong>Datos Generales</strong> de tu inmobiliaria.
+                <p className="text-blue-700 text-sm mb-3">
+                  Para empezar a usar el panel necesitás completar los <strong>Datos Generales</strong>. Solo te llevará unos minutos.
                 </p>
-                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
-                  <p className="text-sm text-white font-medium mb-2">
-                    📋 Campos Obligatorios:
-                  </p>
-                  <ul className="text-sm text-red-50 space-y-1 ml-4">
+                <div className="bg-white border border-blue-100 rounded-lg p-3">
+                  <p className="text-xs text-blue-600 font-medium mb-2">📋 Campos requeridos:</p>
+                  <ul className="text-xs text-gray-600 grid grid-cols-2 gap-x-4 gap-y-1">
                     <li>• Nombre de la inmobiliaria</li>
                     <li>• CUIT</li>
                     <li>• Matrícula profesional</li>
@@ -455,9 +453,6 @@ const CompanySettings = () => {
                     <li>• Email</li>
                   </ul>
                 </div>
-                <p className="text-sm text-red-100 mt-3">
-                  💡 Una vez completados, podrás acceder a todas las funcionalidades del sistema.
-                </p>
               </div>
             </div>
           </div>
