@@ -92,7 +92,10 @@ const tenancyMiddleware = async (req, res, next) => {
     }
 
     // Verificar que el tenant está activo
-    if (tenant.status !== 'active' && tenant.status !== 'trialing') {
+    // Normalizamos a minúsculas para comparación y aceptamos 'TRIAL'/'ACTIVE' (legacy uppercase)
+    const statusNorm = tenant.status?.toLowerCase();
+    const validStatuses = ['active', 'trialing', 'trial'];
+    if (!validStatuses.includes(statusNorm)) {
       logger.warn('Tenant not active', {
         tenantId,
         status: tenant.status,

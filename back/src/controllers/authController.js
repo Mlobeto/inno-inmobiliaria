@@ -101,8 +101,8 @@ exports.registerTenant = async (req, res) => {
     // Generar CUIT temporal
     const tempCuit = `99-${Math.floor(10000000 + Math.random() * 90000000)}-9`;
 
-    // Determinar el status inicial (TRIAL si el plan lo tiene)
-    const tenantStatus = plan.trialDays > 0 ? 'TRIAL' : 'ACTIVE';
+    // Determinar el status inicial (trialing si el plan lo tiene)
+    const tenantStatus = plan.trialDays > 0 ? 'trialing' : 'active';
 
     // Crear el tenant con datos del plan seleccionado
     const newTenant = await prisma.tenants.create({
