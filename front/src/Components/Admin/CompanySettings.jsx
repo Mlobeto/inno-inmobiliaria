@@ -32,6 +32,19 @@ import PaymentMethodsManager from './PaymentMethodsManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+const DEFAULT_WHATSAPP_TEMPLATE = `Hola! 👋 Gracias por tu consulta.
+
+📌 *PROPIEDAD EN {tipoOperacion}*
+🏠 {tipo} — {direccion}
+📍 {barrio}, {ciudad}
+
+💰 *Precio: {precio}*
+📐 {habitaciones} amb. | 🚿 {baños} baños | 📏 {superficieTotal} m²
+
+📝 {descripcion}
+
+¿Te gustaría agendar una visita o recibir más información? ¡Estamos a tu disposición!`;
+
 const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -181,7 +194,12 @@ const CompanySettings = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      setSettings(response.data);
+      const loadedSettings = response.data;
+      // Si el template de WhatsApp está vacío, usar el por defecto
+      if (!loadedSettings.whatsapp_template) {
+        loadedSettings.whatsapp_template = DEFAULT_WHATSAPP_TEMPLATE;
+      }
+      setSettings(loadedSettings);
 
       // Cargar información del tenant (subdomain, plan, status)
       try {
@@ -1181,28 +1199,47 @@ const CompanySettings = () => {
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* WhatsApp Template */}
               <div className="border-b border-gray-200 pb-8">
-                <label className="block text-lg font-semibold text-gray-700 mb-3">
-                  Mensaje de WhatsApp para Propiedades
-                </label>
+                <div className="flex items-start justify-between mb-3">
+                  <label className="block text-lg font-semibold text-gray-700">
+                    Mensaje de WhatsApp para Consultas
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSettings(s => ({ ...s, whatsapp_template: DEFAULT_WHATSAPP_TEMPLATE }))}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline flex-shrink-0 ml-4"
+                  >
+                    Restaurar por defecto
+                  </button>
+                </div>
                 <p className="text-sm text-gray-600 mb-4">
-                  Este mensaje se copia al portapapeles cuando compartes una propiedad por WhatsApp.
-                  Usa las siguientes variables:
+                  Este mensaje se usa cuando un cliente consulta por una propiedad (panel admin y landing).
+                  Las variables se reemplazan automáticamente con los datos reales de la propiedad.
                 </p>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm font-mono text-blue-900">
-                    <span className="font-semibold">Variables disponibles:</span>
-                  </p>
-                  <p className="text-xs text-blue-600 mt-2 mb-1">↓ Arrastrá una variable al editor de abajo</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {["{precio}","{direccion}","{ciudad}","{barrio}","{tipo}","{habitaciones}","{baños}","{superficieTotal}","{descripcion}"].map(v => (
+                  <p className="text-sm font-semibold text-blue-900 mb-2">Variables disponibles — arrastrá al editor:</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {[
+                      { v: '{tipoOperacion}', desc: 'alquiler / venta' },
+                      { v: '{tipo}',          desc: 'casa / depto / etc.' },
+                      { v: '{precio}',        desc: 'precio formateado' },
+                      { v: '{direccion}',     desc: 'dirección' },
+                      { v: '{ciudad}',        desc: 'ciudad' },
+                      { v: '{barrio}',        desc: 'barrio' },
+                      { v: '{habitaciones}',  desc: 'ambientes' },
+                      { v: '{baños}',         desc: 'baños' },
+                      { v: '{superficieTotal}', desc: 'm² totales' },
+                      { v: '{descripcion}',   desc: 'descripción' },
+                      { v: '{empresa}',       desc: 'nombre inmobiliaria' },
+                    ].map(({ v, desc }) => (
                       <span
                         key={v}
                         draggable
                         onDragStart={(e) => handleVarDragStart(e, v)}
-                        className="cursor-grab active:cursor-grabbing select-none px-2 py-1 text-sm font-mono text-blue-800 bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 transition-colors"
-                        title="Arrastrá al editor"
+                        className="cursor-grab active:cursor-grabbing select-none px-2 py-1 text-xs font-mono text-blue-800 bg-blue-100 hover:bg-blue-200 rounded border border-blue-300 transition-colors flex flex-col"
+                        title={desc}
                       >
-                        {v}
+                        <span>{v}</span>
+                        <span className="text-blue-500 font-sans font-normal">{desc}</span>
                       </span>
                     ))}
                   </div>

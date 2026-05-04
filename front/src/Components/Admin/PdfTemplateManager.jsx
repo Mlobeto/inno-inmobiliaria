@@ -814,9 +814,12 @@ p { margin: 10px 0; text-align: justify; }`,
                       const newType = e.target.value;
                       if (!editingTemplate) {
                         const example = getExampleTemplate(newType, formData.propertyPurpose);
-                        if (example.html && !formData.htmlTemplate) {
-                          setFormData({ ...formData, templateType: newType, htmlTemplate: example.html, styles: example.styles, headerHtml: example.header, footerHtml: example.footer });
-                          return;
+                        if (example.html) {
+                          const shouldReplace = !formData.htmlTemplate || window.confirm('¿Cargar la plantilla de ejemplo para este tipo? Se reemplazará el contenido actual.');
+                          if (shouldReplace) {
+                            setFormData({ ...formData, templateType: newType, htmlTemplate: example.html, styles: example.styles, headerHtml: example.header, footerHtml: example.footer });
+                            return;
+                          }
                         }
                       }
                       setFormData({ ...formData, templateType: newType });
