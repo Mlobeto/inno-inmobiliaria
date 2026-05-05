@@ -48,11 +48,10 @@ class SubscriptionController {
     try {
       const { tenantId } = req.user;
       
+      // Buscar la suscripción más reciente sin filtrar por estado,
+      // para que el frontend siempre tenga los datos para mostrar
       const subscription = await prisma.subscriptions.findFirst({
-        where: {
-          tenantId,
-          status: { in: ['trialing', 'active'] }
-        },
+        where: { tenantId },
         include: {
           plans: true,
         },
@@ -67,41 +66,32 @@ class SubscriptionController {
         });
       }
       
-      // Verificar expiración y cancelación diferida
+      // Verificar expiración y actualizar estado en BD si corresponde
       const now = new Date();
+      let finalStatus = subscription.status?.toLowerCase() || subscription.status;
 
-      // Cancelación al final del período: el usuario pidió no renovar
       if (subscription.cancelAtPeriodEnd && subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
         await prisma.subscriptions.update({
           where: { subscriptionId: subscription.subscriptionId },
           data: { status: 'canceled', canceledAt: now },
         });
-        return res.json({
-          success: true,
-          subscription: null,
-          message: 'Suscripción cancelada al vencer el período'
-        });
-      }
-
-      if (subscription.currentPeriodEnd && now > subscription.currentPeriodEnd) {
+        finalStatus = 'canceled';
+      } else if (
+        ['trialing', 'trial'].includes(finalStatus) &&
+        subscription.currentPeriodEnd && now > subscription.currentPeriodEnd
+      ) {
         await prisma.subscriptions.update({
           where: { subscriptionId: subscription.subscriptionId },
           data: { status: 'past_due' },
         });
-        return res.json({
-          success: true,
-          subscription: null,
-          message: 'Suscripción expirada'
-        });
+        finalStatus = 'past_due';
       }
-      
-      console.log('📊 Subscription encontrada:', JSON.stringify(subscription, null, 2));
-      console.log('📊 Plan incluido:', subscription.plans ? 'SÍ' : 'NO');
-      
+
       res.json({
         success: true,
         subscription: {
           ...subscription,
+          status: finalStatus,
           Plan: subscription.plans,
         }
       });
