@@ -418,7 +418,7 @@ const Panel = () => {
                   </div>
                   
                   <button
-                    onClick={() => navigate('/subscriptions/manage')}
+                    onClick={() => navigate('/subscription')}
                     className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold transition-colors border border-white/30"
                   >
                     Gestionar
