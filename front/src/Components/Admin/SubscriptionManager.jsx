@@ -182,32 +182,46 @@ const SubscriptionManager = () => {
           </div>
         </div>
 
-        {/* Alerta de suscripción expirada */}
-        {isExpired && (
-          <div className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-6 mb-8 shadow-xl">
-            <div className="flex items-start space-x-4">
-              <IoWarningOutline className="w-8 h-8 text-red-400 flex-shrink-0 mt-1" />
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-2">
-                  ⚠️ Tu período de prueba ha expirado
-                </h3>
-                <p className="text-white/90 mb-4">
-                  Para continuar usando InnoInmobiliaria, debes seleccionar un plan de pago. 
-                  Elige el plan que mejor se adapte a tus necesidades y completa el pago a través de Mercado Pago.
-                </p>
-                <button
-                  onClick={() => {
-                    const element = document.getElementById('available-plans');
-                    element?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-lg transition-colors shadow-lg"
-                >
-                  Ver Planes Disponibles
-                </button>
+        {/* Alerta de suscripción expirada / vencida */}
+        {(() => {
+          const statusNorm = subscription?.status?.toLowerCase() || '';
+          const isVencida = isExpired || ['past_due', 'canceled', 'incomplete'].includes(statusNorm);
+          if (!isVencida) return null;
+          const isPastDue = statusNorm === 'past_due';
+          const isCanceled = statusNorm === 'canceled';
+          const title = isPastDue
+            ? '⚠️ Tu suscripción está vencida'
+            : isCanceled
+            ? '⚠️ Tu suscripción fue cancelada'
+            : '⚠️ Tu período de prueba ha expirado';
+          const message = isPastDue
+            ? 'Tu suscripción venció y el acceso a la plataforma está restringido. Realizá el pago para reactivar tu cuenta y seguir gestionando tu inmobiliaria sin interrupciones.'
+            : isCanceled
+            ? 'Tu suscripción fue cancelada. Para volver a usar la plataforma, contratá un plan y completá el pago a través de Mercado Pago.'
+            : 'Tu período de prueba ha expirado. Para continuar usando la plataforma, seleccioná un plan y completá el pago a través de Mercado Pago.';
+          return (
+            <div className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-6 mb-8 shadow-xl">
+              <div className="flex items-start space-x-4">
+                <div className="bg-red-500/30 rounded-full p-3 flex-shrink-0">
+                  <IoWarningOutline className="w-8 h-8 text-red-300" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+                  <p className="text-white/90 mb-5 leading-relaxed">{message}</p>
+                  <button
+                    onClick={() => {
+                      const element = document.getElementById('available-plans');
+                      element?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white font-bold rounded-xl transition-colors shadow-lg text-base"
+                  >
+                    💳 Contratar plan ahora
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Banner de Periodo de Prueba */}
         {subscription?.status === 'trialing' && (() => {
