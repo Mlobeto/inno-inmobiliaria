@@ -115,12 +115,14 @@ const SubscriptionManager = () => {
     const badges = {
       active: { color: 'bg-green-100 text-green-800 border-green-300', icon: IoCheckmarkCircleOutline, text: 'Activo' },
       trialing: { color: 'bg-blue-100 text-blue-800 border-blue-300', icon: IoTimeOutline, text: 'Periodo de Prueba' },
+      trial: { color: 'bg-blue-100 text-blue-800 border-blue-300', icon: IoTimeOutline, text: 'Periodo de Prueba' },
       past_due: { color: 'bg-red-100 text-red-800 border-red-300', icon: IoCloseCircleOutline, text: 'Vencido' },
       canceled: { color: 'bg-gray-100 text-gray-800 border-gray-300', icon: IoCloseCircleOutline, text: 'Cancelado' },
       incomplete: { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: IoWarningOutline, text: 'Incompleto' }
     };
 
-    const badge = badges[status] || badges.ACTIVE;
+    const normalizedStatus = status?.toLowerCase() || '';
+    const badge = badges[normalizedStatus] || { color: 'bg-gray-100 text-gray-800 border-gray-300', icon: IoInformationCircleOutline, text: status || 'Desconocido' };
     const Icon = badge.icon;
 
     return (
