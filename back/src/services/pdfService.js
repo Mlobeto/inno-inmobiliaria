@@ -415,8 +415,20 @@ const renderTemplate = (template, variables) => {
     const headerTemplate = Handlebars.compile(template.headerHtml || "");
     const headerHtml = headerTemplate(variables);
 
+    // Si el template es un documento HTML completo, extraer solo el body y sus estilos
+    let rawHtml = template.htmlTemplate || '';
+    let embeddedStyles = '';
+    if (/^\s*<!doctype|^\s*<html/i.test(rawHtml)) {
+      // Extraer contenido de <style>
+      const styleMatch = rawHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      if (styleMatch) embeddedStyles = styleMatch[1];
+      // Extraer contenido de <body>
+      const bodyMatch = rawHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      if (bodyMatch) rawHtml = bodyMatch[1];
+    }
+
     // Compilar y renderizar body
-    const bodyTemplate = Handlebars.compile(template.htmlTemplate);
+    const bodyTemplate = Handlebars.compile(rawHtml);
     const bodyHtml = bodyTemplate(variables);
 
     // Compilar y renderizar footer
@@ -461,6 +473,7 @@ const renderTemplate = (template, variables) => {
       border: 1px solid #ddd;
     }
     ${template.styles || ""}
+    ${embeddedStyles}
   </style>
 </head>
 <body>
