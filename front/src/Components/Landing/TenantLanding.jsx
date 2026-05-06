@@ -13,6 +13,8 @@ import {
   IoChevronBackOutline,
   IoChevronForwardOutline,
   IoFunnelOutline,
+  IoCloseOutline,
+  IoCheckmarkCircleOutline,
 } from 'react-icons/io5';
 
 const TenantLanding = () => {
@@ -26,6 +28,7 @@ const TenantLanding = () => {
   const [filterType, setFilterType] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [loteos, setLoteos] = useState([]);
+  const [showLoteoPopup, setShowLoteoPopup] = useState(false);
   const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
@@ -55,9 +58,21 @@ const TenantLanding = () => {
     if (!subdomain) return;
     axios
       .get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/public/${subdomain}/loteos`)
-      .then(res => setLoteos(res.data?.loteos || []))
+      .then(res => {
+        const list = res.data?.loteos || [];
+        setLoteos(list);
+        // Mostrar popup si hay loteos y no se mostró en esta sesión
+        if (list.length > 0 && !sessionStorage.getItem(`loteo_popup_${subdomain}`)) {
+          setTimeout(() => setShowLoteoPopup(true), 3000);
+        }
+      })
       .catch(() => setLoteos([]));
   }, [subdomain]);
+
+  const closeLoteoPopup = () => {
+    setShowLoteoPopup(false);
+    sessionStorage.setItem(`loteo_popup_${subdomain}`, '1');
+  };
 
   const filteredProperties = (data?.properties || []).filter(prop => {
     if (filter === 'venta' && prop.type !== 'venta') return false;
@@ -507,6 +522,84 @@ const TenantLanding = () => {
           </div>
         </div>
       </footer>
+
+      {/* Popup promocional de loteos */}
+      {showLoteoPopup && loteos.length > 0 && (() => {
+        const loteo = loteos[0];
+        const lotesDisponibles = loteo.lotes?.filter(l => l.status === 'DISPONIBLE').length ?? loteo._count?.lotes ?? 0;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="relative bg-gradient-to-br from-slate-800 to-slate-900 border border-lime-500/40 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+              {/* Botón cerrar */}
+              <button
+                onClick={closeLoteoPopup}
+                className="absolute top-3 right-3 z-10 p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-slate-300 transition"
+              >
+                <IoCloseOutline className="w-5 h-5" />
+              </button>
+
+              {/* Imagen */}
+              <div className="relative h-44 bg-slate-700 overflow-hidden">
+                {loteo.photos?.[0] ? (
+                  <img src={loteo.photos[0]} alt={loteo.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <IoMapOutline className="w-16 h-16 text-slate-500" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent" />
+                <div className="absolute top-3 left-3 px-3 py-1 bg-lime-500 rounded-full text-xs font-bold text-white tracking-wide">
+                  🏡 LOTEO EN VENTA
+                </div>
+              </div>
+
+              {/* Contenido */}
+              <div className="p-5">
+                <h3 className="text-xl font-bold text-white mb-1">{loteo.name}</h3>
+                {(loteo.city || loteo.province) && (
+                  <p className="flex items-center gap-1 text-slate-400 text-sm mb-3">
+                    <IoLocationOutline className="w-4 h-4" />
+                    {[loteo.city, loteo.province].filter(Boolean).join(', ')}
+                  </p>
+                )}
+
+                {loteo.description && (
+                  <p className="text-slate-300 text-sm mb-3 line-clamp-2">{loteo.description}</p>
+                )}
+
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="flex items-center gap-1.5 text-sm text-lime-400 font-medium">
+                    <IoGridOutline className="w-4 h-4" />
+                    <span>{lotesDisponibles} lotes disponibles</span>
+                  </div>
+                  {loteo.precioBase && (
+                    <div className="text-sm text-emerald-400 font-semibold">
+                      Desde {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(loteo.precioBase)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3">
+                  <Link
+                    to={`/landing/${subdomain}/loteo/${loteo.id}`}
+                    onClick={closeLoteoPopup}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-lime-500 hover:bg-lime-600 text-white rounded-lg font-medium transition text-sm"
+                  >
+                    <IoCheckmarkCircleOutline className="w-4 h-4" />
+                    Ver lotes disponibles
+                  </Link>
+                  <button
+                    onClick={closeLoteoPopup}
+                    className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-sm transition"
+                  >
+                    Ahora no
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
