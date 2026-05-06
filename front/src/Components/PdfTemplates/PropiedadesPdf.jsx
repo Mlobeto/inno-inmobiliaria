@@ -90,47 +90,24 @@ const PropiedadesPDF = ({ property }) => {
   };
 
   useEffect(() => {
-    const loadTemplateAndSettings = async () => {
+    const loadSettings = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      // Siempre usar el template por defecto del componente
+      setTemplate({ htmlTemplate: getDefaultTemplate() });
+      if (!token) {
+        setSettings({});
+        return;
+      }
       try {
-        // Cargar template de tipo FICHA_PROPIEDAD
         const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
-        const templateRes = await fetch(
-          `${apiUrl}/pdf-templates?templateType=FICHA_PROPIEDAD&isActive=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        const templateData = await templateRes.json();
-        if (templateData.success && templateData.data.length > 0) {
-          setTemplate(templateData.data[0]);
-        } else {
-          // Si no hay template, usar el por defecto
-          setTemplate({ htmlTemplate: getDefaultTemplate() });
-        }
-
-        // Cargar configuraciones de la inmobiliaria (tenant-aware por JWT)
         const settingsRes = await fetch(`${apiUrl}/admin/settings`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
-        if (!settingsRes.ok) {
-          throw new Error(`Error ${settingsRes.status}: ${settingsRes.statusText}`);
-        }
-        
+        if (!settingsRes.ok) throw new Error(`Error ${settingsRes.status}`);
         const settingsData = await settingsRes.json();
         setSettings(settingsData || {});
-        
       } catch (error) {
-        console.error("Error al cargar template o configuraciones:", error);
-        // En caso de error, usar valores por defecto
-        setTemplate({ htmlTemplate: getDefaultTemplate() });
-        // IMPORTANTE: Establecer settings vacío para que el botón no se quede bloqueado
+        console.error("Error al cargar configuraciones:", error);
         setSettings({
           company_name: "Inmobiliaria",
           company_address: "",
@@ -141,7 +118,7 @@ const PropiedadesPDF = ({ property }) => {
       }
     };
 
-    loadTemplateAndSettings();
+    loadSettings();
   }, []);
 
   const formatPrice = (price) => {
@@ -234,10 +211,10 @@ const PropiedadesPDF = ({ property }) => {
     <button
       onClick={generatePdf}
       className="bg-green-500 text-white px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={loading || !settings || !template}
-      title={!settings || !template ? "Cargando configuración..." : ""}
+      disabled={loading || !settings}
+      title={!settings ? "Cargando configuración..." : ""}
     >
-      {loading ? "Generando..." : (!settings || !template) ? "Cargando..." : "Descargar PDF"}
+      {loading ? "Generando..." : !settings ? "Cargando..." : "Descargar PDF"}
     </button>
   );
 };
