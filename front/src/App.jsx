@@ -73,8 +73,9 @@ function App() {
     '/platform-admin', '/contacto', '/terminos', '/privacidad',
     '/forgot-password', '/reset-password', '/pdf-templates',
   ];
-  const isLandingRoute = location.pathname !== '/' &&
-    !ADMIN_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
+  // Ocultar PWA en rutas públicas: '/', tenant landings (/:subdomain), y páginas no-admin
+  const isAdminRoute = ADMIN_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
+  const showPWA = isAdminRoute;
 
   return (
     <>
@@ -93,7 +94,7 @@ function App() {
         </div>
       )}
       <div className={isImpersonating ? 'pt-10' : ''}>
-        {!isLandingRoute && <InstallPWA />}
+        {showPWA && <InstallPWA />}
         <Routes>
       <Route path="/" element={<Landing />} />
       
