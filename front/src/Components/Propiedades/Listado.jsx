@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import PropiedadesPDF from "../PdfTemplates/PropiedadesPdf";
 import CreateLeaseForm from "../Contratos/CreateLeaseForm";
 import CompraVenta from "../Contratos/CompraVenta";
@@ -32,7 +34,8 @@ import {
   IoGlobeOutline,
   IoCheckmarkCircle,
   IoCloseCircle,
-  IoLogoBuffer
+  IoLogoBuffer,
+  IoHelpCircleOutline
 } from 'react-icons/io5';
 
 const Listado = ({ mode = "default", onSelectProperty }) => {
@@ -308,6 +311,84 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     }
   };
 
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      progressText: '{{current}} de {{total}}',
+      nextBtnText: 'Siguiente →',
+      prevBtnText: '← Anterior',
+      doneBtnText: '¡Listo!',
+      steps: [
+        {
+          element: '#tour-search',
+          popover: {
+            title: '🔍 Buscar Propiedades',
+            description: 'Escribí parte de la dirección para filtrar el listado en tiempo real.',
+            side: 'bottom',
+            align: 'start',
+          },
+        },
+        {
+          element: '.tour-edit-btn',
+          popover: {
+            title: '✏️ Editar Propiedad',
+            description: 'Modificá los datos de la propiedad: dirección, precio, descripción, habitaciones, superficie y más.',
+            side: 'left',
+          },
+        },
+        {
+          element: '.tour-delete-btn',
+          popover: {
+            title: '🗑️ Eliminar Propiedad',
+            description: 'Elimina permanentemente la propiedad del sistema. Esta acción no se puede deshacer.',
+            side: 'left',
+          },
+        },
+        {
+          element: '.tour-whatsapp-btn',
+          popover: {
+            title: '📲 Compartir por WhatsApp',
+            description: 'Genera un mensaje listo para enviar a clientes con todos los datos de la propiedad: precio, dirección, fotos y más.',
+            side: 'bottom',
+          },
+        },
+        {
+          element: '.tour-requisito-btn',
+          popover: {
+            title: '📋 Copiar Requisitos',
+            description: 'Copia al portapapeles la lista de requisitos que debe cumplir el interesado para alquilar o comprar esta propiedad.',
+            side: 'bottom',
+          },
+        },
+        {
+          element: '.tour-images-btn',
+          popover: {
+            title: '🖼️ Gestionar Imágenes',
+            description: 'Subí, ordená y eliminá las fotos de la propiedad. Las imágenes se usan en la ficha PDF, WhatsApp y la landing page.',
+            side: 'bottom',
+          },
+        },
+        {
+          element: '.tour-pdf-btn',
+          popover: {
+            title: '📄 Descargar Ficha PDF',
+            description: 'Genera y descarga una ficha completa con fotos, datos, descripción y el logo de tu inmobiliaria. Lista para imprimir o enviar.',
+            side: 'left',
+          },
+        },
+        {
+          element: '.tour-landing-toggle',
+          popover: {
+            title: '🌐 Publicar en Landing Page',
+            description: 'Activá este interruptor para que la propiedad aparezca en tu sitio web público. Desactivalo para ocultarla sin eliminarla.',
+            side: 'top',
+          },
+        },
+      ],
+    });
+    driverObj.drive();
+  };
+
   // Solo mostrar loading si no hay propiedades cargadas aún
   if (isLoading && (!allProperties || allProperties.length === 0)) {
     return (
@@ -399,6 +480,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
               <div className="relative">
                 <IoSearchOutline className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <input
+                  id="tour-search"
                   type="text"
                   placeholder="Buscar por dirección..."
                   className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
@@ -415,6 +497,14 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   {filteredProperties.length} de {allProperties.length} propiedades
                 </span>
               </div>
+              <button
+                onClick={startTour}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg border border-blue-500/30 transition-all text-sm font-medium"
+                title="Ver tour de funciones"
+              >
+                <IoHelpCircleOutline className="w-4 h-4" />
+                <span className="hidden sm:inline">Tour</span>
+              </button>
             </div>
           </div>
         </div>
@@ -458,14 +548,14 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 <div className="flex gap-2">
                   <button 
                     onClick={() => handleEdit(property)}
-                    className="p-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    className="tour-edit-btn p-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-all duration-200 hover:scale-110"
                     title="Editar Propiedad"
                   >
                     <IoPencilOutline className="w-5 h-5" />
                   </button>
                   <button 
                     onClick={() => handleDelete(property.propertyId)}
-                    className="p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    className="tour-delete-btn p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-200 hover:scale-110"
                     title="Eliminar"
                   >
                     <IoTrashOutline className="w-5 h-5" />
@@ -528,12 +618,18 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
               <div className="pt-4 mt-4 border-t border-white/10">
                 {/* Acciones Rápidas */}
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <WhatsAppButton 
-                    propertyId={property.propertyId}
-                    property={property}
-                  />
-                  <RequisitoButton property={property} />
-                  <ImageManager property={property} />
+                  <span className="tour-whatsapp-btn">
+                    <WhatsAppButton 
+                      propertyId={property.propertyId}
+                      property={property}
+                    />
+                  </span>
+                  <span className="tour-requisito-btn">
+                    <RequisitoButton property={property} />
+                  </span>
+                  <span className="tour-images-btn">
+                    <ImageManager property={property} />
+                  </span>
                   
                   {/* Botón de MercadoLibre */}
                   {tenantHasMl && !mlConnection.loading && mlConnection.connected && !mlListings[property.propertyId] && (
@@ -571,13 +667,13 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                     />
                   )}
                   
-                  <div className="flex-grow flex justify-end">
+                  <div className="tour-pdf-btn flex-grow flex justify-end">
                     <PropiedadesPDF property={property} />
                   </div>
                 </div>
 
                 {/* Checkbox Publicar en Landing */}
-                <div className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                <div className={`tour-landing-toggle flex items-center justify-between p-3 rounded-lg border transition-all ${
                   property.isPublishedInLanding 
                     ? 'bg-emerald-500/10 border-emerald-500/30' 
                     : 'bg-slate-500/10 border-slate-500/30'
