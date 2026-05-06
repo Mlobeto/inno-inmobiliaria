@@ -315,7 +315,7 @@ const Panel = () => {
             </Link>
             {tenantSubdomain && hasLandingFeature && (
               <Link
-                to={`/landing/${tenantSubdomain}`}
+                to={`/${tenantSubdomain}`}
                 target="_blank"
                 className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all duration-300"
                 title="Ver mi Landing Page pública"

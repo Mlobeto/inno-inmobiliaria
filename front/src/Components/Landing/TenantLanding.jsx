@@ -289,7 +289,7 @@ const TenantLanding = () => {
               {paginatedProperties.map((property) => (
                 <Link
                   key={property.id}
-                  to={`/landing/${subdomain}/property/${property.id}`}
+                  to={`/${subdomain}/property/${property.id}`}
                   className={`group bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10 transition-all duration-300 hover:scale-[1.02] ${
                     !property.isAvailable
                       ? 'opacity-70 hover:border-slate-500/50'
@@ -467,7 +467,7 @@ const TenantLanding = () => {
             {loteos.map(loteo => (
               <Link
                 key={loteo.id}
-                to={`/landing/${subdomain}/loteo/${loteo.id}`}
+                to={`/${subdomain}/loteo/${loteo.id}`}
                 className="group bg-white/5 border border-white/10 hover:border-lime-500/50 rounded-xl overflow-hidden transition-all duration-300 hover:scale-[1.02]"
               >
                 <div className="relative h-44 bg-slate-700 overflow-hidden">
@@ -581,7 +581,7 @@ const TenantLanding = () => {
 
                 <div className="flex gap-3">
                   <Link
-                    to={`/landing/${subdomain}/loteo/${loteo.id}`}
+                    to={`/${subdomain}/loteo/${loteo.id}`}
                     onClick={closeLoteoPopup}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-lime-500 hover:bg-lime-600 text-white rounded-lg font-medium transition text-sm"
                   >

@@ -104,7 +104,7 @@ Me gustaría tener más información.`;
           <h2 className="text-2xl font-bold text-white mb-2">Propiedad no encontrada</h2>
           <p className="text-slate-300 mb-4">{error}</p>
           <Link
-            to={`/landing/${subdomain}`}
+            to={`/${subdomain}`}
             className="inline-block px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
           >
             Volver al listado
@@ -124,7 +124,7 @@ Me gustaría tener más información.`;
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link
-              to={`/landing/${subdomain}`}
+              to={`/${subdomain}`}
               className="flex items-center gap-2 text-slate-300 hover:text-white transition"
             >
               <IoArrowBackOutline className="w-5 h-5" />

@@ -84,9 +84,9 @@ function App() {
       <Route path="/" element={<Landing />} />
       
       {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
-      <Route path="/landing/:subdomain" element={<TenantLanding />} />
-      <Route path="/landing/:subdomain/property/:propertyId" element={<PropertyDetail />} />
-      <Route path="/landing/:subdomain/loteo/:loteoId" element={<LoteoDetail />} />
+      <Route path="/:subdomain" element={<TenantLanding />} />
+      <Route path="/:subdomain/property/:propertyId" element={<PropertyDetail />} />
+      <Route path="/:subdomain/loteo/:loteoId" element={<LoteoDetail />} />
       
       {/* Ruta protegida: solo los administradores pueden ver el Panel */}
       <Route path="/panel" element={<ProtectedRoute><Panel /></ProtectedRoute>} />
