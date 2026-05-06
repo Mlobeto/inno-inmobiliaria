@@ -555,11 +555,13 @@ export const createPayment = (paymentData) => async (dispatch) => {
       type: CREATE_PAYMENT_SUCCESS,
       payload: response.data,
     });
+    return response.data;
   } catch (error) {
     dispatch({
       type: CREATE_PAYMENT_FAILURE,
       payload: error.response?.data?.error || error.message,
     });
+    throw error;
   }
 };
 

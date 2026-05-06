@@ -48,13 +48,13 @@ const PaymentForm = () => {
     totalInstallments: "",
   });
 
-  // Detectar creación exitosa del pago
+  // Fallback: detectar éxito desde Redux si handleSubmit no lo detectó
   useEffect(() => {
-    if (paymentCreate && paymentCreate.success) {
+    if (paymentCreate?.success && isLoading) {
       setPaymentCreated(true);
       setIsLoading(false);
     }
-  }, [paymentCreate]);
+  }, [paymentCreate, isLoading]);
 
   // Función para seleccionar contrato desde EstadoContratos
   const handleLeaseSelect = async (lease) => {
@@ -149,9 +149,13 @@ const PaymentForm = () => {
       }
 
       await dispatch(createPayment(paymentData));
+      // El thunk ahora lanza en caso de error, así que si llegamos aquí es éxito
+      setPaymentCreated(true);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error al crear el pago:', error);
       setIsLoading(false);
+      alert('Error al crear el pago: ' + (error.response?.data?.error || error.message || 'Error inesperado'));
     }
   };
 
