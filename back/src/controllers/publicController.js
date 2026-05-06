@@ -58,13 +58,33 @@ exports.getTenantLanding = async (req, res) => {
       }
     });
 
+    const DAYS_SHOW_UNAVAILABLE = 15;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - DAYS_SHOW_UNAVAILABLE);
+
+    // Propiedades publicadas en landing: disponibles siempre, no disponibles solo 15 días
     const whereConditions = {
       tenantId: tenant.tenantId,
       isPublishedInLanding: true,
+      OR: [
+        { isAvailable: true },
+        {
+          isAvailable: false,
+          updatedAt: { gte: cutoffDate },
+        },
+      ],
     };
 
     if (type && ['venta', 'alquiler'].includes(type.toLowerCase())) {
       whereConditions.type = type.toLowerCase();
+    }
+
+    if (req.query.typeProperty) {
+      whereConditions.typeProperty = req.query.typeProperty.toLowerCase();
+    }
+
+    if (req.query.city) {
+      whereConditions.city = { contains: req.query.city, mode: 'insensitive' };
     }
 
     if (minPrice || maxPrice) {
@@ -74,16 +94,31 @@ exports.getTenantLanding = async (req, res) => {
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
-    const [count, properties] = await Promise.all([
+
+    // Para los filtros de ciudad y typeProperty, obtener valores únicos de las disponibles
+    const [count, properties, allPublished] = await Promise.all([
       prisma.Property.count({ where: whereConditions }),
       prisma.Property.findMany({
         where: whereConditions,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ isAvailable: 'desc' }, { updatedAt: 'desc' }],
         take: parseInt(limit),
         skip: offset,
       }),
+      prisma.Property.findMany({
+        where: {
+          tenantId: tenant.tenantId,
+          isPublishedInLanding: true,
+          OR: [
+            { isAvailable: true },
+            { isAvailable: false, updatedAt: { gte: cutoffDate } },
+          ],
+        },
+        select: { city: true, typeProperty: true },
+      }),
     ]);
+
+    const cities = [...new Set(allPublished.map(p => p.city).filter(Boolean))].sort();
+    const propertyTypes = [...new Set(allPublished.map(p => p.typeProperty).filter(Boolean))].sort();
 
     // 6. Formatear respuesta
     res.json({
@@ -121,14 +156,19 @@ exports.getTenantLanding = async (req, res) => {
         images: p.images || [],
         mainImage: (p.images && p.images.length > 0) ? p.images[0] : null,
         isAvailable: p.isAvailable,
+        closedAt: p.isAvailable === false ? p.updatedAt : null,
         highlights: p.highlights || null,
       })),
       pagination: {
         total: count,
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit)
-      }
+        totalPages: Math.ceil(count / parseInt(limit))
+      },
+      filters: {
+        cities,
+        propertyTypes,
+      },
     });
 
   } catch (error) {

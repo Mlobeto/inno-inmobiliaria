@@ -3,16 +3,16 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { 
   IoLocationOutline, 
-  IoPricetagOutline, 
   IoHomeOutline,
   IoBedOutline,
   IoWaterOutline,
-  IoCarOutline,
   IoExpandOutline,
-  IoArrowBackOutline,
   IoLogoWhatsapp,
   IoMapOutline,
   IoGridOutline,
+  IoChevronBackOutline,
+  IoChevronForwardOutline,
+  IoFunnelOutline,
 } from 'react-icons/io5';
 
 const TenantLanding = () => {
@@ -22,7 +22,11 @@ const TenantLanding = () => {
   const [error, setError] = useState(null);
   const [data, setData] = useState(null);
   const [filter, setFilter] = useState('all'); // all, venta, alquiler, temporal
+  const [filterCity, setFilterCity] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [loteos, setLoteos] = useState([]);
+  const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
     const fetchLandingData = async () => {
@@ -55,13 +59,25 @@ const TenantLanding = () => {
       .catch(() => setLoteos([]));
   }, [subdomain]);
 
-  const filteredProperties = data?.properties.filter(prop => {
-    if (filter === 'all') return true;
-    if (filter === 'venta') return prop.type === 'venta';
-    if (filter === 'alquiler') return prop.type === 'alquiler' && prop.rentalType !== 'TEMPORAL';
-    if (filter === 'temporal') return prop.type === 'alquiler' && prop.rentalType === 'TEMPORAL';
+  const filteredProperties = (data?.properties || []).filter(prop => {
+    if (filter === 'venta' && prop.type !== 'venta') return false;
+    if (filter === 'alquiler' && !(prop.type === 'alquiler' && prop.rentalType !== 'TEMPORAL')) return false;
+    if (filter === 'temporal' && !(prop.type === 'alquiler' && prop.rentalType === 'TEMPORAL')) return false;
+    if (filterCity && prop.location?.city?.toLowerCase() !== filterCity.toLowerCase()) return false;
+    if (filterType && prop.typeProperty !== filterType) return false;
     return true;
-  }) || [];
+  });
+
+  const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+  const paginatedProperties = filteredProperties.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const handleFilterChange = (newFilter) => {
+    setFilter(newFilter);
+    setCurrentPage(1);
+  };
 
   if (loading) {
     return (
@@ -94,7 +110,9 @@ const TenantLanding = () => {
     );
   }
 
-  const { tenant, properties, pagination } = data;
+  const { tenant, properties } = data;
+  const cities = data?.filters?.cities || [];
+  const propertyTypes = data?.filters?.propertyTypes || [];
 
   const formatPrice = (price, currency = 'ARS') => {
     return new Intl.NumberFormat('es-AR', {
@@ -156,10 +174,10 @@ const TenantLanding = () => {
           </p>
         </div>
 
-        {/* Filtros */}
-        <div className="flex flex-wrap justify-center gap-3 mb-8">
+        {/* Filtros principales */}
+        <div className="flex flex-wrap justify-center gap-3 mb-4">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => handleFilterChange('all')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'all'
                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -169,7 +187,7 @@ const TenantLanding = () => {
             Todas ({properties.length})
           </button>
           <button
-            onClick={() => setFilter('venta')}
+            onClick={() => handleFilterChange('venta')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'venta'
                 ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
@@ -179,7 +197,7 @@ const TenantLanding = () => {
             En Venta ({properties.filter(p => p.type === 'venta').length})
           </button>
           <button
-            onClick={() => setFilter('alquiler')}
+            onClick={() => handleFilterChange('alquiler')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'alquiler'
                 ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
@@ -189,7 +207,7 @@ const TenantLanding = () => {
             Alquiler ({properties.filter(p => p.type === 'alquiler' && p.rentalType !== 'TEMPORAL').length})
           </button>
           <button
-            onClick={() => setFilter('temporal')}
+            onClick={() => handleFilterChange('temporal')}
             className={`px-6 py-2 rounded-lg font-medium transition ${
               filter === 'temporal'
                 ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
@@ -200,6 +218,50 @@ const TenantLanding = () => {
           </button>
         </div>
 
+        {/* Filtros secundarios: ciudad y tipo de propiedad */}
+        {(cities.length > 0 || propertyTypes.length > 0) && (
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
+              <IoFunnelOutline className="w-4 h-4 text-slate-400" />
+              <span className="text-slate-400 text-sm">Filtrar por:</span>
+            </div>
+            {cities.length > 0 && (
+              <select
+                value={filterCity}
+                onChange={e => { setFilterCity(e.target.value); setCurrentPage(1); }}
+                className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-1.5 text-sm focus:border-blue-400 focus:outline-none"
+              >
+                <option value="" className="bg-slate-800">Todas las ciudades</option>
+                {cities.map(c => (
+                  <option key={c} value={c} className="bg-slate-800">{c}</option>
+                ))}
+              </select>
+            )}
+            {propertyTypes.length > 0 && (
+              <select
+                value={filterType}
+                onChange={e => { setFilterType(e.target.value); setCurrentPage(1); }}
+                className="bg-white/10 border border-white/20 text-white rounded-lg px-3 py-1.5 text-sm focus:border-blue-400 focus:outline-none"
+              >
+                <option value="" className="bg-slate-800">Todos los tipos</option>
+                {propertyTypes.map(t => (
+                  <option key={t} value={t} className="bg-slate-800">
+                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                  </option>
+                ))}
+              </select>
+            )}
+            {(filterCity || filterType) && (
+              <button
+                onClick={() => { setFilterCity(''); setFilterType(''); setCurrentPage(1); }}
+                className="text-slate-400 hover:text-white text-sm px-3 py-1.5 bg-white/5 rounded-lg border border-white/10 transition"
+              >
+                Limpiar filtros ✕
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Properties Grid */}
         {filteredProperties.length === 0 ? (
           <div className="text-center py-16">
@@ -207,104 +269,175 @@ const TenantLanding = () => {
             <p className="text-slate-400 text-lg">No hay propiedades disponibles en este momento</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProperties.map((property) => (
-              <Link
-                key={property.id}
-                to={`/landing/${subdomain}/property/${property.id}`}
-                className="group bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10 hover:border-blue-500/50 transition-all duration-300 hover:scale-[1.02]"
-              >
-                {/* Image */}
-                <div className="relative h-48 bg-slate-700 overflow-hidden">
-                  {property.mainImage ? (
-                    <img
-                      src={property.mainImage}
-                      alt={property.title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <IoHomeOutline className="w-16 h-16 text-slate-500" />
-                    </div>
-                  )}
-                  {/* Badge de tipo */}
-                  <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold text-white ${
-                    property.type === 'venta'
-                      ? 'bg-purple-500'
-                      : property.rentalType === 'TEMPORAL'
-                        ? 'bg-amber-500'
-                        : 'bg-green-500'
-                  }`}>
-                    {property.type === 'venta'
-                      ? 'VENTA'
-                      : property.rentalType === 'TEMPORAL'
-                        ? 'TEMPORAL'
-                        : 'ALQUILER'}
-                  </div>
-                  {/* Badge días mínimos para temporal */}
-                  {property.rentalType === 'TEMPORAL' && property.minStayDays && (
-                    <div className="absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium bg-black/60 text-amber-300">
-                      Min. {property.minStayDays} {property.minStayDays === 1 ? 'día' : 'días'}
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition">
-                    {property.title}
-                  </h3>
-                  
-                  {/* Location */}
-                  <div className="flex items-center gap-2 text-slate-400 text-sm mb-3">
-                    <IoLocationOutline className="w-4 h-4" />
-                    <span className="line-clamp-1">{property.location.address}</span>
-                  </div>
-
-                  {/* Features */}
-                  <div className="flex items-center gap-4 text-slate-300 text-sm mb-4">
-                    {property.features.rooms > 0 && (
-                      <div className="flex items-center gap-1">
-                        <IoBedOutline className="w-4 h-4" />
-                        <span>{property.features.rooms}</span>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {paginatedProperties.map((property) => (
+                <Link
+                  key={property.id}
+                  to={`/landing/${subdomain}/property/${property.id}`}
+                  className={`group bg-white/5 backdrop-blur-sm rounded-xl overflow-hidden border border-white/10 transition-all duration-300 hover:scale-[1.02] ${
+                    !property.isAvailable
+                      ? 'opacity-70 hover:border-slate-500/50'
+                      : 'hover:border-blue-500/50'
+                  }`}
+                >
+                  {/* Image */}
+                  <div className="relative h-48 bg-slate-700 overflow-hidden">
+                    {property.mainImage ? (
+                      <img
+                        src={property.mainImage}
+                        alt={property.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <IoHomeOutline className="w-16 h-16 text-slate-500" />
                       </div>
                     )}
-                    {property.features.bathrooms > 0 && (
-                      <div className="flex items-center gap-1">
-                        <IoWaterOutline className="w-4 h-4" />
-                        <span>{property.features.bathrooms}</span>
-                      </div>
-                    )}
-                    {property.features.superficieTotal && (
-                      <div className="flex items-center gap-1">
-                        <IoExpandOutline className="w-4 h-4" />
-                        <span>{property.features.superficieTotal}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Price */}
-                  <div className="pt-3 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-2xl font-bold text-emerald-400">
-                          {formatPrice(property.price)}
+                    {/* Badge no disponible (superpuesto sobre el tipo) */}
+                    {!property.isAvailable ? (
+                      <div className={`absolute inset-0 flex items-center justify-center ${
+                        property.type === 'venta' ? 'bg-purple-900/70' : 'bg-blue-900/70'
+                      }`}>
+                        <span className={`px-5 py-2 rounded-full text-white font-bold text-lg tracking-widest border-2 ${
+                          property.type === 'venta'
+                            ? 'bg-purple-600 border-purple-400'
+                            : 'bg-blue-600 border-blue-400'
+                        }`}>
+                          {property.type === 'venta' ? 'VENDIDO' : 'ALQUILADO'}
                         </span>
-                        {property.type === 'alquiler' && (
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {property.rentalType === 'TEMPORAL' ? 'por noche/estadía' : 'por mes'}
-                          </p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Badge de tipo */}
+                        <div className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-bold text-white ${
+                          property.type === 'venta'
+                            ? 'bg-purple-500'
+                            : property.rentalType === 'TEMPORAL'
+                              ? 'bg-amber-500'
+                              : 'bg-green-500'
+                        }`}>
+                          {property.type === 'venta'
+                            ? 'VENTA'
+                            : property.rentalType === 'TEMPORAL'
+                              ? 'TEMPORAL'
+                              : 'ALQUILER'}
+                        </div>
+                        {/* Badge días mínimos para temporal */}
+                        {property.rentalType === 'TEMPORAL' && property.minStayDays && (
+                          <div className="absolute top-3 left-3 px-2 py-1 rounded-full text-xs font-medium bg-black/60 text-amber-300">
+                            Min. {property.minStayDays} {property.minStayDays === 1 ? 'día' : 'días'}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-blue-400 transition">
+                      {property.title}
+                    </h3>
+                    
+                    {/* Location */}
+                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-3">
+                      <IoLocationOutline className="w-4 h-4" />
+                      <span className="line-clamp-1">{property.location.address}</span>
+                    </div>
+
+                    {/* Features */}
+                    <div className="flex items-center gap-4 text-slate-300 text-sm mb-4">
+                      {property.features.rooms > 0 && (
+                        <div className="flex items-center gap-1">
+                          <IoBedOutline className="w-4 h-4" />
+                          <span>{property.features.rooms}</span>
+                        </div>
+                      )}
+                      {property.features.bathrooms > 0 && (
+                        <div className="flex items-center gap-1">
+                          <IoWaterOutline className="w-4 h-4" />
+                          <span>{property.features.bathrooms}</span>
+                        </div>
+                      )}
+                      {property.features.superficieTotal && (
+                        <div className="flex items-center gap-1">
+                          <IoExpandOutline className="w-4 h-4" />
+                          <span>{property.features.superficieTotal}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="pt-3 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={`text-2xl font-bold ${property.isAvailable ? 'text-emerald-400' : 'text-slate-400 line-through'}`}>
+                            {formatPrice(property.price, property.currency)}
+                          </span>
+                          {property.type === 'alquiler' && property.isAvailable && (
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {property.rentalType === 'TEMPORAL' ? 'por noche/estadía' : 'por mes'}
+                            </p>
+                          )}
+                        </div>
+                        {property.isAvailable && (
+                          <span className="text-blue-400 group-hover:translate-x-1 transition-transform">
+                            Ver más →
+                          </span>
                         )}
                       </div>
-                      <span className="text-blue-400 group-hover:translate-x-1 transition-transform">
-                        Ver más →
-                      </span>
                     </div>
                   </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Paginación */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 mb-8">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <IoChevronBackOutline className="w-4 h-4" />
+                  Anterior
+                </button>
+                <div className="flex items-center gap-2">
+                  {[...Array(totalPages)].map((_, i) => {
+                    const p = i + 1;
+                    if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-9 h-9 rounded-lg font-medium transition ${
+                            currentPage === p
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    }
+                    if (p === currentPage - 2 || p === currentPage + 2) {
+                      return <span key={p} className="text-slate-500">…</span>;
+                    }
+                    return null;
+                  })}
                 </div>
-              </Link>
-            ))}
-          </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  Siguiente
+                  <IoChevronForwardOutline className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
