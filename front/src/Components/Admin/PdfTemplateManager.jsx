@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import PropTypes from 'prop-types';
 import {
   useGetAllPdfTemplatesQuery,
@@ -23,6 +24,7 @@ import {
   IoSaveOutline,
   IoCloseOutline,
   IoDocumentTextOutline,
+  IoRefreshOutline,
 } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import VisualPdfEditor from './VisualPdfEditor';
@@ -739,6 +741,22 @@ p { margin: 10px 0; text-align: justify; }`,
     }
   };
 
+  const handleResetDefault = async (templateType) => {
+    if (!window.confirm(`¿Restaurar el contenido por defecto de la plantilla "${templateType}"? Se perderán los cambios personalizados.`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      await axios.post(
+        `${API_URL}/pdf-templates/reset-defaults`,
+        { templateType },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success('Plantilla restaurada al contenido por defecto');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Error al restaurar plantilla');
+    }
+  };
+
   const handleToggleActive = async (template) => {
     try {
       await updateTemplate({
@@ -1127,6 +1145,20 @@ p { margin: 10px 0; text-align: justify; }`,
                   >
                     <IoCreateOutline className="w-4 h-4" />
                     <span>Editar</span>
+                  </button>
+
+                  {/* Restaurar por defecto */}
+                  <button
+                    onClick={() => handleResetDefault(template.templateType)}
+                    className={`w-full px-3 py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-sm font-medium ${
+                      embedded
+                        ? 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'
+                        : 'bg-teal-500/20 hover:bg-teal-500/30 text-teal-300'
+                    }`}
+                    title="Restaurar contenido por defecto"
+                  >
+                    <IoRefreshOutline className="w-4 h-4" />
+                    <span>Restaurar por defecto</span>
                   </button>
 
                   {/* Fila 2: acciones secundarias distribuidas */}

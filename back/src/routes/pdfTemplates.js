@@ -11,6 +11,7 @@ const {
   getTemplateTypes,
   renderForLease,
   checkTemplates,
+  resetToDefaults,
 } = require("../controllers/PdfTemplateController");
 const { tenancyMiddleware } = require("../middlewares/tenancyMiddleware");
 
@@ -48,5 +49,8 @@ router.post("/:id/duplicate", tenancyMiddleware, duplicateTemplate);
 
 // Marcar como predeterminada
 router.post("/:id/set-default", tenancyMiddleware, setAsDefault);
+
+// Restaurar contenido de plantillas por defecto desde los archivos de disco
+router.post("/reset-defaults", tenancyMiddleware, resetToDefaults);
 
 module.exports = router;

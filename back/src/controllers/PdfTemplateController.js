@@ -743,6 +743,53 @@ const checkTemplates = async (req, res) => {
   }
 };
 
+/**
+ * @route POST /api/pdf-templates/reset-defaults
+ * @desc Restaura el contenido de todas las plantillas por defecto del tenant leyendo los archivos de disco
+ * @access Private (requiere tenancyMiddleware)
+ */
+const resetToDefaults = async (req, res) => {
+  const fs = require('fs').promises;
+  const path = require('path');
+  const TEMPLATES_DIR = path.join(__dirname, '..', 'templates', 'pdf');
+
+  const FILE_MAP = {
+    FICHA_PROPIEDAD: 'ficha-propiedad.html',
+    CONTRATO_ALQUILER: 'contrato-alquiler.html',
+    RECIBO_PAGO: 'recibo-pago.html',
+    AUTORIZACION_VENTA: 'autorizacion-venta.html',
+    ACTUALIZACION_RENTA: 'actualizacion-renta.html',
+  };
+
+  try {
+    const { tenantId } = req.user;
+    const { templateType } = req.body; // opcional: resetear solo uno
+
+    const typesToReset = templateType ? [templateType] : Object.keys(FILE_MAP);
+    const results = [];
+
+    for (const type of typesToReset) {
+      const fileName = FILE_MAP[type];
+      if (!fileName) continue;
+      try {
+        const htmlTemplate = await fs.readFile(path.join(TEMPLATES_DIR, fileName), 'utf-8');
+        const updated = await prisma.pdf_templates.updateMany({
+          where: { tenantId, templateType: type, deletedAt: null },
+          data: { htmlTemplate, updatedAt: new Date() },
+        });
+        results.push({ type, updated: updated.count });
+      } catch (err) {
+        results.push({ type, error: err.message });
+      }
+    }
+
+    res.json({ success: true, message: 'Plantillas restauradas', results });
+  } catch (error) {
+    console.error('Error al restaurar plantillas:', error);
+    res.status(500).json({ success: false, message: 'Error al restaurar plantillas', error: error.message });
+  }
+};
+
 module.exports = {
   getAllTemplates,
   getTemplateById,
@@ -754,4 +801,5 @@ module.exports = {
   getTemplateTypes,
   renderForLease,
   checkTemplates,
+  resetToDefaults,
 };

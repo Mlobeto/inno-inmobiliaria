@@ -1,144 +1,84 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Ficha de Propiedad</title>
-  <style>
-    body {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 11pt;
-      margin: 0;
-      padding: 15px;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #000;
-    }
-    .logo img {
-      width: 120px;
-      height: auto;
-    }
-    .contact-info {
-      text-align: center;
-      font-size: 10pt;
-    }
-    .property-type {
-      display: inline-block;
-      padding: 5px 15px;
-      color: white;
-      font-weight: bold;
-      text-align: center;
-      margin-left: 10px;
-    }
-    .property-type.venta {
-      background-color: red;
-    }
-    .property-type.alquiler {
-      background-color: green;
-    }
-    .images {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin: 15px 0;
-    }
-    .images img {
-      width: 100%;
-      height: 150px;
-      object-fit: cover;
-      border: 1px solid #ddd;
-    }
-    .property-details {
-      margin: 15px 0;
-    }
-    .property-details p {
-      margin: 6px 0;
-      line-height: 1.4;
-    }
-    .description-section {
-      margin-top: 20px;
-      padding-top: 15px;
-    }
-    .highlights-section {
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 2px solid green;
-    }
-    .highlights-section h3 {
-      color: green;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .label {
-      font-weight: bold;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="logo">
+<style>
+  .fp-wrap { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; padding: 10px; }
+  .fp-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #222; padding-bottom: 12px; margin-bottom: 14px; }
+  .fp-logo img { max-width: 130px; max-height: 60px; object-fit: contain; }
+  .fp-logo-text { font-size: 18pt; font-weight: bold; color: #1a1a2e; }
+  .fp-contact { text-align: center; font-size: 9pt; color: #444; line-height: 1.6; }
+  .fp-badge { display: inline-block; padding: 7px 20px; border-radius: 4px; color: #fff; font-weight: bold; font-size: 13pt; letter-spacing: 1px; }
+  .fp-badge.alquiler { background-color: #cc0000; }
+  .fp-badge.venta    { background-color: #1a7a1a; }
+  .fp-images { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+  .fp-images img { width: 100%; height: 145px; object-fit: cover; border: 1px solid #ccc; border-radius: 3px; }
+  .fp-details { margin: 14px 0; border-top: 1px solid #ddd; padding-top: 12px; }
+  .fp-details table { width: 100%; border-collapse: collapse; }
+  .fp-details td { padding: 5px 10px; border-bottom: 1px solid #eee; font-size: 10pt; vertical-align: top; }
+  .fp-details td:first-child { font-weight: bold; color: #333; width: 40%; }
+  .fp-desc { margin-top: 14px; border-top: 1px solid #ddd; padding-top: 12px; font-size: 10pt; line-height: 1.6; }
+  .fp-desc h4 { margin: 0 0 6px 0; color: #222; font-size: 10pt; }
+  .fp-highlights { margin-top: 14px; border-top: 2px solid #1a7a1a; padding-top: 10px; }
+  .fp-highlights h4 { color: #1a7a1a; margin: 0 0 6px 0; font-size: 10pt; }
+</style>
+
+<div class="fp-wrap">
+  <!-- Encabezado -->
+  <div class="fp-header">
+    <div class="fp-logo">
       {{#if inmobiliaria.logoUrl}}
         <img src="{{inmobiliaria.logoUrl}}" alt="Logo">
       {{else}}
-        <h2>{{inmobiliaria.businessName}}</h2>
+        <span class="fp-logo-text">{{inmobiliaria.businessName}}</span>
       {{/if}}
     </div>
-    <div class="contact-info">
-      <div>{{inmobiliaria.address}}</div>
-      <div>Tel: {{inmobiliaria.phone}}</div>
+    <div class="fp-contact">
+      {{#if inmobiliaria.businessName}}<strong>{{inmobiliaria.businessName}}</strong><br>{{/if}}
+      {{#if inmobiliaria.address}}{{inmobiliaria.address}}<br>{{/if}}
+      {{#if inmobiliaria.phone}}Tel: {{inmobiliaria.phone}}{{/if}}
     </div>
     <div>
-      {{#if_eq property.type "venta"}}
-        <span class="property-type venta">VENTA</span>
+      {{#if_eq property.type "alquiler"}}
+        <span class="fp-badge alquiler">ALQUILER</span>
       {{else}}
-        <span class="property-type alquiler">ALQUILER</span>
+        <span class="fp-badge venta">VENTA</span>
       {{/if_eq}}
     </div>
   </div>
 
+  <!-- Imágenes -->
   {{#if property.images}}
-  <div class="images">
+  <div class="fp-images">
     {{#each property.images}}
-      <img src="{{this}}" alt="Imagen de propiedad">
+      <img src="{{this}}" alt="Foto de la propiedad">
     {{/each}}
   </div>
   {{/if}}
 
-  <div class="property-details">
-    <p><span class="label">Dirección:</span> {{property.address}}</p>
-    <p><span class="label">Barrio:</span> {{property.neighborhood}}</p>
-    <p><span class="label">Ciudad:</span> {{property.city}}</p>
-    <p><span class="label">Precio:</span> {{formatCurrency property.price}}</p>
-    <p><span class="label">Tipo:</span> {{uppercase property.type}}</p>
-    <p><span class="label">Tipo de Propiedad:</span> {{property.typeProperty}}</p>
-    {{#if property.rooms}}
-      <p><span class="label">Habitaciones:</span> {{property.rooms}}</p>
-    {{/if}}
-    {{#if property.bathrooms}}
-      <p><span class="label">Baños:</span> {{property.bathrooms}}</p>
-    {{/if}}
-    {{#if property.superficieCubierta}}
-      <p><span class="label">Superficie Cubierta:</span> {{property.superficieCubierta}} m²</p>
-    {{/if}}
-    {{#if property.superficieTotal}}
-      <p><span class="label">Superficie Total:</span> {{property.superficieTotal}} m²</p>
-    {{/if}}
+  <!-- Características -->
+  <div class="fp-details">
+    <table>
+      <tr><td>Dirección</td><td>{{property.address}}{{#if property.neighborhood}}, {{property.neighborhood}}{{/if}}</td></tr>
+      <tr><td>Ciudad</td><td>{{property.city}}{{#if property.province}}, {{property.province}}{{/if}}</td></tr>
+      <tr><td>Precio</td><td>{{formatCurrency property.price}}</td></tr>
+      <tr><td>Tipo de Propiedad</td><td>{{property.typeProperty}}</td></tr>
+      {{#if property.rooms}}<tr><td>Ambientes</td><td>{{property.rooms}}</td></tr>{{/if}}
+      {{#if property.bathrooms}}<tr><td>Baños</td><td>{{property.bathrooms}}</td></tr>{{/if}}
+      {{#if property.superficieCubierta}}<tr><td>Sup. Cubierta</td><td>{{property.superficieCubierta}} m²</td></tr>{{/if}}
+      {{#if property.superficieTotal}}<tr><td>Sup. Total</td><td>{{property.superficieTotal}} m²</td></tr>{{/if}}
+    </table>
   </div>
 
-  <div class="description-section">
-    <p><span class="label">Descripción:</span></p>
+  <!-- Descripción -->
+  {{#if property.description}}
+  <div class="fp-desc">
+    <h4>Descripción:</h4>
     <p>{{property.description}}</p>
   </div>
+  {{/if}}
 
+  <!-- Destacados -->
   {{#if property.highlights}}
-  <div class="highlights-section">
-    <h3>Destacados:</h3>
+  <div class="fp-highlights">
+    <h4>Destacados:</h4>
     <p>{{property.highlights}}</p>
   </div>
   {{/if}}
-</body>
-</html>
+</div>
