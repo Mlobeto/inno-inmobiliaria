@@ -317,9 +317,9 @@ export default function PanelLoteos() {
     }
   };
 
-  const handleTogglePublish = async (loteoId) => {
+  const handleTogglePublish = async (loteoId, currentIsPublished) => {
     try {
-      await togglePublishLoteo(loteoId).unwrap();
+      await togglePublishLoteo({ loteoId, isPublished: !currentIsPublished }).unwrap();
     } catch {
       alert('Error al cambiar el estado de publicación');
     }
@@ -512,7 +512,7 @@ export default function PanelLoteos() {
                         Ver Lotes
                       </button>
                       <button
-                        onClick={() => handleTogglePublish(loteo.id)}
+                        onClick={() => handleTogglePublish(loteo.id, loteo.isPublished)}
                         className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors"
                         title={loteo.isPublished ? 'Despublicar' : 'Publicar en landing'}
                       >

@@ -56,11 +56,12 @@ export const loteoApi = baseApi.injectEndpoints({
 
     // Publicar / despublicar loteo en landing
     togglePublishLoteo: builder.mutation({
-      query: (loteoId) => ({
+      query: ({ loteoId, isPublished }) => ({
         url: `/loteos/${loteoId}/publish`,
         method: 'PATCH',
+        body: { isPublished },
       }),
-      invalidatesTags: (result, error, loteoId) => [
+      invalidatesTags: (result, error, { loteoId }) => [
         { type: 'Loteo', id: loteoId },
         'Loteo',
       ],
