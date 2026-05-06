@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Landing from "./Components/Landing";
 import Panel from "./Components/Admin/Panel";
 import Clientes from "./Components/Clientes/Clientes";
@@ -61,6 +61,20 @@ function App() {
   useTokenExpiry();
   const isImpersonating = useSelector(selectIsImpersonating);
   const impersonatedTenant = useSelector(selectImpersonatedTenant);
+  const location = useLocation();
+
+  // Rutas de app (admin + auth + públicas no-landing) — en estas SÍ se muestra el botón PWA
+  const ADMIN_PREFIXES = [
+    '/panel', '/login', '/admin', '/clientes', '/listadoClientes',
+    '/propiedades', '/contratos', '/configuracion', '/suscripcion',
+    '/loteos', '/soporte', '/panelContratos', '/panelPropiedades',
+    '/panelLeads', '/panelClientes', '/panelLoteos', '/firmas', '/leads',
+    '/plans', '/register', '/subscription', '/company-settings',
+    '/platform-admin', '/contacto', '/terminos', '/privacidad',
+    '/forgot-password', '/reset-password', '/pdf-templates',
+  ];
+  const isLandingRoute = location.pathname !== '/' &&
+    !ADMIN_PREFIXES.some(prefix => location.pathname.startsWith(prefix));
 
   return (
     <>
@@ -79,7 +93,7 @@ function App() {
         </div>
       )}
       <div className={isImpersonating ? 'pt-10' : ''}>
-        <InstallPWA />
+        {!isLandingRoute && <InstallPWA />}
         <Routes>
       <Route path="/" element={<Landing />} />
       
