@@ -30,6 +30,7 @@ const PaymentForm = () => {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentCreated, setPaymentCreated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [createdPayment, setCreatedPayment] = useState(null);
 
   // Estado para el selector de cuotas
   const [showInstallmentSelector, setShowInstallmentSelector] = useState(false);
@@ -148,8 +149,9 @@ const PaymentForm = () => {
         paymentData.originalCurrency = 'ARS';
       }
 
-      await dispatch(createPayment(paymentData));
+      const result = await dispatch(createPayment(paymentData));
       // El thunk ahora lanza en caso de error, así que si llegamos aquí es éxito
+      setCreatedPayment(result);
       setPaymentCreated(true);
       setIsLoading(false);
     } catch (error) {
@@ -175,6 +177,7 @@ const PaymentForm = () => {
     setSelectedLease(null);
     setShowPaymentForm(false);
     setPaymentCreated(false);
+    setCreatedPayment(null);
     setLeasePayments([]);
     setShowInstallmentSelector(false);
   };
@@ -443,7 +446,7 @@ const PaymentForm = () => {
                   {/* ReciboPdf component con botón de descarga */}
                   <div className="flex justify-center pt-6">
                     <ReciboPdf 
-                      payment={paymentCreate.payment}
+                      payment={createdPayment}
                       lease={selectedLease}
                       autoGenerate={false}
                     />
