@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const TemporaryRentalController = require('../controllers/TemporaryRentalController');
-const { authenticate } = require('../middlewares/authMiddleware');
+const authenticate = require('../middlewares/authMiddleware');
 
 // ============================================
 // RUTAS DE ALQUILERES TEMPORALES
