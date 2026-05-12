@@ -454,6 +454,7 @@ const CreateProperty = () => {
       toast.error(error?.data?.details || 'Error al crear la propiedad');
     } finally {
       // no-op: isSubmitting se controla desde RTK Query
+    }
   };
   
   useEffect(() => {
