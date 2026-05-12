@@ -18,6 +18,8 @@ import {
   IoLinkOutline
 } from 'react-icons/io5';
 import Swal from 'sweetalert2';
+import TemporaryRentalOptions from './TemporaryRentalOptions';
+import axios from 'axios';
 
 const EditPropertyModal = ({ property, onClose }) => {
   const dispatch = useDispatch();
@@ -51,6 +53,21 @@ const EditPropertyModal = ({ property, onClose }) => {
     rentalType: 'TRADICIONAL',
     minStayDays: '',
     currency: 'ARS',
+    // Campos para alquileres temporales
+    temporaryRentalTitle: '',
+    temporaryRentalDescription: '',
+    temporaryRentalPricePerNight: '',
+    temporaryRentalPricePerWeek: '',
+    temporaryRentalPricePerMonth: '',
+    temporaryRentalCleaningFee: '',
+    temporaryRentalCommissionPercentage: 15,
+    temporaryRentalMinimumStay: 1,
+    temporaryRentalMaximumStay: '',
+    temporaryRentalCheckInTime: '15:00',
+    temporaryRentalCheckOutTime: '11:00',
+    temporaryRentalRules: '',
+    amenities: [],
+    temporaryRentalIsPublished: false,
   });
   
   const [loading, setLoading] = useState(false);
@@ -88,6 +105,21 @@ const EditPropertyModal = ({ property, onClose }) => {
         rentalType: property.rentalType || 'TRADICIONAL',
         minStayDays: property.minStayDays || '',
         currency: property.currency || 'ARS',
+        // Campos de alquiler temporal (se cargarán después si existen en DB)
+        temporaryRentalTitle: '',
+        temporaryRentalDescription: '',
+        temporaryRentalPricePerNight: '',
+        temporaryRentalPricePerWeek: '',
+        temporaryRentalPricePerMonth: '',
+        temporaryRentalCleaningFee: '',
+        temporaryRentalCommissionPercentage: 15,
+        temporaryRentalMinimumStay: 1,
+        temporaryRentalMaximumStay: '',
+        temporaryRentalCheckInTime: '15:00',
+        temporaryRentalCheckOutTime: '11:00',
+        temporaryRentalRules: '',
+        amenities: [],
+        temporaryRentalIsPublished: false,
       });
     }
   }, [property]);

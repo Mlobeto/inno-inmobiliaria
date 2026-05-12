@@ -27,7 +27,9 @@ import {
   IoCloseOutline,
 } from 'react-icons/io5';
 
+import axios from 'axios';
 import AutorizacionVentaPdf from "../PdfTemplates/AutorizacionVentaPdf";
+import TemporaryRentalOptions from './TemporaryRentalOptions';
 
 const PLANTILLA_TRADICIONAL = `REQUISITOS PARA ALQUILAR
 
@@ -127,6 +129,21 @@ const CreateProperty = () => {
     requisito: "",
     rentalType: "TRADICIONAL",
     minStayDays: "",
+    // Campos para alquileres temporales
+    temporaryRentalTitle: "",
+    temporaryRentalDescription: "",
+    temporaryRentalPricePerNight: "",
+    temporaryRentalPricePerWeek: "",
+    temporaryRentalPricePerMonth: "",
+    temporaryRentalCleaningFee: "",
+    temporaryRentalCommissionPercentage: 15,
+    temporaryRentalMinimumStay: 1,
+    temporaryRentalMaximumStay: "",
+    temporaryRentalCheckInTime: "15:00",
+    temporaryRentalCheckOutTime: "11:00",
+    temporaryRentalRules: "",
+    amenities: [],
+    temporaryRentalIsPublished: false,
   });
   const [showPdfButton, setShowPdfButton] = useState(false);
   const [availableCiudades, setAvailableCiudades] = useState([]);
@@ -301,6 +318,13 @@ const CreateProperty = () => {
     }));
   };
 
+  const handleAmenitiesChange = (selectedAmenities) => {
+    setFormData({
+      ...formData,
+      amenities: selectedAmenities,
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     console.log("Datos enviados:", formData);
@@ -322,7 +346,51 @@ const CreateProperty = () => {
       const result = await createProperty(dataToSend).unwrap();
       
       console.log("Propiedad creada exitosamente:", result);
-      toast.success('Propiedad creada correctamente');
+      
+      // Si es alquiler temporal, crear el registro de TemporaryRental
+      if (formData.rentalType === "TEMPORAL" && formData.operationType === "rent") {
+        try {
+          const temporaryRentalData = {
+            propertyId: result.idProperty,
+            title: formData.temporaryRentalTitle || `Alquiler Temporal - ${result.address}`,
+            description: formData.temporaryRentalDescription,
+            pricePerNight: formData.temporaryRentalPricePerNight ? parseFloat(formData.temporaryRentalPricePerNight) : 0,
+            pricePerWeek: formData.temporaryRentalPricePerWeek ? parseFloat(formData.temporaryRentalPricePerWeek) : null,
+            pricePerMonth: formData.temporaryRentalPricePerMonth ? parseFloat(formData.temporaryRentalPricePerMonth) : null,
+            minimumStay: formData.temporaryRentalMinimumStay ? parseInt(formData.temporaryRentalMinimumStay) : 1,
+            maximumStay: formData.temporaryRentalMaximumStay ? parseInt(formData.temporaryRentalMaximumStay) : null,
+            checkInTime: formData.temporaryRentalCheckInTime || "15:00",
+            checkOutTime: formData.temporaryRentalCheckOutTime || "11:00",
+            cleaningFee: formData.temporaryRentalCleaningFee ? parseFloat(formData.temporaryRentalCleaningFee) : 0,
+            commissionPercentage: formData.temporaryRentalCommissionPercentage || 15,
+            rules: formData.temporaryRentalRules || "",
+            amenities: formData.amenities || [],
+            isActive: true,
+            isPublished: formData.temporaryRentalIsPublished || false,
+          };
+
+          console.log("Creando TemporaryRental:", temporaryRentalData);
+          
+          const tempResponse = await axios.post(
+            `${import.meta.env.VITE_API_URL}/api/temporary-rental`,
+            temporaryRentalData,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          
+          console.log("TemporaryRental creado exitosamente:", tempResponse.data);
+          toast.success('¡Propiedad y alquiler temporal creados correctamente!');
+        } catch (tempError) {
+          console.error("Error al crear TemporaryRental:", tempError);
+          toast.error('Propiedad creada, pero hubo un error al configurar el alquiler temporal. Complétalo desde el panel.');
+        }
+      } else {
+        toast.success('Propiedad creada correctamente');
+      }
       
       // Resetear formulario
       setFormData({
@@ -362,6 +430,20 @@ const CreateProperty = () => {
         requisito: "",
         rentalType: "TRADICIONAL",
         minStayDays: "",
+        temporaryRentalTitle: "",
+        temporaryRentalDescription: "",
+        temporaryRentalPricePerNight: "",
+        temporaryRentalPricePerWeek: "",
+        temporaryRentalPricePerMonth: "",
+        temporaryRentalCleaningFee: "",
+        temporaryRentalCommissionPercentage: 15,
+        temporaryRentalMinimumStay: 1,
+        temporaryRentalMaximumStay: "",
+        temporaryRentalCheckInTime: "15:00",
+        temporaryRentalCheckOutTime: "11:00",
+        temporaryRentalRules: "",
+        amenities: [],
+        temporaryRentalIsPublished: false,
       });
       
       // Navegar al panel de propiedades
@@ -370,7 +452,8 @@ const CreateProperty = () => {
     } catch (error) {
       console.error("Error al crear propiedad:", error);
       toast.error(error?.data?.details || 'Error al crear la propiedad');
-    }
+    } finally {
+      // no-op: isSubmitting se controla desde RTK Query
   };
   
   useEffect(() => {
@@ -1143,6 +1226,21 @@ const CreateProperty = () => {
                 </div>
               </div>
             </div>
+
+            {/* Sección de Alquileres Temporales - Solo si se selecciona alquiler temporal */}
+            {formData.operationType === "rent" && formData.rentalType === "TEMPORAL" && (
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
+                <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                  <IoLayersOutline className="w-6 h-6 mr-2 text-rose-400" />
+                  Configuración de Alquiler Temporal
+                </h3>
+                <TemporaryRentalOptions 
+                  formData={formData} 
+                  handleChange={handleChange}
+                  onAmenitiesChange={handleAmenitiesChange}
+                />
+              </div>
+            )}
 
             {/* Sección de Imágenes */}
             <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
