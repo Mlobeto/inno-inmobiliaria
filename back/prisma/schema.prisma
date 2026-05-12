@@ -48,6 +48,7 @@ model Clients {
   SaleContracts_SaleContracts_sellerIdToClients SaleContracts[]    @relation("SaleContracts_sellerIdToClients")
   client_documents                              client_documents[]
   commissions                                   commissions[]
+  TemporaryRentalBooking                        TemporaryRentalBooking[]
 
   @@index([codigo_postal], map: "idx_clients_codigo_postal")
   @@index([migrated_to_documents], map: "idx_clients_migration_status", where: raw("(migrated_to_documents = false)"))
@@ -236,6 +237,7 @@ model Property {
   PropertyMLListings   PropertyMLListings[]
   SaleContracts        SaleContracts[]
   commissions          commissions[]
+  TemporaryRental      TemporaryRental[]
 
   @@index([agentId], map: "idx_property_agent")
   @@index([tenantId], map: "idx_property_tenant")
@@ -710,6 +712,8 @@ model tenants {
   support_tickets      support_tickets[]
   loteos               loteos[]
   lote_ventas          lote_ventas[]
+  TemporaryRental      TemporaryRental[]
+  TemporaryRentalBooking TemporaryRentalBooking[]
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
   @@index([cuit], map: "tenants_cuit")
@@ -1156,4 +1160,112 @@ enum enum_lote_status {
   DISPONIBLE
   RESERVADO
   VENDIDO
+}
+
+// ===== ALQUILERES TEMPORALES =====
+
+model TemporaryRental {
+  id                    Int                          @id @default(autoincrement())
+  propertyId            Int
+  tenantId              Int
+  title                 String                       @db.VarChar(255)
+  description           String?
+  pricePerNight         Decimal                      @db.Decimal(10, 2)
+  pricePerWeek          Decimal?                     @db.Decimal(10, 2)
+  pricePerMonth         Decimal?                     @db.Decimal(10, 2)
+  minimumStay           Int                          @default(1) // mínimo noches
+  maximumStay           Int?                         // máximo noches (opcional)
+  checkInTime           String                       @default("15:00") @db.VarChar(5)
+  checkOutTime          String                       @default("11:00") @db.VarChar(5)
+  cleaningFee           Decimal?                     @db.Decimal(10, 2)
+  commissionPercentage  Decimal                      @default(15.0) @db.Decimal(5, 2)
+  rules                 String?                      // reglas de la propiedad
+  amenities             String?                      // comodidades JSON
+  isActive              Boolean                      @default(true)
+  isPublished           Boolean                      @default(false)
+  createdAt             DateTime                     @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime                     @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relaciones
+  property              Property                     @relation(fields: [propertyId], references: [propertyId], onDelete: Cascade)
+  tenant                tenants                      @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  availabilities        TemporaryRentalAvailability[]
+  bookings              TemporaryRentalBooking[]
+
+  @@index([propertyId], map: "idx_temporary_rental_property")
+  @@index([tenantId], map: "idx_temporary_rental_tenant")
+  @@index([isActive], map: "idx_temporary_rental_active")
+  @@index([isPublished], map: "idx_temporary_rental_published")
+}
+
+model TemporaryRentalAvailability {
+  id              Int            @id @default(autoincrement())
+  temporaryRentalId Int
+  date            DateTime       @db.Date
+  isAvailable     Boolean        @default(true)
+  priceOverride   Decimal?       @db.Decimal(10, 2) // precio especial para esta fecha
+  notes           String?        @db.VarChar(255)
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relaciones
+  temporaryRental TemporaryRental @relation(fields: [temporaryRentalId], references: [id], onDelete: Cascade)
+
+  @@unique([temporaryRentalId, date], map: "unique_temporary_rental_date")
+  @@index([temporaryRentalId], map: "idx_temporary_rental_availability_rental")
+  @@index([date], map: "idx_temporary_rental_availability_date")
+  @@index([isAvailable], map: "idx_temporary_rental_availability_available")
+}
+
+model TemporaryRentalBooking {
+  id                Int                  @id @default(autoincrement())
+  temporaryRentalId Int
+  tenantId          Int
+  guestId           Int?                 // ID del huésped (puede ser cliente registrado o invitado)
+  guestName         String               @db.VarChar(255)
+  guestEmail        String               @db.VarChar(255)
+  guestPhone        String               @db.VarChar(100)
+  checkInDate       DateTime             @db.Date
+  checkOutDate      DateTime             @db.Date
+  numberOfGuests    Int                  @default(1)
+  totalNights       Int
+  basePrice         Decimal              @db.Decimal(10, 2)
+  cleaningFee       Decimal              @default(0) @db.Decimal(10, 2)
+  totalPrice        Decimal              @db.Decimal(10, 2)
+  commissionAmount  Decimal              @db.Decimal(10, 2)
+  status            TemporaryRentalBookingStatus @default(PENDING)
+  paymentStatus     TemporaryRentalPaymentStatus @default(PENDING)
+  specialRequests   String?
+  bookingSource     String               @default("LANDING") @db.VarChar(50) // LANDING, ADMIN, TENANT
+  createdAt         DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime             @default(now()) @updatedAt @db.Timestamptz(6)
+
+  // Relaciones
+  temporaryRental   TemporaryRental      @relation(fields: [temporaryRentalId], references: [id], onDelete: Cascade)
+  tenant            tenants              @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  guest             Clients?             @relation(fields: [guestId], references: [idClient], onDelete: SetNull)
+
+  @@index([temporaryRentalId], map: "idx_temporary_rental_booking_rental")
+  @@index([tenantId], map: "idx_temporary_rental_booking_tenant")
+  @@index([guestId], map: "idx_temporary_rental_booking_guest")
+  @@index([status], map: "idx_temporary_rental_booking_status")
+  @@index([paymentStatus], map: "idx_temporary_rental_booking_payment")
+  @@index([checkInDate], map: "idx_temporary_rental_booking_checkin")
+  @@index([checkOutDate], map: "idx_temporary_rental_booking_checkout")
+}
+
+enum TemporaryRentalBookingStatus {
+  PENDING      // Reserva pendiente de confirmación
+  CONFIRMED    // Reserva confirmada
+  CANCELLED    // Reserva cancelada
+  COMPLETED    // Estancia completada
+  NO_SHOW      // No se presentó
+}
+
+enum TemporaryRentalPaymentStatus {
+  PENDING      // Pago pendiente
+  PARTIAL      // Pago parcial
+  PAID         // Pagado completamente
+  REFUNDED     // Reembolsado
+  CANCELLED    // Cancelado
 }
