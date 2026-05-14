@@ -29,7 +29,8 @@ async function main() {
   const subdomain = `qa-trial-exp-${sfx}`;
   const cuit = `99-${String(Math.floor(10000000 + Math.random() * 90000000))}-9`;
   const email = `qa-trial-exp-${sfx}@qa.innoinmo.local`;
-  const username = `qa_trial_exp_${sfx}`;
+  // Mismo criterio que el registro: el login usa el email como username.
+  const username = email;
 
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() - 1);
@@ -93,7 +94,7 @@ async function main() {
     tenantId: result.tenant.tenantId,
     subdomain: result.tenant.subdomain,
     adminId: result.admin.adminId,
-    username: result.admin.username,
+    loginEmail: email,
     password: passwordPlain,
     subscriptionId: result.subscription.subscriptionId,
     hint: 'Iniciá sesión y abrí /subscription; el backend pasará la suscripción a past_due.',
