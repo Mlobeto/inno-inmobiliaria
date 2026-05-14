@@ -5,6 +5,16 @@ const logger = require('../utils/logger');
 
 const redisClient = getRedisClient();
 
+/** Límite de login / auth: intentos fallidos por IP por ventana (skipSuccessfulRequests: true). */
+const AUTH_RATE_LIMIT_MAX = Math.min(
+  500,
+  Math.max(1, parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5', 10) || 5)
+);
+const AUTH_RATE_LIMIT_WINDOW_MS = Math.max(
+  60_000,
+  (parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MINUTES || '15', 10) || 15) * 60 * 1000
+);
+
 function buildStore(prefix) {
   if (!redisClient) {
     logger.warn('Rate limiter usando memoria local (Redis no disponible)', { prefix });
@@ -119,30 +129,37 @@ const tenantLimiter = rateLimit({
  * Rate limiter estricto para endpoints sensibles
  * (Login, registro, recuperación de contraseña)
  */
+const authRetryAfterLabel =
+  AUTH_RATE_LIMIT_WINDOW_MS >= 60_000
+    ? `${Math.round(AUTH_RATE_LIMIT_WINDOW_MS / 60000)} minutos`
+    : `${Math.round(AUTH_RATE_LIMIT_WINDOW_MS / 1000)} segundos`;
+
 const authLimiter = rateLimit({
   store: buildStore('rl:auth:'),
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Solo 5 intentos cada 15 minutos
+  windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
+  max: AUTH_RATE_LIMIT_MAX,
   skipSuccessfulRequests: true, // No contar requests exitosos
-  
+
   message: {
-    error: 'Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos.',
-    retryAfter: '15 minutos',
+    error: `Demasiados intentos de inicio de sesión. Intenta de nuevo en ${authRetryAfterLabel}.`,
+    retryAfter: authRetryAfterLabel,
   },
-  
+
   standardHeaders: true,
   legacyHeaders: false,
-  
+
   handler: (req, res) => {
     logger.warn('Rate limit exceeded - Auth', {
       ip: req.ip,
       url: req.originalUrl,
       email: req.body?.email,
+      max: AUTH_RATE_LIMIT_MAX,
+      windowMs: AUTH_RATE_LIMIT_WINDOW_MS,
     });
-    
+
     res.status(429).json({
-      error: 'Demasiados intentos de inicio de sesión. Intenta de nuevo en 15 minutos.',
-      retryAfter: '15 minutos',
+      error: `Demasiados intentos de inicio de sesión. Intenta de nuevo en ${authRetryAfterLabel}.`,
+      retryAfter: authRetryAfterLabel,
     });
   },
 });

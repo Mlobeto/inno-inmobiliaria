@@ -351,7 +351,7 @@ const CreateProperty = () => {
       if (formData.rentalType === "TEMPORAL" && formData.operationType === "rent") {
         try {
           const temporaryRentalData = {
-            propertyId: result.idProperty,
+            propertyId: result.propertyId,
             title: formData.temporaryRentalTitle || `Alquiler Temporal - ${result.address}`,
             description: formData.temporaryRentalDescription,
             pricePerNight: formData.temporaryRentalPricePerNight ? parseFloat(formData.temporaryRentalPricePerNight) : 0,
@@ -371,16 +371,11 @@ const CreateProperty = () => {
 
           console.log("Creando TemporaryRental:", temporaryRentalData);
           
-          const tempResponse = await axios.post(
-            `${import.meta.env.VITE_API_URL}/api/temporary-rental`,
-            temporaryRentalData,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json',
-              },
-            }
-          );
+          const tempResponse = await axios.post('/temporary-rental', temporaryRentalData, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
           
           console.log("TemporaryRental creado exitosamente:", tempResponse.data);
           toast.success('¡Propiedad y alquiler temporal creados correctamente!');
