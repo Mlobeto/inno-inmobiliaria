@@ -15,30 +15,53 @@ import {
   IoCashOutline,
 } from 'react-icons/io5';
 
-/**
- * Calcula la próxima fecha de actualización de alquiler.
- * Siempre se basa en startDate + períodos completos (cálculo por meses,
- * sin considerar días transcurridos dentro del mes).
- */
-const getUpdateAlert = (lease) => {
-  const { startDate, updateFrequency } = lease;
-  let freqMonths = 0;
-  if (updateFrequency === "semestral") freqMonths = 6;
-  else if (updateFrequency === "cuatrimestral") freqMonths = 4;
-  else if (updateFrequency === "anual") freqMonths = 12;
-  if (!freqMonths) return null;
+const FREQ_MONTHS = { semestral: 6, cuatrimestral: 4, anual: 12, trimestral: 3 };
 
+/**
+ * Fecha en que DEBIÓ ocurrir la última actualización (puede ser pasada).
+ * Devuelve null si aún no llegó el primer período.
+ */
+const getLastDueUpdateDate = (lease) => {
+  const { startDate, updateFrequency } = lease;
+  const freqMonths = FREQ_MONTHS[updateFrequency];
+  if (!freqMonths) return null;
   const start = new Date(startDate);
   const now = new Date();
-
-  // Diferencia en meses completos (ignoramos el día del mes)
   const monthsSinceStart =
     (now.getFullYear() - start.getFullYear()) * 12 +
     (now.getMonth() - start.getMonth());
-
   const periodsElapsed = Math.floor(monthsSinceStart / freqMonths);
+  if (periodsElapsed === 0) return null;
+  const due = new Date(start);
+  due.setMonth(due.getMonth() + periodsElapsed * freqMonths);
+  return due;
+};
 
-  // Próxima actualización = startDate + (períodos completos + 1) × frecuencia
+/**
+ * Próxima fecha de actualización.
+ * Si el período actual está vencido y sin registrar, devuelve la fecha debida
+ * para que la alerta muestre correctamente cuánto tiempo lleva sin actualizarse.
+ */
+const getUpdateAlert = (lease) => {
+  const { startDate, updateFrequency } = lease;
+  const freqMonths = FREQ_MONTHS[updateFrequency];
+  if (!freqMonths) return null;
+
+  const due = getLastDueUpdateDate(lease);
+  if (due) {
+    const alreadyUpdated = (lease.RentUpdates || []).some(
+      (u) => new Date(u.updateDate) >= due
+    );
+    if (!alreadyUpdated) return due; // Vencido sin registrar: mostrar fecha debida
+  }
+
+  // Período al día: calcular próxima fecha futura
+  const start = new Date(startDate);
+  const now = new Date();
+  const monthsSinceStart =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth());
+  const periodsElapsed = Math.floor(monthsSinceStart / freqMonths);
   const nextUpdate = new Date(start);
   nextUpdate.setMonth(nextUpdate.getMonth() + (periodsElapsed + 1) * freqMonths);
   return nextUpdate;
@@ -111,10 +134,11 @@ const EstadoAlertasContratos = () => {
   const formatDate = (date) => date.toLocaleDateString();
 
   /**
-   * Detecta si estamos en los últimos días del mes anterior al mes de actualización,
-   * lo que le da al usuario tiempo para informar el nuevo importe.
-   * Se dispara cuando faltan ≤ 20 días para la fecha de actualización
-   * (cubre los últimos ~10 días del mes previo + primeros días del mes de actualización).
+   * Determina el tipo de alerta según:
+   * - daysToUpdate < 0  → actualización vencida y sin registrar (overdue)
+   * - daysToUpdate 0-20 → aviso anticipado (próximos días)
+   * - daysToTermination ≤ 30 → contrato próximo a vencer (crítico)
+   * - daysToTermination ≤ 90 → informativo
    */
   const getAlertType = (nextUpdate, terminationDate) => {
     if (!nextUpdate) return { type: 'success', label: 'Al Día', color: 'green' };
@@ -123,6 +147,7 @@ const EstadoAlertasContratos = () => {
     const daysToTermination = Math.ceil((terminationDate - now) / (1000 * 60 * 60 * 24));
 
     if (daysToTermination <= 30) return { type: 'critical', label: 'Vence Pronto', color: 'red' };
+    if (daysToUpdate < 0) return { type: 'critical', label: 'Actualización Vencida', color: 'red' };
     if (daysToUpdate <= 20) return { type: 'warning', label: 'Actualizar Importe', color: 'amber' };
     if (daysToTermination <= 90) return { type: 'info', label: 'Próximo a Vencer', color: 'blue' };
     return { type: 'success', label: 'Al Día', color: 'green' };
