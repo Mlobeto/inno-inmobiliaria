@@ -1139,7 +1139,7 @@ exports.resetTenantAdminPassword = async (req, res) => {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.gestionprops.com.ar';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.GestProps.com.ar';
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     logger.info('Platform admin generó link de reset', { tenantId, adminId: admin.adminId, platformAdminId: req.user.id });
@@ -1387,12 +1387,12 @@ exports.sendEmailToTenant = async (req, res) => {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #1e40af; padding: 20px; border-radius: 8px 8px 0 0;">
-          <h2 style="color: white; margin: 0;">Mensaje desde GestiónProps</h2>
+          <h2 style="color: white; margin: 0;">Mensaje desde GestProps</h2>
         </div>
         <div style="padding: 24px; background: #f9fafb; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
           <p style="color: #374151; white-space: pre-wrap;">${body.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-          <p style="color: #9ca3af; font-size: 12px;">Este mensaje fue enviado por el equipo de soporte de GestiónProps.</p>
+          <p style="color: #9ca3af; font-size: 12px;">Este mensaje fue enviado por el equipo de soporte de GestProps.</p>
         </div>
       </div>
     `;

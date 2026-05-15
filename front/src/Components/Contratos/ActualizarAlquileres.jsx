@@ -38,48 +38,37 @@ const ActualizarAlquileres = () => {
 
   // RTK Query carga automáticamente al montar el componente
 
-  // Función para determinar si un contrato necesita actualización
-  const necesitaActualizacion = (lease) => {
-    if (lease.status !== 'active') return false;
+  const MESES_POR_FRECUENCIA = { semestral: 6, cuatrimestral: 4, anual: 12, trimestral: 3 };
 
-    const hoy = new Date();
-    const inicio = new Date(lease.startDate);
-    
-    const mesesPorFrecuencia = {
-      semestral: 6,
-      cuatrimestral: 4,
-      anual: 12,
-      trimestral: 3,
-    };
-    
-    const mesesPeriodo = mesesPorFrecuencia[lease.updateFrequency] || 12;
-    const mesesTranscurridos = (hoy.getFullYear() - inicio.getFullYear()) * 12 + 
-                               (hoy.getMonth() - inicio.getMonth());
-    
-    // Si han pasado múltiplos del período, necesita actualización
-    return mesesTranscurridos > 0 && mesesTranscurridos % mesesPeriodo === 0;
-  };
-
-  // Calcular próxima fecha de actualización
+  /**
+   * Calcula la próxima fecha de actualización basándose en meses completos
+   * desde startDate, sin considerar el día dentro del mes.
+   */
   const calcularProximaActualizacion = (lease) => {
     const inicio = new Date(lease.startDate);
-    const mesesPorFrecuencia = {
-      semestral: 6,
-      cuatrimestral: 4,
-      anual: 12,
-      trimestral: 3,
-    };
-    
-    const mesesPeriodo = mesesPorFrecuencia[lease.updateFrequency] || 12;
+    const mesesPeriodo = MESES_POR_FRECUENCIA[lease.updateFrequency] || 12;
     const hoy = new Date();
-    const mesesTranscurridos = (hoy.getFullYear() - inicio.getFullYear()) * 12 + 
-                               (hoy.getMonth() - inicio.getMonth());
-    
-    const periodosCompletados = Math.ceil(mesesTranscurridos / mesesPeriodo);
-    const proximaActualizacion = new Date(inicio);
-    proximaActualizacion.setMonth(proximaActualizacion.getMonth() + (periodosCompletados * mesesPeriodo));
-    
-    return proximaActualizacion;
+
+    // Diferencia en meses enteros (sin días)
+    const mesesTranscurridos =
+      (hoy.getFullYear() - inicio.getFullYear()) * 12 +
+      (hoy.getMonth() - inicio.getMonth());
+
+    const periodosElapsed = Math.floor(mesesTranscurridos / mesesPeriodo);
+    const proxima = new Date(inicio);
+    proxima.setMonth(proxima.getMonth() + (periodosElapsed + 1) * mesesPeriodo);
+    return proxima;
+  };
+
+  /**
+   * Un contrato necesita actualización cuando estamos a ≤ 20 días de la
+   * próxima fecha (últimos días del mes anterior + primeros del mes de actualización).
+   */
+  const necesitaActualizacion = (lease) => {
+    if (lease.status !== 'active') return false;
+    const proxima = calcularProximaActualizacion(lease);
+    const diasRestantes = Math.ceil((proxima - new Date()) / (1000 * 60 * 60 * 24));
+    return diasRestantes >= 0 && diasRestantes <= 20;
   };
 
   // Filtrar contratos que necesitan actualización
@@ -137,16 +126,17 @@ const ActualizarAlquileres = () => {
   };
 
   // Generar PDF de actualización
-  const generarPdfActualizacion = (lease, nuevoMonto, ipcIndex) => {
+  const generarPdfActualizacion = (lease, nuevoMonto, ipcIndex, fechaActualizacion) => {
     const porcentajeAumento = (((nuevoMonto - lease.rentAmount) / lease.rentAmount) * 100).toFixed(2);
-    const fechaHoy = formatearFecha(new Date());
+    // Usar la fecha del período del contrato, no la fecha de hoy
+    const fechaUpdate = fechaActualizacion ? new Date(fechaActualizacion) : calcularProximaActualizacion(lease);
+    const fechaHoy = formatearFecha(fechaUpdate);
 
-    // Calcular período
+    // Calcular período a partir de la fecha de actualización correcta
     const startDate = new Date(lease.startDate);
-    const hoy = new Date();
-    const monthsSinceStart = (hoy.getFullYear() - startDate.getFullYear()) * 12 + 
-                            (hoy.getMonth() - startDate.getMonth());
-    
+    const monthsSinceStart = (fechaUpdate.getFullYear() - startDate.getFullYear()) * 12 +
+                            (fechaUpdate.getMonth() - startDate.getMonth());
+
     let periodo = 'Período desconocido';
     if (lease.updateFrequency === "semestral") {
       periodo = `Semestre ${Math.floor(monthsSinceStart / 6) + 1}`;
@@ -325,17 +315,23 @@ const ActualizarAlquileres = () => {
         didOpen: () => Swal.showLoading()
       });
 
-      // Actualizar en el backend
+      // Usar la fecha ingresada por el usuario; si no la tocó, usar la calculada del período
+      const fechaIngresada = actualizacion?.fechaActualizacion;
+      const fechaActualizacion = fechaIngresada
+        ? new Date(fechaIngresada + 'T12:00:00') // mediodía para evitar desfase de zona horaria
+        : calcularProximaActualizacion(lease);
+
+      // Actualizar en el backend con la fecha elegida por el usuario
       await dispatch(updateLeaseRentAmount(
         lease.id,
         nuevoMonto,
-        new Date().toISOString(),
+        fechaActualizacion.toISOString(),
         null, // El PDF se generará localmente
         `Actualizacion_${lease.id}_${Date.now()}.pdf`
       ));
 
-      // Generar PDF localmente
-      generarPdfActualizacion(lease, nuevoMonto, actualizacion.ipcIndex);
+      // Generar PDF con la misma fecha elegida
+      generarPdfActualizacion(lease, nuevoMonto, actualizacion.ipcIndex, fechaActualizacion);
 
       // Limpiar formulario
       setActualizaciones(prev => {
@@ -544,6 +540,21 @@ const ActualizarAlquileres = () => {
                     <h5 className="text-white font-semibold mb-3">Calcular Actualización</h5>
                     
                     <div className="space-y-3">
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">
+                          Fecha de actualización <span className="text-blue-400">(vigencia del nuevo monto)</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={
+                            actualizaciones[lease.id]?.fechaActualizacion ||
+                            calcularProximaActualizacion(lease).toISOString().split('T')[0]
+                          }
+                          onChange={(e) => handleActualizacionChange(lease.id, 'fechaActualizacion', e.target.value)}
+                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
                       <div>
                         <label className="block text-slate-400 text-sm mb-1">IPC % (opcional)</label>
                         <input

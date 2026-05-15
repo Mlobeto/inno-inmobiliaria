@@ -5,7 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 // Usar Redux desde shared
 import { useLoginMutation, setCredentials } from '@shared/redux';
 
-/** Logo ZentaProp — 3 barras de distinta altura + arco inferior */
+/** Logo GestProp — 3 barras de distinta altura + arco inferior */
 const AppLogo = () => (
   <div className="flex flex-col items-center justify-end w-16 h-14">
     <div className="flex items-end gap-1.5 mb-1">
@@ -60,7 +60,7 @@ const LoginAdmin = () => {
       <div className="w-full bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-4 flex justify-between items-center z-10">
         <Link to="/" className="flex items-center gap-2 text-slate-200 text-lg font-semibold hover:text-white transition-colors">
           <AppLogo />
-          <span>ZentaProp</span>
+          <span>GestProp</span>
         </Link>
       </div>
 
@@ -71,7 +71,7 @@ const LoginAdmin = () => {
           {/* Header */}
           <div className="flex flex-col items-center mb-8">
             <AppLogo />
-            <h1 className="text-3xl font-extrabold text-slate-100 mt-4 tracking-tight">ZentaProp</h1>
+            <h1 className="text-3xl font-extrabold text-slate-100 mt-4 tracking-tight">GestProp</h1>
             <p className="text-sm text-slate-400 mt-1 tracking-wide">Gestión Inmobiliaria</p>
           </div>
 

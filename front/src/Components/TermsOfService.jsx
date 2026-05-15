@@ -2,8 +2,8 @@ import { Link } from "react-router-dom";
 import PropTypes from "prop-types";
 
 const LAST_UPDATED = "Enero 2025";
-const COMPANY = "ZentaProp";
-const CONTACT_EMAIL = "contacto@ZentaProp.com";
+const COMPANY = "GestProp";
+const CONTACT_EMAIL = "contacto@GestProp.com";
 const WHATSAPP = "https://wa.me/5492355517802";
 
 export default function TermsOfService() {

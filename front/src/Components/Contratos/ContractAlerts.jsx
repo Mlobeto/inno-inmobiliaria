@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { getAllLeases } from "../../redux/Actions/actions";
@@ -11,21 +11,36 @@ import {
   IoTimeOutline,
   IoDocumentTextOutline,
   IoAlertCircleOutline,
-  IoCheckmarkCircleOutline
+  IoCheckmarkCircleOutline,
+  IoCashOutline,
 } from 'react-icons/io5';
 
+/**
+ * Calcula la próxima fecha de actualización de alquiler.
+ * Siempre se basa en startDate + períodos completos (cálculo por meses,
+ * sin considerar días transcurridos dentro del mes).
+ */
 const getUpdateAlert = (lease) => {
-  const { startDate, updateFrequency, updatedAt } = lease;
-  let updateIntervalMonths = 0;
-  if (updateFrequency === "semestral") updateIntervalMonths = 6;
-  else if (updateFrequency === "cuatrimestral") updateIntervalMonths = 4;
-  else if (updateFrequency === "anual") updateIntervalMonths = 12;
-  
-  const baseDate = updatedAt ? new Date(updatedAt) : new Date(startDate);
-  let nextUpdate = new Date(baseDate);
-  while (nextUpdate <= new Date()) {
-    nextUpdate.setMonth(nextUpdate.getMonth() + updateIntervalMonths);
-  }
+  const { startDate, updateFrequency } = lease;
+  let freqMonths = 0;
+  if (updateFrequency === "semestral") freqMonths = 6;
+  else if (updateFrequency === "cuatrimestral") freqMonths = 4;
+  else if (updateFrequency === "anual") freqMonths = 12;
+  if (!freqMonths) return null;
+
+  const start = new Date(startDate);
+  const now = new Date();
+
+  // Diferencia en meses completos (ignoramos el día del mes)
+  const monthsSinceStart =
+    (now.getFullYear() - start.getFullYear()) * 12 +
+    (now.getMonth() - start.getMonth());
+
+  const periodsElapsed = Math.floor(monthsSinceStart / freqMonths);
+
+  // Próxima actualización = startDate + (períodos completos + 1) × frecuencia
+  const nextUpdate = new Date(start);
+  nextUpdate.setMonth(nextUpdate.getMonth() + (periodsElapsed + 1) * freqMonths);
   return nextUpdate;
 };
 
@@ -52,7 +67,6 @@ const getContractDetails = (lease) => {
 const EstadoAlertasContratos = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  // Selectores optimizados
   const leases = useSelector((state) => state.leases);
   const loading = useSelector((state) => state.loading);
   const error = useSelector((state) => state.error);
@@ -65,6 +79,27 @@ const EstadoAlertasContratos = () => {
     getContractDetails(lease)
   );
 
+  /**
+   * Cuotas impagas: contratos activos que no tienen ningún recibo
+   * registrado en el mes calendario actual.
+   */
+  const cuotasImpagas = useMemo(() => {
+    if (!leases?.length) return [];
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return (leases).filter((lease) => {
+      if (lease.status !== 'active') return false;
+      const receipts = lease.PaymentReceipts || [];
+      const pagadoEsteMes = receipts.some((r) => {
+        const d = new Date(r.paymentDate);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      return !pagadoEsteMes;
+    });
+  }, [leases]);
+
   // Ordenar por 'nextUpdate' y luego por 'terminationDate'
   const sortedContractDetails = [...contractDetails].sort((a, b) => {
     const diffNext = a.nextUpdate.getTime() - b.nextUpdate.getTime();
@@ -75,14 +110,20 @@ const EstadoAlertasContratos = () => {
 
   const formatDate = (date) => date.toLocaleDateString();
 
-  // Función para determinar el tipo de alerta
+  /**
+   * Detecta si estamos en los últimos días del mes anterior al mes de actualización,
+   * lo que le da al usuario tiempo para informar el nuevo importe.
+   * Se dispara cuando faltan ≤ 20 días para la fecha de actualización
+   * (cubre los últimos ~10 días del mes previo + primeros días del mes de actualización).
+   */
   const getAlertType = (nextUpdate, terminationDate) => {
+    if (!nextUpdate) return { type: 'success', label: 'Al Día', color: 'green' };
     const now = new Date();
     const daysToUpdate = Math.ceil((nextUpdate - now) / (1000 * 60 * 60 * 24));
     const daysToTermination = Math.ceil((terminationDate - now) / (1000 * 60 * 60 * 24));
-    
+
     if (daysToTermination <= 30) return { type: 'critical', label: 'Vence Pronto', color: 'red' };
-    if (daysToUpdate <= 7) return { type: 'warning', label: 'Actualización Pendiente', color: 'amber' };
+    if (daysToUpdate <= 20) return { type: 'warning', label: 'Actualizar Importe', color: 'amber' };
     if (daysToTermination <= 90) return { type: 'info', label: 'Próximo a Vencer', color: 'blue' };
     return { type: 'success', label: 'Al Día', color: 'green' };
   };
@@ -160,6 +201,42 @@ const EstadoAlertasContratos = () => {
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Cuotas impagas del mes actual */}
+        {cuotasImpagas.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
+              <IoCashOutline className="w-6 h-6 mr-2 text-red-400" />
+              Cuotas sin registrar este mes ({cuotasImpagas.length})
+            </h3>
+            <div className="space-y-3">
+              {cuotasImpagas.map((lease) => (
+                <div
+                  key={lease.id || lease.leaseId}
+                  className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="p-2 bg-red-500/20 rounded-lg">
+                      <IoCashOutline className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">
+                        {lease.Property?.address || `Contrato #${lease.id || lease.leaseId}`}
+                      </p>
+                      <p className="text-slate-400 text-sm">
+                        Inquilino: {lease.Tenant?.name || 'N/A'} · Monto: ${Number(lease.rentAmount || 0).toLocaleString('es-AR')}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-red-400 text-sm font-medium whitespace-nowrap">
+                    Sin pago registrado
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {sortedContractDetails.length === 0 ? (
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-12 text-center">
             <IoCheckmarkCircleOutline className="w-16 h-16 text-green-400 mx-auto mb-4" />
