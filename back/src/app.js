@@ -9,7 +9,8 @@ const { globalLimiter } = require("./middlewares/rateLimiter")
 const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://www.GestProps.com.ar'
+    'https://gestprop.com.ar',
+    'https://www.gestprop.com.ar',
 ];
 
 const app = express()
