@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { validateCUIT, formatCUIT } from '../../utils/cuitValidator';
 import { toast } from 'react-toastify';
 import {
   IoCheckmarkCircleOutline,
@@ -71,6 +72,7 @@ const ElectronicInvoicingIntegration = () => {
     pointOfSale: '',
     environment: 'homologacion',
   });
+  const [cuitError, setCuitError] = useState('');
 
   const [certForm, setCertForm] = useState({
     certificatePem: '',
@@ -107,6 +109,12 @@ const ElectronicInvoicingIntegration = () => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    const { valid, message } = validateCUIT(profileForm.cuit);
+    if (!valid) {
+      setCuitError(message);
+      return;
+    }
+    setCuitError('');
     setIsSaving(true);
     try {
       if (profile) {
@@ -427,12 +435,34 @@ const ElectronicInvoicingIntegration = () => {
                 <input
                   type="text"
                   placeholder="XX-XXXXXXXX-X"
+                  inputMode="numeric"
                   value={profileForm.cuit}
-                  onChange={e => setProfileForm(p => ({ ...p, cuit: e.target.value }))}
+                  onChange={e => {
+                    const formatted = formatCUIT(e.target.value);
+                    setProfileForm(p => ({ ...p, cuit: formatted }));
+                    if (cuitError) setCuitError('');
+                  }}
+                  onBlur={() => {
+                    if (profileForm.cuit) {
+                      const { valid, message } = validateCUIT(profileForm.cuit);
+                      setCuitError(valid ? '' : message);
+                    }
+                  }}
                   required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className={`w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:border-transparent outline-none ${
+                    cuitError
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                 />
-                <p className="text-xs text-gray-400 mt-1">Formato: 20-12345678-9</p>
+                {cuitError ? (
+                  <p className="flex items-center gap-1 text-xs text-red-600 mt-1">
+                    <IoWarningOutline className="w-3.5 h-3.5 flex-shrink-0" />
+                    {cuitError}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">Formato: 20-12345678-9</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

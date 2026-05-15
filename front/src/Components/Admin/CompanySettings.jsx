@@ -25,6 +25,7 @@ import {
   IoExtensionPuzzleOutline
 } from 'react-icons/io5';
 import { uploadFile } from '../../utils/azureUpload';
+import { validateCUIT, formatCUIT } from '../../utils/cuitValidator';
 import PdfTemplateManager from './PdfTemplateManager';
 import MercadoLibreIntegration from './MercadoLibreIntegration';
 import ElectronicInvoicingIntegration from './ElectronicInvoicingIntegration';
@@ -86,31 +87,16 @@ const CompanySettings = () => {
   const [checkingSubdomain, setCheckingSubdomain] = useState(false);
   const [dragOverField, setDragOverField] = useState(null);
 
-  // Función para validar CUIT
-  const validateCUIT = (cuit) => {
-    const cuitRegex = /^\d{2}-\d{8}-\d{1}$/;
-    return cuitRegex.test(cuit);
-  };
-
-  // Auto-formato para CUIT/CUIL: XX-XXXXXXXX-X
-  const formatCuit = (raw) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 11);
-    if (digits.length <= 2) return digits;
-    if (digits.length <= 10) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
-    return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
-  };
-
   const handleCuitChange = (e) => {
-    const formatted = formatCuit(e.target.value);
+    const formatted = formatCUIT(e.target.value);
     setSettings(prev => ({ ...prev, company_cuit: formatted }));
-    // Limpiar error mientras escribe
     if (validationErrors.company_cuit) {
       setValidationErrors(prev => ({ ...prev, company_cuit: undefined }));
     }
   };
 
   const handleIibbChange = (e) => {
-    const formatted = formatCuit(e.target.value);
+    const formatted = formatCUIT(e.target.value);
     setSettings(prev => ({ ...prev, company_ingresos_brutos: formatted }));
   };
 
@@ -273,8 +259,10 @@ const CompanySettings = () => {
     const { name, value } = e.target;
     const errors = { ...validationErrors };
 
-    if (name === 'company_cuit' && value && !validateCUIT(value)) {
-      errors.company_cuit = 'El CUIT debe tener el formato XX-XXXXXXXX-X';
+    if (name === 'company_cuit' && value) {
+      const { valid, message } = validateCUIT(value);
+      if (!valid) errors.company_cuit = message;
+      else delete errors.company_cuit;
     } else if (name === 'company_cuit') {
       delete errors.company_cuit;
     }
