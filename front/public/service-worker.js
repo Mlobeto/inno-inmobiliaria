@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'ql-inmobiliaria-v2'; // Incrementar versión para forzar actualización
+const CACHE_NAME = 'gestprop-v3'; // Incrementar versión para forzar actualización
 const urlsToCache = [
   '/',
   '/index.html',
