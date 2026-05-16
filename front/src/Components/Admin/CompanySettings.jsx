@@ -817,9 +817,6 @@ const CompanySettings = () => {
                 }`}
                 placeholder="mi-inmobiliaria"
               />
-              <div className="absolute right-3 top-3 text-gray-400 text-sm">
-                .GestProp.com
-              </div>
             </div>
             <div className={`mt-2 border rounded-lg p-3 ${
               tenantInfo.hasLanding 
@@ -829,19 +826,20 @@ const CompanySettings = () => {
               {tenantInfo.hasLanding ? (
                 <>
                   <p className="text-sm text-green-800">
-                    <strong>✓ Landing activado:</strong> Tu subdominio será <strong>{tenantInfo.subdomain || 'tu-nombre'}.GestProp.com</strong>
+                    <strong>✓ Landing activado:</strong> Tu página estará disponible en{' '}
+                    <strong>gestprop.com.ar/{tenantInfo.subdomain || 'tu-nombre'}</strong>
                   </p>
                   <p className="text-xs text-green-700 mt-2">
-                    💡 Cambia tu subdominio aquí y guarda para actualizar tu URL personalizada.
+                    💡 Cambia el nombre aquí y guardá para actualizar tu URL personalizada.
                   </p>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-blue-800">
-                    <strong>ℹ️ Dominio personalizado:</strong> Con un plan que incluya Landing, podrás personalizar tu subdominio para publicar tus propiedades en una URL única.
+                    <strong>ℹ️ URL personalizada:</strong> Con un plan que incluya Landing, podrás publicar tus propiedades en <strong>gestprop.com.ar/tu-nombre</strong>.
                   </p>
                   <p className="text-xs text-blue-700 mt-2">
-                    💡 Actualiza tu plan desde "Mi Plan" en el menú para desbloquear esta función.
+                    💡 Actualizá tu plan desde "Mi Plan" en el menú para desbloquear esta función.
                   </p>
                 </>
               )}
