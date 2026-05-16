@@ -29,7 +29,19 @@ const TenantLanding = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [loteos, setLoteos] = useState([]);
   const [showLoteoPopup, setShowLoteoPopup] = useState(false);
+  const [, setLogoClickCount] = useState(0);
   const ITEMS_PER_PAGE = 9;
+
+  const handleGestPropLogoClick = () => {
+    setLogoClickCount(prev => {
+      const next = prev + 1;
+      if (next >= 3) {
+        navigate('/login');
+        return 0;
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     const fetchLandingData = async () => {
@@ -159,7 +171,7 @@ const TenantLanding = () => {
               </div>
             </div>
 
-            {/* Contacto */}
+            {/* Contacto + Logo GestProp */}
             <div className="flex items-center gap-3">
               {tenant.contact.whatsapp && (
                 <a
@@ -172,6 +184,20 @@ const TenantLanding = () => {
                   <span className="hidden sm:inline">Contactar</span>
                 </a>
               )}
+
+              {/* Logo GestProp — 3 clicks para ir al login */}
+              <button
+                onClick={handleGestPropLogoClick}
+                className="opacity-30 hover:opacity-60 transition-opacity duration-200 focus:outline-none"
+                title="GestProp"
+                aria-label="GestProp"
+              >
+                <img
+                  src="/LOGO.png"
+                  alt="GestProp"
+                  className="h-6 object-contain"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -512,13 +538,34 @@ const TenantLanding = () => {
       <footer className="bg-white/5 border-t border-white/10 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-sm">
-            <p>© 2026 {tenant.name}. Todos los derechos reservados.</p>
+            <p>© {new Date().getFullYear()} {tenant.name}. Todos los derechos reservados.</p>
             {tenant.contact.address && (
               <p className="flex items-center gap-2">
                 <IoLocationOutline className="w-4 h-4" />
                 {tenant.contact.address}
               </p>
             )}
+          </div>
+          <div className="mt-4 pt-4 border-t border-white/10 text-center text-xs text-slate-500">
+            Powered by{' '}
+            <a
+              href="https://gestprop.com.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              GestProp
+            </a>
+            {' · '}
+            Desarrollado por{' '}
+            <a
+              href="https://innoweb.com.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-white transition-colors"
+            >
+              innoweb.com.ar
+            </a>
           </div>
         </div>
       </footer>
