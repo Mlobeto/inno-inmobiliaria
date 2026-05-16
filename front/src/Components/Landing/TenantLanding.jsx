@@ -538,7 +538,7 @@ const TenantLanding = () => {
       <footer className="bg-white/5 border-t border-white/10 mt-16 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-sm">
-            <p>© {new Date().getFullYear()} {tenant.name}. Todos los derechos reservados.</p>
+            <p>© {new Date().getFullYear()} Innoweb. Todos los derechos reservados.</p>
             {tenant.contact.address && (
               <p className="flex items-center gap-2">
                 <IoLocationOutline className="w-4 h-4" />

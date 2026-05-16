@@ -8,7 +8,7 @@ import {
   IoMapOutline,
   IoGridOutline,
   IoExpandOutline,
-  IoPricetagOutline,
+
   IoChevronBackOutline,
   IoChevronForwardOutline,
 } from 'react-icons/io5';
@@ -312,7 +312,7 @@ const LoteoDetail = () => {
       {/* Footer */}
       <footer className="bg-white/5 border-t border-white/10 mt-16 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-sm">
-          <p>© 2026 {tenant.name}. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} Innoweb. Todos los derechos reservados.</p>
           {tenant.contact?.address && (
             <p className="flex items-center gap-2">
               <IoLocationOutline className="w-4 h-4" />

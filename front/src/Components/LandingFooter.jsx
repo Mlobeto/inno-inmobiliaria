@@ -63,7 +63,7 @@ function LandingFooter() {
         {/* Bottom bar */}
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm">
-            © {new Date().getFullYear()} GestProp. Todos los derechos reservados.
+            © {new Date().getFullYear()} Innoweb. Todos los derechos reservados.
           </p>
           <div className="flex gap-6 text-sm">
             <Link to="/terminos" className="hover:text-white transition">Términos de Servicio</Link>
