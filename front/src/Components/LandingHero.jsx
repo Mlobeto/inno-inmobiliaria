@@ -36,7 +36,7 @@ function LandingHero() {
               Ver Planes y Precios
             </Link>
             <Link to="/login" className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-indigo-900 font-bold py-4 px-8 rounded-lg transition">
-              Iniciar Sesión
+              ¿Ya tenés cuenta? Ingresá
             </Link>
           </div>
 
