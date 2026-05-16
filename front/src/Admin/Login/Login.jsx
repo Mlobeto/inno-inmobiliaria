@@ -7,6 +7,7 @@ import {
   IoEyeOffOutline,
   IoCheckmarkCircleOutline,
   IoArrowForwardOutline,
+  IoStarOutline,
 } from 'react-icons/io5';
 
 const FEATURES = [
@@ -84,7 +85,7 @@ const LoginAdmin = () => {
 
             <div className="flex flex-col gap-3 pt-2">
               <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-                <span className="text-2xl">🎉</span>
+                <IoStarOutline className="w-6 h-6 text-blue-400 flex-shrink-0" />
                 <div>
                   <p className="text-white font-semibold text-sm">Prueba gratuita 7 días</p>
                   <p className="text-slate-400 text-xs">Sin tarjeta · Cancelá cuando quieras</p>
