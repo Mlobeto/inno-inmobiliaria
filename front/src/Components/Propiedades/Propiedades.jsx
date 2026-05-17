@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useGetAllClientsQuery, useCreatePropertyMutation, useCreateClientMutation } from '@shared/redux';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
+import CurrencyInput from './CurrencyInput';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import { toast } from 'react-toastify';
 import {
@@ -620,7 +621,7 @@ const CreateProperty = () => {
 
                 <div>
                   <label htmlFor="socio" className="block text-slate-300 font-medium mb-2">
-                    Socio
+                    Socio (Si en el contrato debe figurar mas de un propietario )
                   </label>
                   <input
                     type="text"
@@ -961,12 +962,12 @@ const CreateProperty = () => {
                       <option value="USD" className="bg-slate-800">U$D USD</option>
                     </select>
                     {/* Input precio */}
-                    <input
-                      type="number"
+                    <CurrencyInput
                       id="price"
                       name="price"
                       value={formData.price}
                       onChange={handleChange}
+                      currency={formData.currency}
                       className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
                       placeholder={formData.currency === 'USD' ? 'Precio en USD' : 'Precio en pesos'}
                       required
@@ -1049,12 +1050,12 @@ const CreateProperty = () => {
                     Precio de Referencia
                     <span className="text-slate-400 text-sm ml-2">(Opcional - Solo para consulta interna)</span>
                   </label>
-                  <input
-                    type="number"
+                  <CurrencyInput
                     id="precioReferencia"
                     name="precioReferencia"
                     value={formData.precioReferencia}
                     onChange={handleChange}
+                    currency={formData.currency}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
                     placeholder="Precio de referencia (interno)"
                   />
