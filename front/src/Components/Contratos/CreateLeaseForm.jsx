@@ -79,6 +79,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     rentAmount: "",
     updateFrequency: "",
     commission: "",
+    agencyCommissionType: "months",
+    agencyCommissionValue: "1",
     totalMonths: "",
     inventory: "",
     garantiaType: "",
@@ -192,6 +194,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
         rentAmount: parseFloat(formData.rentAmount),
         updateFrequency: formData.updateFrequency,
         commission: parseFloat(formData.commission),
+        agencyCommissionType:  formData.agencyCommissionType  || null,
+        agencyCommissionValue: formData.agencyCommissionValue ? parseFloat(formData.agencyCommissionValue) : null,
         totalMonths: parseInt(formData.totalMonths),
         inventory: formData.inventory,
         garantiaType: formData.garantiaType || null,
@@ -273,6 +277,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
         setFormData({
           propertyId: "", landlordId: "", locador: "", locatario: "", locatarioId: "",
           startDate: "", rentAmount: "", updateFrequency: "", commission: "",
+          agencyCommissionType: "months", agencyCommissionValue: "1",
           totalMonths: "", inventory: "", garantiaType: "", seguroCaucionCompania: "",
           seguroCaucionPoliza: "", seguroCaucionVigencia: "", seguroCaucionNotas: "",
           guarantor1Name: "", guarantor1Cuil: "", guarantor1Direccion: "",
@@ -630,11 +635,11 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         </select>
                       </div>
 
-                      {/* Comisión */}
+                      {/* Comisión mensual al propietario (%) */}
                       <div className="space-y-2">
                         <label className="flex items-center text-sm font-medium text-slate-300">
                           <IoCashOutline className="w-4 h-4 mr-2 text-orange-400" />
-                          Comisión
+                          Comisión mensual al propietario (%)
                         </label>
                         <input
                           type="number"
@@ -642,8 +647,47 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           value={formData.commission}
                           onChange={handleInputChange}
                           className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
-                          placeholder="Comisión..."
+                          placeholder="Ej: 10 (% sobre cada cuota)"
                         />
+                      </div>
+
+                      {/* Honorarios de la inmobiliaria por contrato */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="flex items-center text-sm font-medium text-slate-300">
+                          <IoCashOutline className="w-4 h-4 mr-2 text-amber-400" />
+                          Honorarios de la inmobiliaria (apertura)
+                        </label>
+                        <div className="flex gap-3">
+                          <select
+                            name="agencyCommissionType"
+                            value={formData.agencyCommissionType}
+                            onChange={handleInputChange}
+                            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 flex-shrink-0"
+                          >
+                            <option value="months" className="bg-slate-800">Meses de alquiler</option>
+                            <option value="amount" className="bg-slate-800">Monto fijo ($)</option>
+                          </select>
+                          <input
+                            type="number"
+                            name="agencyCommissionValue"
+                            value={formData.agencyCommissionValue}
+                            onChange={handleInputChange}
+                            min="0"
+                            step={formData.agencyCommissionType === 'months' ? '0.5' : '1'}
+                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                            placeholder={formData.agencyCommissionType === 'months' ? 'Ej: 1 o 2' : 'Monto en $'}
+                          />
+                        </div>
+                        {/* Preview del monto */}
+                        {formData.rentAmount && formData.agencyCommissionValue && (
+                          <p className="text-xs text-amber-400 font-medium">
+                            {formData.agencyCommissionType === 'months'
+                              ? `= $ ${(parseFloat(formData.rentAmount) * parseFloat(formData.agencyCommissionValue)).toLocaleString('es-AR')} (${formData.agencyCommissionValue} mes${parseFloat(formData.agencyCommissionValue) !== 1 ? 'es' : ''} de alquiler)`
+                              : `= $ ${parseFloat(formData.agencyCommissionValue).toLocaleString('es-AR')}`
+                            }
+                          </p>
+                        )}
+                        <p className="text-xs text-slate-500">Se registrará automáticamente como pago pendiente de cobro al propietario.</p>
                       </div>
 
                       {/* Duración en meses */}

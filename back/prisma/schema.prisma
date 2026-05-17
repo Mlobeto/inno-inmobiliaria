@@ -83,6 +83,8 @@ model Leases {
   rentAmount                         Decimal   @db.Decimal(12, 2)
   updateFrequency                    String?   @db.VarChar(50)
   commission                         Decimal?  @db.Decimal(5, 2)
+  agencyCommissionType               String?   @db.VarChar(10)   // 'months' | 'amount'
+  agencyCommissionValue              Decimal?  @db.Decimal
   totalMonths                        Int
   inventory                          String
   garantiaType                       String?   @db.VarChar(20)

@@ -187,7 +187,7 @@ exports.savePdf = async (req, res) => {
 exports.createLease = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { propertyId, landlordId, renterId, startDate, rentAmount, updateFrequency, commission, totalMonths, inventory, garantiaType, seguroCaucionCompania, seguroCaucionDatos } = req.body;
+    const { propertyId, landlordId, renterId, startDate, rentAmount, updateFrequency, commission, totalMonths, inventory, garantiaType, seguroCaucionCompania, seguroCaucionDatos, agencyCommissionType, agencyCommissionValue } = req.body;
 
     if (!propertyId || !landlordId || !renterId || !startDate || !rentAmount || !totalMonths || !inventory) {
       return res.status(400).json({
@@ -209,6 +209,8 @@ exports.createLease = async (req, res) => {
       garantiaType: garantiaType || null,
       seguroCaucionCompania: garantiaType === 'seguro_caucion' ? (seguroCaucionCompania || null) : null,
       seguroCaucionDatos: garantiaType === 'seguro_caucion' ? (seguroCaucionDatos || null) : null,
+      agencyCommissionType: agencyCommissionType || null,
+      agencyCommissionValue: agencyCommissionValue ? parseFloat(agencyCommissionValue) : null,
       tenantId,
     };
 
@@ -241,6 +243,32 @@ exports.createLease = async (req, res) => {
       where: { propertyId: parsedData.propertyId },
       data: { isAvailable: false },
     });
+
+    // Registrar comisión de la inmobiliaria por apertura del contrato
+    if (agencyCommissionType && agencyCommissionValue) {
+      const rent = parsedData.rentAmount;
+      const commissionAmount = agencyCommissionType === 'months'
+        ? parseFloat((rent * parseFloat(agencyCommissionValue)).toFixed(2))
+        : parseFloat(agencyCommissionValue);
+
+      const fecha = new Date(startDate);
+      const mes   = fecha.toLocaleDateString('es-AR', { month: 'long' });
+      const año   = fecha.getFullYear();
+
+      await prisma.PaymentReceipts.create({
+        data: {
+          tenantId,
+          leaseId:   newLease.id,
+          idClient:  parsedData.landlordId,
+          paymentDate: new Date(startDate),
+          amount:    commissionAmount,
+          originalCurrency: 'ARS',
+          period:    `Comisión de apertura - ${mes} ${año}`,
+          type:      'commission',
+          status:    'pending',
+        },
+      });
+    }
 
     const existingTenantRole = await prisma.ClientProperties.findFirst({
       where: {
