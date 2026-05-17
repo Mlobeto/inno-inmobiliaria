@@ -124,7 +124,7 @@ const PanelClientes = () => {
       icon: IoPersonAddOutline,
       gradient: 'from-emerald-500 to-emerald-600',
       hoverGradient: 'from-emerald-600 to-emerald-700',
-      description: 'Registrar un nuevo cliente'
+      description: 'Registrá dueños, inquilinos, compradores o garantes — el rol se asigna en el contrato o propiedad'
     }
   ];
 
@@ -176,7 +176,7 @@ const PanelClientes = () => {
             Gestión de Clientes
           </h1>
           <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-            Administra toda la información de tus clientes de manera eficiente
+            Registrá dueños, inquilinos, compradores y garantes en un solo lugar. El rol de cada persona se define al crear el contrato o asignarla a una propiedad.
           </p>
         </div>
 
