@@ -51,6 +51,10 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
 
+      # Copiar TinyMCE local al dist (evita el aviso de dominio no registrado)
+      - name: Copy TinyMCE to dist
+        run: cp -r front/node_modules/tinymce front/dist/tinymce
+
       # Verificar que el build generó archivos
       - name: Verify build output
         run: ls -la front/dist/

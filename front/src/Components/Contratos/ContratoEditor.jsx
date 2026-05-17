@@ -217,7 +217,7 @@ const ContratoEditor = ({ lease, onClose }) => {
             </div>
           ) : (
             <Editor
-              tinymceScriptSrc="https://cdn.tiny.cloud/1/se2bvqg48curpyywfqprsxuygl0ycppdzaefay32hp988nbi/tinymce/7/tinymce.min.js"
+              tinymceScriptSrc="/tinymce/tinymce.min.js"
               onInit={(evt, editor) => editorRef.current = editor}
               value={contenido}
               onEditorChange={(newContent) => setContenido(newContent)}

@@ -33,6 +33,7 @@
     "react-toastify": "^11.0.5",
     "sweetalert2": "^11.15.3",
     "swiper": "^11.1.14",
+    "tinymce": "^8.5.0",
     "trim-canvas": "^0.1.2",
     "xlsx": "^0.18.5"
   },
