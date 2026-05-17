@@ -119,7 +119,7 @@ exports.generatePdf = async (req, res) => {
     }
 
     // Obtener configuración del tenant (nombre de la inmobiliaria, logo)
-    const adminSettings = await prisma.adminSettings.findFirst({ where: { tenantId } });
+    const adminSettings = await prisma.admin_settings.findFirst({ where: { tenant_id: tenantId } });
 
     const totals = settlements.reduce((acc, s) => ({
       gross:      acc.gross      + Number(s.grossAmount),
