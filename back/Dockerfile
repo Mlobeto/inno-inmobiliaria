@@ -10,6 +10,9 @@ RUN apk add --no-cache vips-dev fftw-dev gcc g++ make python3
 COPY package*.json ./
 COPY prisma ./prisma/
 
+# Evitar que Puppeteer descargue su propio Chromium (usaremos el del sistema)
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+
 # Instalar dependencias de producción + devDependencias para generar Prisma client
 RUN npm install --legacy-peer-deps
 
@@ -22,9 +25,20 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
+# Apuntar Puppeteer al Chromium del sistema
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Runtime deps para sharp
-RUN apk add --no-cache vips
+# Runtime deps: sharp + Chromium para Puppeteer
+RUN apk add --no-cache \
+    vips \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto
 
 # Copiar sólo lo necesario desde el builder
 COPY --from=builder /app/node_modules ./node_modules
