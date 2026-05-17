@@ -17,7 +17,7 @@ import {
   IoRefreshOutline,
 } from 'react-icons/io5';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
 
 const CATEGORIES = [
   { value: 'obligatoria', label: 'Obligatoria',   color: 'bg-red-100 text-red-700' },
@@ -60,7 +60,7 @@ export default function ClauseLibraryManager() {
       const params = new URLSearchParams();
       if (catFilter)  params.set('category',     catFilter);
       if (typeFilter) params.set('contractType',  typeFilter);
-      const res = await axios.get(`${API}/api/clause-library?${params}`, { headers });
+      const res = await axios.get(`${API}/clause-library?${params}`, { headers });
       setClauses(res.data.clauses);
     } catch {
       Swal.fire('Error', 'No se pudo cargar la biblioteca', 'error');
@@ -92,9 +92,9 @@ export default function ClauseLibraryManager() {
     setSaving(true);
     try {
       if (editing) {
-        await axios.put(`${API}/api/clause-library/${editing.id}`, form, { headers });
+        await axios.put(`${API}/clause-library/${editing.id}`, form, { headers });
       } else {
-        await axios.post(`${API}/api/clause-library`, form, { headers });
+        await axios.post(`${API}/clause-library`, form, { headers });
       }
       setShowModal(false);
       load();
@@ -107,7 +107,7 @@ export default function ClauseLibraryManager() {
 
   const handleDuplicate = async (clause) => {
     try {
-      await axios.post(`${API}/api/clause-library/${clause.id}/duplicate`, {}, { headers });
+      await axios.post(`${API}/clause-library/${clause.id}/duplicate`, {}, { headers });
       load();
     } catch {
       Swal.fire('Error', 'No se pudo duplicar la cláusula', 'error');
@@ -126,7 +126,7 @@ export default function ClauseLibraryManager() {
     });
     if (!isConfirmed) return;
     try {
-      await axios.delete(`${API}/api/clause-library/${clause.id}`, { headers });
+      await axios.delete(`${API}/clause-library/${clause.id}`, { headers });
       load();
     } catch {
       Swal.fire('Error', 'No se pudo eliminar', 'error');

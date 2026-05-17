@@ -20,7 +20,7 @@ import {
   IoChevronForwardOutline,
 } from 'react-icons/io5';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
 
 const fmt = (n) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 0 }).format(Number(n ?? 0));
@@ -71,8 +71,8 @@ export default function PanelLiquidaciones() {
       if (periodFilter)   params.set('period',     periodFilter);
 
       const [listRes, summaryRes] = await Promise.all([
-        axios.get(`${API}/api/owner-settlements?${params}`, { headers }),
-        axios.get(`${API}/api/owner-settlements/summary`,    { headers }),
+        axios.get(`${API}/owner-settlements?${params}`, { headers }),
+        axios.get(`${API}/owner-settlements/summary`,    { headers }),
       ]);
 
       setSettlements(listRes.data.settlements);
@@ -134,7 +134,7 @@ export default function PanelLiquidaciones() {
     });
     if (!isConfirmed) return;
     try {
-      await axios.patch(`${API}/api/owner-settlements/liquidate`,
+      await axios.patch(`${API}/owner-settlements/liquidate`,
         { ids: [...selected], liquidationNote: value || null },
         { headers });
       Swal.fire({ icon: 'success', title: 'Liquidado', text: 'Las liquidaciones fueron marcadas correctamente.', timer: 2000, showConfirmButton: false });
@@ -150,7 +150,7 @@ export default function PanelLiquidaciones() {
       const params = new URLSearchParams({ status: statusFilter });
       if (periodFilter) params.set('period', periodFilter);
       const res = await axios.get(
-        `${API}/api/owner-settlements/pdf/${landlordId}?${params}`,
+        `${API}/owner-settlements/pdf/${landlordId}?${params}`,
         { headers, responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const a   = document.createElement('a');

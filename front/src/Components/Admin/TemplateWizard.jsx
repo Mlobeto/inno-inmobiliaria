@@ -17,7 +17,7 @@ import {
   IoShieldCheckmarkOutline,
 } from 'react-icons/io5';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:3001/api').replace(/\/+$/, '');
 
 const STEPS = [
   { id: 1, label: 'Tipo',      icon: IoDocumentTextOutline },
@@ -105,7 +105,7 @@ export default function TemplateWizard({ onClose, onSaved }) {
     try {
       const params = new URLSearchParams({ contractType });
       if (catFilter) params.set('category', catFilter);
-      const res = await axios.get(`${API}/api/clause-library?${params}`, { headers });
+      const res = await axios.get(`${API}/clause-library?${params}`, { headers });
       setAvailable(res.data.clauses);
     } finally {
       setLoadingClauses(false);
@@ -157,7 +157,7 @@ export default function TemplateWizard({ onClose, onSaved }) {
     setSaving(true);
     try {
       const htmlTemplate = assembleHtml(selected) + '\n' + buildSignatureFooter();
-      await axios.post(`${API}/api/pdf-templates`, {
+      await axios.post(`${API}/pdf-templates`, {
         templateType:    contractType,
         templateName:    templateName.trim(),
         htmlTemplate,
