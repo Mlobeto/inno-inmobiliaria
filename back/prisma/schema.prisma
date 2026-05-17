@@ -190,6 +190,26 @@ model PaymentReceipts {
   @@index([originalCurrency], map: "idx_payment_receipts_currency")
 }
 
+model ContractClauses {
+  id            Int       @id @default(autoincrement())
+  tenantId      Int?
+  title         String    @db.VarChar(255)
+  content       String
+  category      String    @default("general") @db.VarChar(50)
+  contractTypes String[]  @default(["CONTRATO_ALQUILER"])
+  isSystem      Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants       tenants?  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId], map: "idx_clauses_tenant")
+  @@index([category],  map: "idx_clauses_category")
+  @@index([isSystem],  map: "idx_clauses_system")
+}
+
 model OwnerSettlements {
   id                Int       @id @default(autoincrement())
   tenantId          Int
@@ -726,6 +746,7 @@ model tenants {
   MercadoLibreMessages MercadoLibreMessages[]
   PaymentReceipts      PaymentReceipts[]
   OwnerSettlements     OwnerSettlements[]
+  ContractClauses      ContractClauses[]
   PaymentMethods       PaymentMethods[]
   Property             Property[]
   PropertyMLListings   PropertyMLListings[]

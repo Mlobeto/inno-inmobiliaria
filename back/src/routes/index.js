@@ -81,6 +81,7 @@ router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/agents", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./agents")); // Gestión de agentes/usuarios del tenant
 router.use("/commissions", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./commissions")); // Comisiones de agentes
 router.use("/owner-settlements", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./ownerSettlements")); // Liquidaciones al propietario
+router.use("/clause-library",   authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./clauseLibrary")); // Biblioteca de cláusulas
 router.use("/temporary-rental", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./temporaryRentalRoutes")); // Alquileres temporales
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)

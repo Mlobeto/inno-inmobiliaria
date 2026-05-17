@@ -28,6 +28,8 @@ import {
 } from 'react-icons/io5';
 import { toast } from 'react-toastify';
 import VisualPdfEditor from './VisualPdfEditor';
+import TemplateWizard from './TemplateWizard';
+import ClauseLibraryManager from './ClauseLibraryManager';
 
 const PdfTemplateManager = ({ embedded = false }) => {
   const navigate = useNavigate();
@@ -42,6 +44,8 @@ const PdfTemplateManager = ({ embedded = false }) => {
   const [setAsDefault] = useSetTemplateAsDefaultMutation();
 
   // Local state
+  const [showWizard,          setShowWizard]         = useState(false);
+  const [showClauseLibrary,   setShowClauseLibrary]  = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [selectedType, setSelectedType] = useState('');
@@ -1008,13 +1012,29 @@ p { margin: 10px 0; text-align: justify; }`,
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleCreateNew}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center space-x-2"
-              >
-                <IoAddOutline className="w-5 h-5" />
-                <span>Nueva Plantilla</span>
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setShowClauseLibrary(true)}
+                  className="px-4 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
+                >
+                  <IoDocumentTextOutline className="w-4 h-4" />
+                  <span>Biblioteca de cláusulas</span>
+                </button>
+                <button
+                  onClick={() => setShowWizard(true)}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
+                >
+                  <IoAddOutline className="w-4 h-4" />
+                  <span>Crear con asistente</span>
+                </button>
+                <button
+                  onClick={handleCreateNew}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center space-x-2 text-sm font-medium"
+                >
+                  <IoAddOutline className="w-4 h-4" />
+                  <span>HTML manual</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1227,6 +1247,31 @@ p { margin: 10px 0; text-align: justify; }`,
           </div>
         )}
       </div>
+
+      {/* Wizard de plantilla */}
+      {showWizard && (
+        <TemplateWizard
+          onClose={() => setShowWizard(false)}
+          onSaved={() => { setShowWizard(false); toast.success('Plantilla creada con el asistente'); }}
+        />
+      )}
+
+      {/* Biblioteca de cláusulas */}
+      {showClauseLibrary && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[94vh]">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 flex-shrink-0">
+              <span className="text-base font-bold text-gray-900">Biblioteca de cláusulas</span>
+              <button onClick={() => setShowClauseLibrary(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <IoCloseOutline className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <ClauseLibraryManager />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
