@@ -1,5 +1,5 @@
 const prisma = require('../utils/prismaClient');
-const puppeteer = require('puppeteer');
+const { generatePdfFromHtml } = require('../services/pdfService');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -129,21 +129,11 @@ exports.generatePdf = async (req, res) => {
 
     const html = buildSettlementHtml({ settlements, totals, landlordName: settlements[0].landlordName, adminSettings, period });
 
-    const browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--single-process',
-      ],
-      headless: true,
+    const pdf = await generatePdfFromHtml(html, {
+      pageSize: 'A4',
+      orientation: 'portrait',
+      margins: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
     });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' } });
-    await browser.close();
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="liquidacion-${settlements[0].landlordName.replace(/\s+/g, '-')}.pdf"`);
