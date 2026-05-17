@@ -98,7 +98,8 @@ model Leases {
   Clients_Leases_landlordIdToClients Clients   @relation("Leases_landlordIdToClients", fields: [landlordId], references: [idClient], onUpdate: NoAction)
   Property                           Property  @relation(fields: [propertyId], references: [propertyId], onUpdate: NoAction)
   Clients_Leases_renterIdToClients   Clients   @relation("Leases_renterIdToClients", fields: [renterId], references: [idClient], onUpdate: NoAction)
-  tenants                            tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  tenants                            tenants          @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  OwnerSettlements                   OwnerSettlements[]
 
   @@index([agentId], map: "idx_leases_agent")
   @@index([landlordId], map: "idx_leases_landlord")
@@ -187,6 +188,38 @@ model PaymentReceipts {
 
   @@index([tenantId], map: "idx_payment_receipts_tenant")
   @@index([originalCurrency], map: "idx_payment_receipts_currency")
+}
+
+model OwnerSettlements {
+  id                Int       @id @default(autoincrement())
+  tenantId          Int
+  leaseId           Int
+  paymentReceiptId  Int       @unique
+  landlordId        Int
+  landlordName      String    @db.VarChar(255)
+  propertyId        Int
+  propertyAddress   String    @db.VarChar(500)
+  grossAmount       Decimal   @db.Decimal
+  commissionPct     Decimal   @db.Decimal(5, 2)
+  commissionAmt     Decimal   @db.Decimal
+  netAmount         Decimal   @db.Decimal
+  currency          String    @default("ARS") @db.VarChar(3)
+  originalAmount    Decimal?  @db.Decimal
+  originalCurrency  String?   @default("ARS") @db.VarChar(3)
+  dolarRateUsed     Decimal?  @db.Decimal
+  period            String    @db.VarChar(255)
+  status            String    @default("pending") @db.VarChar(20)
+  liquidatedAt      DateTime? @db.Timestamptz(6)
+  liquidationNote   String?
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants           tenants   @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  Leases            Leases    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId], map: "idx_owner_settlements_tenant")
+  @@index([landlordId], map: "idx_owner_settlements_landlord")
+  @@index([status], map: "idx_owner_settlements_status")
 }
 
 model Property {
@@ -692,6 +725,7 @@ model tenants {
   MercadoLibreConfig   MercadoLibreConfig?
   MercadoLibreMessages MercadoLibreMessages[]
   PaymentReceipts      PaymentReceipts[]
+  OwnerSettlements     OwnerSettlements[]
   PaymentMethods       PaymentMethods[]
   Property             Property[]
   PropertyMLListings   PropertyMLListings[]

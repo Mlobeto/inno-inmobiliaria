@@ -257,6 +257,14 @@ const Panel = () => {
       description: 'Liquidar comisiones',
       feature: 'agentRole',
     },
+    {
+      title: 'Liquidaciones',
+      path: '/liquidaciones',
+      icon: IoReceiptOutline,
+      gradient: 'from-sky-600 to-blue-700',
+      hoverGradient: 'from-sky-700 to-blue-800',
+      description: 'Liquidar al propietario',
+    },
   ];
 
   // Filtrar items según features del plan

@@ -1,5 +1,6 @@
 const prisma = require('../utils/prismaClient');
 const { logAudit } = require('../utils/audit');
+const { createFromPayment } = require('./OwnerSettlementController');
 
 exports.createPayment = async (req, res) => {
     try {
@@ -102,6 +103,15 @@ exports.createPayment = async (req, res) => {
           totalInstallments: type === "installment" ? finalTotalInstallments : null,
         },
       });
+
+      // Auto-crear liquidación al propietario para cuotas de alquiler
+      if (type === 'installment') {
+        const lease = await prisma.Leases.findUnique({
+          where: { id: parseInt(leaseId) },
+          include: { Property: true },
+        });
+        await createFromPayment({ tenantId, paymentReceipt: newPaymentReceipt, lease });
+      }
   
       res.status(201).json(newPaymentReceipt);
     } catch (error) {

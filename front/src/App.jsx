@@ -44,6 +44,7 @@ import PaymentReport from "./Components/Pagos/PaymentReport";
 import PanelInformes from "./Components/Admin/PanelInformes";
 import ContractAlerts from "./Components/Contratos/ContractAlerts";
 import ActualizarAlquileres from "./Components/Contratos/ActualizarAlquileres";
+import PanelLiquidaciones from "./Components/Liquidaciones/PanelLiquidaciones";
 import ContratoAlquiler from "./Components/PdfTemplates/ContratoAlquiler";
 import ReciboPreview from "./Components/PdfTemplates/ReciboPreview";
 import ContratoPreview from "./Components/PdfTemplates/ContratoPreview";
@@ -138,6 +139,7 @@ function App() {
       <Route path="/pdf" element={<ProtectedRoute><ContratoAlquiler /></ProtectedRoute>} />
 
       <Route path="/paymentList" element={<ProtectedRoute><PaymentList /></ProtectedRoute>} />
+      <Route path="/liquidaciones" element={<ProtectedRoute><PanelLiquidaciones /></ProtectedRoute>} />
 
       <Route path="/reportes" element={<ProtectedRoute><PaymentReport /></ProtectedRoute>} />
 
