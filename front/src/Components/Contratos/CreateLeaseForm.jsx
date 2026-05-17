@@ -261,11 +261,31 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
         setLeaseCreated(leaseCompleto);
         setPdfData(leaseCompleto);
 
-        Swal.fire({
+        await Swal.fire({
           icon: "success",
-          title: "¡Éxito!",
-          text: "Contrato de alquiler creado exitosamente.",
+          title: "¡Contrato creado!",
+          text: "El contrato de alquiler fue creado exitosamente.",
+          confirmButtonText: "Ver contratos",
+          confirmButtonColor: "#10b981",
         });
+
+        // Resetear formulario y navegar al listado
+        setFormData({
+          propertyId: "", landlordId: "", locador: "", locatario: "", locatarioId: "",
+          startDate: "", rentAmount: "", updateFrequency: "", commission: "",
+          totalMonths: "", inventory: "", garantiaType: "", seguroCaucionCompania: "",
+          seguroCaucionPoliza: "", seguroCaucionVigencia: "", seguroCaucionNotas: "",
+          guarantor1Name: "", guarantor1Cuil: "", guarantor1Direccion: "",
+          guarantor1Email: "", guarantor1MobilePhone: "", guarantor1Description: "",
+          guarantor1CertificationEntity: "", guarantor2Name: "", guarantor2Cuil: "",
+          guarantor2Direccion: "", guarantor2Email: "", guarantor2MobilePhone: "",
+          guarantor2Description: "", guarantor2CertificationEntity: "",
+        });
+        setLeaseCreated(null);
+        setPdfData(null);
+        setRenterSearch('');
+        setSelectedPropertyType(null);
+        navigate('/contratoAlquiler');
       } else {
         throw new Error("No se recibió el leaseId del contrato creado");
       }
