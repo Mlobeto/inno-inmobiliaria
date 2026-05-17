@@ -661,11 +661,11 @@ export const getAllPayments = () => async (dispatch) => {
       type: GET_ALL_PAYMENTS_SUCCESS,
       payload: response.data,
     });
+    return response.data;
   } catch (error) {
-    dispatch({
-      type: GET_ALL_PAYMENTS_FAILURE,
-      payload: error.response?.data?.error || error.message,
-    });
+    const msg = error.response?.data?.error || error.message;
+    dispatch({ type: GET_ALL_PAYMENTS_FAILURE, payload: msg });
+    throw new Error(msg);
   }
 };
 
