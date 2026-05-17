@@ -210,6 +210,7 @@ exports.createCommission = async (req, res) => {
       transactionAmount,
       inmobiliariaCommissionPercent,
       agentCommissionPercent,
+      agentCommissionFixedAmount,   // alternativa al porcentaje
       notes,
     } = req.body;
 
@@ -245,12 +246,17 @@ exports.createCommission = async (req, res) => {
     }
 
     // Calcular montos de comisión
-    const txAmount = parseFloat(transactionAmount);
-    const inmoPercent = inmobiliariaCommissionPercent !== undefined ? parseFloat(inmobiliariaCommissionPercent) : null;
-    const agentPercent = agentCommissionPercent !== undefined ? parseFloat(agentCommissionPercent) : null;
+    // Soporte doble: porcentaje O monto fijo para el agente
+    const txAmount    = parseFloat(transactionAmount);
+    const inmoPercent = inmobiliariaCommissionPercent != null ? parseFloat(inmobiliariaCommissionPercent) : null;
+    const inmoAmount  = inmoPercent !== null ? (txAmount * inmoPercent) / 100 : null;
 
-    const inmoAmount = inmoPercent !== null ? (txAmount * inmoPercent) / 100 : null;
-    const agentAmount = agentPercent !== null ? (txAmount * agentPercent) / 100 : null;
+    const agentPercent = agentCommissionPercent != null ? parseFloat(agentCommissionPercent) : null;
+    const agentFixed   = agentCommissionFixedAmount != null ? parseFloat(agentCommissionFixedAmount) : null;
+    // El monto efectivo: si hay monto fijo lo usa; si hay %, lo calcula; si hay ambos, el fijo prevalece
+    const agentAmount  = agentFixed !== null
+      ? agentFixed
+      : agentPercent !== null ? (txAmount * agentPercent) / 100 : null;
 
     const commission = await prisma.commissions.create({
       data: {
@@ -264,6 +270,7 @@ exports.createCommission = async (req, res) => {
         inmobiliariaCommissionPercent: inmoPercent,
         inmobiliariaCommissionAmount: inmoAmount,
         agentCommissionPercent: agentPercent,
+        agentCommissionFixedAmount: agentFixed,
         agentCommissionAmount: agentAmount,
         status: 'PENDING',
         notes: notes?.trim() || null,
@@ -296,6 +303,7 @@ exports.updateCommission = async (req, res) => {
       transactionAmount,
       inmobiliariaCommissionPercent,
       agentCommissionPercent,
+      agentCommissionFixedAmount,
       notes,
       agentId,
       clientId,
@@ -335,7 +343,18 @@ exports.updateCommission = async (req, res) => {
     }
     if (agentCommissionPercent !== undefined) {
       updateData.agentCommissionPercent = agentPercent;
-      updateData.agentCommissionAmount = agentPercent !== null ? (txAmount * agentPercent) / 100 : null;
+    }
+    if (agentCommissionFixedAmount !== undefined) {
+      updateData.agentCommissionFixedAmount = agentCommissionFixedAmount != null
+        ? parseFloat(agentCommissionFixedAmount) : null;
+    }
+    // Recalcular monto efectivo del agente (fijo prevalece sobre %)
+    if (agentCommissionPercent !== undefined || agentCommissionFixedAmount !== undefined) {
+      const fixedVal = updateData.agentCommissionFixedAmount ?? 
+        (existing.agentCommissionFixedAmount != null ? Number(existing.agentCommissionFixedAmount) : null);
+      updateData.agentCommissionAmount = fixedVal !== null
+        ? fixedVal
+        : agentPercent !== null ? (txAmount * agentPercent) / 100 : null;
     }
 
     const updated = await prisma.commissions.update({

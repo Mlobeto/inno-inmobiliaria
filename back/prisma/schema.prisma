@@ -415,6 +415,7 @@ model admins {
   commissions_commissions_approvedByToadmins commissions[]           @relation("commissions_approvedByToadmins")
   password_reset_tokens                      password_reset_tokens[]
   pdf_templates                              pdf_templates[]
+  lead_agents                                lead_agents[]
 
   @@index([role], map: "idx_admins_role")
   @@index([tenantId], map: "idx_admins_tenant")
@@ -500,6 +501,7 @@ model commissions {
   inmobiliariaCommissionAmount          Decimal?  @db.Decimal(12, 2)
   agentCommissionPercent                Decimal?  @db.Decimal(5, 2)
   agentCommissionAmount                 Decimal?  @db.Decimal(12, 2)
+  agentCommissionFixedAmount            Decimal?  @db.Decimal(12, 2)  // alternativa al porcentaje
   status                                String?   @default("PENDING") @db.VarChar(50)
   approvedBy                            Int?
   approvedAt                            DateTime? @db.Timestamp(6)
@@ -1052,9 +1054,22 @@ model leads {
   createdAt     DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
   tenants       tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  agents        lead_agents[]
 
   @@index([tenantId], map: "idx_leads_tenant")
   @@index([status], map: "idx_leads_status")
+}
+
+model lead_agents {
+  leadId      Int
+  agentId     Int
+  assignedAt  DateTime @default(now()) @db.Timestamptz(6)
+  lead        leads    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  admin       admins   @relation(fields: [agentId], references: [adminId], onDelete: Cascade)
+
+  @@id([leadId, agentId])
+  @@index([leadId],  map: "idx_lead_agents_lead")
+  @@index([agentId], map: "idx_lead_agents_agent")
 }
 
 enum enum_leads_status {
