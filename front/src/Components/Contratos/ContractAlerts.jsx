@@ -103,28 +103,46 @@ const EstadoAlertasContratos = () => {
   );
 
   /**
-   * Cuotas impagas: contratos activos que no tienen ningún recibo
-   * registrado en el mes calendario actual.
+   * Cuotas con atraso: contratos activos con cuotas de tipo 'installment'
+   * vencidas y sin pagar.
+   *  - Calcula cuántas cuotas mensuales debieron pagarse desde el inicio
+   *    hasta hoy.
+   *  - Compara contra las cuotas de tipo 'installment' en estado 'paid'.
+   *  - Si hay más cuotas esperadas que pagadas, el contrato aparece.
    */
   const cuotasImpagas = useMemo(() => {
     if (!leases?.length) return [];
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
 
-    return (leases).filter((lease) => {
-      if (lease.status !== 'active') return false;
-      const receipts = lease.PaymentReceipts || [];
-      const pagadoEsteMes = receipts.some((r) => {
-        const d = new Date(r.paymentDate);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      });
-      return !pagadoEsteMes;
-    });
+    return leases
+      .filter((lease) => lease.status === 'active')
+      .map((lease) => {
+        const start = new Date(lease.startDate);
+        const end = new Date(start);
+        end.setMonth(end.getMonth() + (lease.totalMonths || 0));
+
+        // Cuotas mensuales que debieron pagarse hasta hoy (sin superar fin)
+        let expected = 0;
+        const cursor = new Date(start);
+        while (cursor <= now && cursor < end) {
+          expected++;
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+
+        const receipts = (lease.PaymentReceipts || []).filter(
+          (r) => r.type === 'installment' && r.status === 'paid'
+        );
+        const atrasadas = expected - receipts.length;
+        return { lease, expected, paid: receipts.length, atrasadas };
+      })
+      .filter(({ atrasadas }) => atrasadas > 0);
   }, [leases]);
 
-  // Ordenar por 'nextUpdate' y luego por 'terminationDate'
+  // Ordenar por 'nextUpdate' (null al final) y luego por 'terminationDate'
   const sortedContractDetails = [...contractDetails].sort((a, b) => {
+    if (!a.nextUpdate && !b.nextUpdate) return 0;
+    if (!a.nextUpdate) return 1;
+    if (!b.nextUpdate) return -1;
     const diffNext = a.nextUpdate.getTime() - b.nextUpdate.getTime();
     return diffNext !== 0
       ? diffNext
@@ -141,10 +159,14 @@ const EstadoAlertasContratos = () => {
    * - daysToTermination ≤ 90 → informativo
    */
   const getAlertType = (nextUpdate, terminationDate) => {
-    if (!nextUpdate) return { type: 'success', label: 'Al Día', color: 'green' };
     const now = new Date();
+    const daysToTermination = Math.ceil(((terminationDate || now) - now) / (1000 * 60 * 60 * 24));
+    if (!nextUpdate) {
+      if (daysToTermination <= 30) return { type: 'critical', label: 'Vence Pronto', color: 'red' };
+      if (daysToTermination <= 90) return { type: 'info', label: 'Próximo a Vencer', color: 'blue' };
+      return { type: 'success', label: 'Al Día', color: 'green' };
+    }
     const daysToUpdate = Math.ceil((nextUpdate - now) / (1000 * 60 * 60 * 24));
-    const daysToTermination = Math.ceil((terminationDate - now) / (1000 * 60 * 60 * 24));
 
     if (daysToTermination <= 30) return { type: 'critical', label: 'Vence Pronto', color: 'red' };
     if (daysToUpdate < 0) return { type: 'critical', label: 'Actualización Vencida', color: 'red' };
@@ -227,15 +249,15 @@ const EstadoAlertasContratos = () => {
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Cuotas impagas del mes actual */}
+        {/* Cuotas con atraso */}
         {cuotasImpagas.length > 0 && (
           <div className="mb-8">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
               <IoCashOutline className="w-6 h-6 mr-2 text-red-400" />
-              Cuotas sin registrar este mes ({cuotasImpagas.length})
+              Cuotas impagas ({cuotasImpagas.length} contrato{cuotasImpagas.length !== 1 ? 's' : ''})
             </h3>
             <div className="space-y-3">
-              {cuotasImpagas.map((lease) => (
+              {cuotasImpagas.map(({ lease, atrasadas, expected, paid }) => (
                 <div
                   key={lease.id || lease.leaseId}
                   className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center justify-between"
@@ -253,9 +275,14 @@ const EstadoAlertasContratos = () => {
                       </p>
                     </div>
                   </div>
-                  <span className="text-red-400 text-sm font-medium whitespace-nowrap">
-                    Sin pago registrado
-                  </span>
+                  <div className="text-right">
+                    <span className="text-red-400 text-sm font-medium block">
+                      {atrasadas} cuota{atrasadas !== 1 ? 's' : ''} sin pagar
+                    </span>
+                    <span className="text-slate-500 text-xs">
+                      {paid} de {expected} abonada{expected !== 1 ? 's' : ''}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -311,7 +338,9 @@ const EstadoAlertasContratos = () => {
                 {sortedContractDetails.map((contract) => {
                   const alertType = getAlertType(contract.nextUpdate, contract.terminationDate);
                   const now = new Date();
-                  const daysToUpdate = Math.ceil((contract.nextUpdate - now) / (1000 * 60 * 60 * 24));
+                  const daysToUpdate = contract.nextUpdate
+                    ? Math.ceil((contract.nextUpdate - now) / (1000 * 60 * 60 * 24))
+                    : null;
                   const daysToTermination = Math.ceil((contract.terminationDate - now) / (1000 * 60 * 60 * 24));
                   
                   return (
@@ -356,10 +385,16 @@ const EstadoAlertasContratos = () => {
                               <IoTimeOutline className="w-4 h-4 text-amber-400" />
                               <div>
                                 <p className="text-slate-400 text-xs">Próxima Actualización</p>
-                                <p className={`text-sm font-medium ${daysToUpdate <= 7 ? 'text-amber-400' : 'text-white'}`}>
-                                  {formatDate(contract.nextUpdate)}
-                                  <span className="text-xs ml-1">({daysToUpdate} días)</span>
-                                </p>
+                                {contract.nextUpdate ? (
+                                  <p className={`text-sm font-medium ${daysToUpdate !== null && daysToUpdate <= 7 ? 'text-amber-400' : 'text-white'}`}>
+                                    {formatDate(contract.nextUpdate)}
+                                    {daysToUpdate !== null && (
+                                      <span className="text-xs ml-1">({daysToUpdate} días)</span>
+                                    )}
+                                  </p>
+                                ) : (
+                                  <p className="text-slate-400 text-sm">Sin frecuencia</p>
+                                )}
                               </div>
                             </div>
                             
