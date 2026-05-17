@@ -152,6 +152,8 @@ const CreateProperty = () => {
   const [newClientData, setNewClientData] = useState({ name: '', cuil: '', email: '', mobilePhone: '', provincia: '', ciudad: '', codigoPostal: '', direccion: '' });
   const [newClientErrors, setNewClientErrors] = useState({});
   const [newClientCities, setNewClientCities] = useState([]);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   const legalStatusOptions = useMemo(
     () => getLegalStatusOptionsByOperationType(formData.operationType),
@@ -529,29 +531,73 @@ const CreateProperty = () => {
                   <label htmlFor="client" className="block text-slate-300 font-medium mb-2">
                     Cliente *
                   </label>
-                  <div className="flex gap-2">
-                    <select
-                      id="client"
-                      name="client"
-                      value={formData.idClient}
-                      onChange={handleClientSelect}
-                      className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
-                    >
-                      <option value="" className="bg-slate-800">Seleccione un cliente</option>
-                      {clients?.map((client) => (
-                        <option key={client.idClient} value={String(client.idClient)} className="bg-slate-800">
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewClientModal(true)}
-                      title="Crear nuevo cliente"
-                      className="flex items-center justify-center px-3 py-3 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/30 text-emerald-400 rounded-lg transition-all duration-200"
-                    >
-                      <IoPersonAddOutline className="w-5 h-5" />
-                    </button>
+                  <div className="relative">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          id="client"
+                          type="text"
+                          autoComplete="off"
+                          value={
+                            !showClientDropdown && formData.idClient
+                              ? (clients?.find(c => String(c.idClient) === String(formData.idClient))?.name || clientSearch)
+                              : clientSearch
+                          }
+                          onChange={(e) => {
+                            setClientSearch(e.target.value);
+                            setShowClientDropdown(true);
+                            if (!e.target.value) handleClientSelect({ target: { value: '' } });
+                          }}
+                          onFocus={() => {
+                            setClientSearch('');
+                            setShowClientDropdown(true);
+                          }}
+                          onBlur={() => setTimeout(() => setShowClientDropdown(false), 150)}
+                          placeholder="Buscar por nombre..."
+                          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300"
+                        />
+                        {showClientDropdown && (
+                          <ul className="absolute z-50 w-full mt-1 bg-slate-800 border border-white/20 rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                            {(clients || [])
+                              .filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
+                              .map(client => (
+                                <li
+                                  key={client.idClient}
+                                  onMouseDown={() => {
+                                    handleClientSelect({ target: { value: String(client.idClient) } });
+                                    setClientSearch('');
+                                    setShowClientDropdown(false);
+                                  }}
+                                  className="px-4 py-2.5 text-white hover:bg-white/10 cursor-pointer text-sm transition-colors"
+                                >
+                                  {client.name}
+                                </li>
+                              ))}
+                            {(clients || []).filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                              <li
+                                onMouseDown={() => {
+                                  setShowClientDropdown(false);
+                                  setNewClientData(prev => ({ ...prev, name: clientSearch }));
+                                  setShowNewClientModal(true);
+                                }}
+                                className="px-4 py-2.5 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer text-sm flex items-center gap-2 transition-colors border-t border-white/10"
+                              >
+                                <IoPersonAddOutline className="w-4 h-4 flex-shrink-0" />
+                                Crear cliente &quot;{clientSearch}&quot;
+                              </li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowNewClientModal(true)}
+                        title="Crear nuevo cliente"
+                        className="flex items-center justify-center px-3 py-3 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/30 text-emerald-400 rounded-lg transition-all duration-200"
+                      >
+                        <IoPersonAddOutline className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1403,14 +1449,14 @@ const CreateProperty = () => {
       {/* Modal: Crear nuevo cliente */}
       {showNewClientModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md">
-            {/* Header del modal */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
+          <div className="bg-slate-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            {/* Header fijo */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-emerald-500/20 rounded-lg">
                   <IoPersonAddOutline className="w-5 h-5 text-emerald-400" />
                 </div>
-                <h3 className="text-lg font-bold text-white">Nuevo Cliente</h3>
+                <h3 className="text-base font-bold text-white">Nuevo Cliente</h3>
               </div>
               <button
                 type="button"
@@ -1421,8 +1467,9 @@ const CreateProperty = () => {
               </button>
             </div>
 
-            {/* Cuerpo del modal */}
-            <form onSubmit={handleNewClientSubmit} className="p-5 space-y-4">
+            {/* Cuerpo scrolleable */}
+            <form onSubmit={handleNewClientSubmit} className="flex flex-col flex-1 min-h-0">
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">
                   Nombre completo *
@@ -1542,18 +1589,21 @@ const CreateProperty = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              </div>{/* fin scroll body */}
+
+              {/* Footer fijo con botones */}
+              <div className="flex gap-3 p-4 border-t border-white/10 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
-                  className="flex-1 px-4 py-3 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-lg transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-lg transition-colors text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingClient}
-                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
                 >
                   {isCreatingClient ? (
                     <>
