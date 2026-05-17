@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllPayments, updatePayment, deletePayment } from '../../redux/Actions/actions';
+import axios from 'axios';
 import ReciboPdf from '../PdfTemplates/ReciboPdf';
 import Swal from 'sweetalert2';
 import {
@@ -24,10 +23,9 @@ import {
 } from 'react-icons/io5';
 
 const PaymentList = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  const payments = useSelector(state => state.allPayments) || [];
-  // Use local loading state to avoid blocking on other global actions
+  // Local state — direct API call, no Redux dependency for reading
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -49,20 +47,22 @@ const PaymentList = () => {
     totalInstallments: ''
   });
 
+  const loadPayments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await axios.get('/payment');
+      setPayments(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setError(e.response?.data?.error || e.message || 'Error al cargar los pagos');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        await dispatch(getAllPayments());
-      } catch (e) {
-        setError(e.message || 'Error al cargar los pagos');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [dispatch]);
+    loadPayments();
+  }, [loadPayments]);
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
@@ -107,11 +107,6 @@ const PaymentList = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
-    
-    console.log('=== EDIT SUBMIT ===');
-    console.log('Editing payment ID:', editingPayment?.id);
-    console.log('Form data:', editForm);
-    
     if (!editingPayment) return;
 
     const updateData = {
@@ -120,23 +115,22 @@ const PaymentList = () => {
       period: editForm.period,
       type: editForm.type,
     };
-
-    // Solo incluir installmentNumber y totalInstallments si el tipo es 'installment'
     if (editForm.type === 'installment') {
       updateData.installmentNumber = parseInt(editForm.installmentNumber) || null;
       updateData.totalInstallments = parseInt(editForm.totalInstallments) || null;
     }
 
-    console.log('Update data to send:', updateData);
-    await dispatch(updatePayment(editingPayment.id, updateData));
-    setEditModalOpen(false);
-    setEditingPayment(null);
+    try {
+      await axios.put(`/payment/${editingPayment.id}`, updateData);
+      setEditModalOpen(false);
+      setEditingPayment(null);
+      await loadPayments();
+    } catch (err) {
+      alert('Error al actualizar: ' + (err.response?.data?.error || err.message));
+    }
   };
 
   const handleDelete = async (payment) => {
-    console.log('=== DELETE CLICK ===');
-    console.log('Payment to delete:', payment);
-    
     const result = await Swal.fire({
       title: '¿Estás seguro?',
       text: `¿Deseas eliminar el pago #${payment.id} por ${formatCurrency(payment.amount)}?`,
@@ -148,14 +142,16 @@ const PaymentList = () => {
       cancelButtonText: 'Cancelar',
       background: '#1e293b',
       color: '#fff',
-      customClass: {
-        popup: 'border border-white/10',
-      }
+      customClass: { popup: 'border border-white/10' }
     });
 
     if (result.isConfirmed) {
-      console.log('Delete confirmed for payment ID:', payment.id);
-      await dispatch(deletePayment(payment.id));
+      try {
+        await axios.delete(`/payment/${payment.id}`);
+        await loadPayments();
+      } catch (err) {
+        alert('Error al eliminar: ' + (err.response?.data?.error || err.message));
+      }
     }
   };
 
