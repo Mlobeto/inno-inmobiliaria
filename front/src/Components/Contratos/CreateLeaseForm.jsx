@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from "react-redux";
-import { useGetAllClientsQuery } from "@shared/redux";
+import { useGetAllClientsQuery, useCreateClientMutation } from "@shared/redux";
+import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import {
   createLease,
   getPropertiesById,
@@ -17,6 +18,7 @@ import {
   IoDocumentTextOutline,
   IoBusinessOutline,
   IoPersonOutline,
+  IoPersonAddOutline,
   IoCalendarOutline,
   IoCashOutline,
   IoTimeOutline,
@@ -35,14 +37,30 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const property = useSelector((state) => state.property);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Usar RTK Query para obtener clientes
-  const { data: clients = [], isLoading: isLoadingClients } = useGetAllClientsQuery();
-  
+  // Usar RTK Query para obtener y crear clientes
+  const { data: clients = [], refetch: refetchClients } = useGetAllClientsQuery();
+  const [createClient, { isLoading: isCreatingClient }] = useCreateClientMutation();
+
+  // Estado del combobox de inquilino
+  const [renterSearch, setRenterSearch] = useState('');
+  const [showRenterDropdown, setShowRenterDropdown] = useState(false);
+
+  // Modal nuevo cliente
+  const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [newClientData, setNewClientData] = useState({ name: '', cuil: '', email: '', mobilePhone: '', provincia: '', ciudad: '', codigoPostal: '', direccion: '' });
+  const [newClientErrors, setNewClientErrors] = useState({});
+  const [newClientCities, setNewClientCities] = useState([]);
+
+  useEffect(() => {
+    if (newClientData.provincia) {
+      const prov = PROVINCIAS_ARGENTINA.find(p => p.name === newClientData.provincia);
+      if (prov) setNewClientCities(getCiudadesByProvincia(prov.id));
+    } else {
+      setNewClientCities([]);
+    }
+  }, [newClientData.provincia]);
+
   const [leaseCreated, setLeaseCreated] = useState(null);
-  const [filteredClients, setFilteredClients] = useState([]);
-  const [showClientList, setShowClientList] = useState(false);
-  // eslint-disable-next-line no-unused-vars
-  const [selectedClient, setSelectedClient] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [pdfData, setPdfData] = useState(null);
   const [selectedPropertyType, setSelectedPropertyType] = useState(null);
@@ -84,9 +102,6 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     guarantor2CertificationEntity: "",
   });
 
-  // Ya no necesitamos este useEffect porque RTK Query carga los datos automáticamente
-  console.log("Clientes desde RTK Query:", clients);
-  console.log("¿Está cargando clientes?", isLoadingClients);
 
   const filteredActiveLeases = (leases) => {
     return leases.filter((lease) => {
@@ -98,38 +113,46 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name === "locatario") {
-      setFormData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-      // Verificar que clients existe y es un array antes de filtrar
-      if (clients && Array.isArray(clients)) {
-        const filtered = clients.filter((client) =>
-          client.name.toLowerCase().includes(value.toLowerCase())
-        );
-        setFilteredClients(filtered);
-      } else {
-        setFilteredClients([]);
-      }
-      setShowClientList(value.length > 0);
-    } else {
-      setFormData((prevData) => ({
-        ...prevData,
-        [name]: value,
-      }));
-    }
+    setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleClientSelect = (client) => {
-    setFormData((prevData) => ({
-      ...prevData,
-      locatario: client.name,
-      locatarioId: client.idClient,
-    }));
+  const handleRenterSelect = (client) => {
+    setFormData((prev) => ({ ...prev, locatario: client.name, locatarioId: client.idClient }));
     setSelectedClient(client);
-    setFilteredClients([]);
-    setShowClientList(false);
+    setRenterSearch('');
+    setShowRenterDropdown(false);
+  };
+
+  const handleNewClientChange = (e) => {
+    const { name, value } = e.target;
+    setNewClientData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'provincia' ? { ciudad: '' } : {}),
+    }));
+    if (newClientErrors[name]) setNewClientErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleNewClientSubmit = async (e) => {
+    e.preventDefault();
+    const errors = {};
+    if (!newClientData.name.trim()) errors.name = 'El nombre es requerido';
+    if (!newClientData.mobilePhone.trim()) errors.mobilePhone = 'El teléfono es requerido';
+    if (Object.keys(errors).length > 0) { setNewClientErrors(errors); return; }
+    try {
+      const result = await createClient(newClientData).unwrap();
+      const newId = result?.data?.idClient ?? result?.idClient;
+      await refetchClients();
+      if (newId) {
+        setFormData((prev) => ({ ...prev, locatario: newClientData.name, locatarioId: String(newId) }));
+      }
+      setShowNewClientModal(false);
+      setNewClientData({ name: '', cuil: '', email: '', mobilePhone: '', provincia: '', ciudad: '', codigoPostal: '', direccion: '' });
+      setNewClientErrors({});
+    } catch (err) {
+      const msg = err?.data?.error || err?.data?.details || 'Error al crear el cliente';
+      Swal.fire({ icon: 'error', title: 'Error', text: msg });
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -467,34 +490,71 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Inquilino */}
-                      <div className="space-y-2 relative">
+                      <div className="space-y-2">
                         <label className="flex items-center text-sm font-medium text-slate-300">
                           <IoPersonOutline className="w-4 h-4 mr-2 text-purple-400" />
-                          Inquilino
+                          Inquilino *
                         </label>
-                        <input
-                          type="text"
-                          name="locatario"
-                          value={formData.locatario}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
-                          placeholder="Buscar inquilino..."
-                          required
-                        />
-                        {showClientList && filteredClients.length > 0 && (
-                          <div className="absolute z-10 w-full mt-2 bg-slate-800/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                            {filteredClients.map(client => (
-                              <div
-                                key={client.idClient}
-                                className="px-4 py-3 hover:bg-white/10 cursor-pointer transition-colors border-b border-white/5 last:border-b-0"
-                                onClick={() => handleClientSelect(client)}
-                              >
-                                <p className="text-white font-medium">{client.name}</p>
-                                <p className="text-slate-400 text-sm">{client.email}</p>
-                              </div>
-                            ))}
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <input
+                              type="text"
+                              autoComplete="off"
+                              value={
+                                !showRenterDropdown && formData.locatarioId
+                                  ? (clients.find(c => String(c.idClient) === String(formData.locatarioId))?.name || renterSearch)
+                                  : renterSearch
+                              }
+                              onChange={(e) => {
+                                setRenterSearch(e.target.value);
+                                setShowRenterDropdown(true);
+                                if (!e.target.value) setFormData((prev) => ({ ...prev, locatario: '', locatarioId: '' }));
+                              }}
+                              onFocus={() => { setRenterSearch(''); setShowRenterDropdown(true); }}
+                              onBlur={() => setTimeout(() => setShowRenterDropdown(false), 150)}
+                              placeholder="Buscar inquilino..."
+                              required={!formData.locatarioId}
+                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                            />
+                            {showRenterDropdown && (
+                              <ul className="absolute z-50 w-full mt-1 bg-slate-800 border border-white/20 rounded-xl shadow-2xl max-h-52 overflow-y-auto">
+                                {(clients || [])
+                                  .filter(c => c.name.toLowerCase().includes(renterSearch.toLowerCase()))
+                                  .map(client => (
+                                    <li
+                                      key={client.idClient}
+                                      onMouseDown={() => handleRenterSelect(client)}
+                                      className="px-4 py-2.5 text-white hover:bg-white/10 cursor-pointer text-sm transition-colors border-b border-white/5 last:border-b-0"
+                                    >
+                                      <p className="font-medium">{client.name}</p>
+                                      {client.email && <p className="text-slate-400 text-xs">{client.email}</p>}
+                                    </li>
+                                  ))}
+                                {(clients || []).filter(c => c.name.toLowerCase().includes(renterSearch.toLowerCase())).length === 0 && (
+                                  <li
+                                    onMouseDown={() => {
+                                      setShowRenterDropdown(false);
+                                      setNewClientData(prev => ({ ...prev, name: renterSearch }));
+                                      setShowNewClientModal(true);
+                                    }}
+                                    className="px-4 py-2.5 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer text-sm flex items-center gap-2 transition-colors"
+                                  >
+                                    <IoPersonAddOutline className="w-4 h-4 flex-shrink-0" />
+                                    Crear &quot;{renterSearch}&quot; como nuevo cliente
+                                  </li>
+                                )}
+                              </ul>
+                            )}
                           </div>
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => setShowNewClientModal(true)}
+                            title="Crear nuevo cliente"
+                            className="flex items-center justify-center px-3 py-3 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/30 text-emerald-400 rounded-xl transition-all duration-200"
+                          >
+                            <IoPersonAddOutline className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
 
                       {/* Fecha de inicio */}
@@ -878,6 +938,179 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
           </div>
         </div>
         )
+      )}
+      {/* Modal: Crear nuevo cliente (inquilino) */}
+      {showNewClientModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 rounded-lg">
+                  <IoPersonAddOutline className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Nuevo Cliente</h3>
+                  <p className="text-xs text-emerald-400">Se asignará automáticamente como Inquilino</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <IoCloseOutline className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Cuerpo scrolleable */}
+            <form onSubmit={handleNewClientSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Nombre completo *</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newClientData.name}
+                    onChange={handleNewClientChange}
+                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.name ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                    placeholder="Ej: Juan Pérez"
+                  />
+                  {newClientErrors.name && <p className="mt-1 text-red-400 text-xs">{newClientErrors.name}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">CUIL / DNI</label>
+                  <input
+                    type="text"
+                    name="cuil"
+                    value={newClientData.cuil}
+                    onChange={handleNewClientChange}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+                    placeholder="XX-XXXXXXXX-X"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={newClientData.email}
+                    onChange={handleNewClientChange}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+                    placeholder="email@ejemplo.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Teléfono *</label>
+                  <input
+                    type="text"
+                    name="mobilePhone"
+                    value={newClientData.mobilePhone}
+                    onChange={handleNewClientChange}
+                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.mobilePhone ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                    placeholder="Ej: 3835503166"
+                  />
+                  {newClientErrors.mobilePhone && <p className="mt-1 text-red-400 text-xs">{newClientErrors.mobilePhone}</p>}
+                </div>
+
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Domicilio</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Provincia</label>
+                      <select
+                        name="provincia"
+                        value={newClientData.provincia}
+                        onChange={handleNewClientChange}
+                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
+                      >
+                        <option value="" className="bg-slate-800">Seleccionar</option>
+                        {PROVINCIAS_ARGENTINA.map((prov) => (
+                          <option key={prov.id} value={prov.name} className="bg-slate-800">{prov.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Ciudad</label>
+                      <select
+                        name="ciudad"
+                        value={newClientData.ciudad}
+                        onChange={handleNewClientChange}
+                        disabled={!newClientData.provincia}
+                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="" className="bg-slate-800">
+                          {newClientData.provincia ? 'Seleccione' : 'Primero provincia'}
+                        </option>
+                        {newClientCities.map((ciudad, i) => (
+                          <option key={i} value={ciudad} className="bg-slate-800">{ciudad}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Código Postal</label>
+                      <input
+                        type="text"
+                        name="codigoPostal"
+                        value={newClientData.codigoPostal}
+                        onChange={handleNewClientChange}
+                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
+                        placeholder="Ej: 4700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Dirección</label>
+                      <input
+                        type="text"
+                        name="direccion"
+                        value={newClientData.direccion}
+                        onChange={handleNewClientChange}
+                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
+                        placeholder="Calle, número..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex gap-3 p-4 border-t border-white/10 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
+                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-lg transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingClient}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
+                >
+                  {isCreatingClient ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      <span>Creando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <IoPersonAddOutline className="w-4 h-4" />
+                      <span>Crear e Inquilino</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
