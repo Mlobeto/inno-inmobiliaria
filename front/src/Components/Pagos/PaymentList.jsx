@@ -27,8 +27,9 @@ const PaymentList = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const payments = useSelector(state => state.allPayments) || [];
-  const loading = useSelector(state => state.loading);
-  const error = useSelector(state => state.error);
+  // Use local loading state to avoid blocking on other global actions
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Estados para filtros y búsqueda
   const [filter, setFilter] = useState('');
@@ -49,8 +50,18 @@ const PaymentList = () => {
   });
 
   useEffect(() => {
-    // Obtener todos los pagos
-    dispatch(getAllPayments());
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        await dispatch(getAllPayments());
+      } catch (e) {
+        setError(e.message || 'Error al cargar los pagos');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [dispatch]);
 
   const handleFilterChange = (e) => {
@@ -150,8 +161,10 @@ const PaymentList = () => {
 
   // Filtrar pagos según los criterios
   const filteredPayments = payments.filter(payment => {
-    const matchesText = (payment.leaseId && payment.leaseId.toString().includes(filter)) ||
-      (payment.Client && payment.Client.name && payment.Client.name.toLowerCase().includes(filter.toLowerCase())) ||
+    const clientName = payment.Clients?.name || payment.Client?.name || '';
+    const matchesText = !filter ||
+      (payment.leaseId && payment.leaseId.toString().includes(filter)) ||
+      (clientName && clientName.toLowerCase().includes(filter.toLowerCase())) ||
       (payment.period && payment.period.toLowerCase().includes(filter.toLowerCase()));
 
     const matchesType = typeFilter === 'all' || payment.type === typeFilter;
@@ -203,14 +216,26 @@ const PaymentList = () => {
 
   const getPaymentTypeName = (type) => {
     switch (type) {
-      case 'installment':
-        return 'Cuota';
-      case 'initial':
-        return 'Pago Inicial';
-      case 'commission':
-        return 'Comisión';
-      default:
-        return 'Otro';
+      case 'installment': return 'Cuota';
+      case 'initial':     return 'Pago Inicial';
+      case 'commission':  return 'Comisión';
+      default:            return 'Otro';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'paid':    return 'bg-green-500/20 text-green-400 border-green-400/30';
+      case 'pending': return 'bg-amber-500/20 text-amber-400 border-amber-400/30';
+      default:        return 'bg-slate-500/20 text-slate-400 border-slate-400/30';
+    }
+  };
+
+  const getStatusName = (status) => {
+    switch (status) {
+      case 'paid':    return 'Pagado';
+      case 'pending': return 'Pendiente';
+      default:        return status || 'Desconocido';
     }
   };
 
@@ -436,8 +461,13 @@ const PaymentList = () => {
                       </div>
                     </div>
 
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPaymentTypeColor(payment.type)}`}>
-                      {getPaymentTypeName(payment.type)}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPaymentTypeColor(payment.type)}`}>
+                        {getPaymentTypeName(payment.type)}
+                      </div>
+                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
+                        {getStatusName(payment.status)}
+                      </div>
                     </div>
                   </div>
 
@@ -464,7 +494,7 @@ const PaymentList = () => {
                           Cliente
                         </label>
                         <div className="text-white font-medium">
-                          {payment.Client ? payment.Client.name : 'N/A'}
+                          {payment.Clients?.name || payment.Client?.name || 'N/A'}
                         </div>
                       </div>
 

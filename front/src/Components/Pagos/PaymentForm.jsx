@@ -61,7 +61,8 @@ const PaymentForm = () => {
   const handleLeaseSelect = async (lease) => {
     // El contrato puede venir con 'id' o 'leaseId'
     const leaseId = lease?.id || lease?.leaseId;
-    const tenantId = lease?.tenantId || lease?.locatarioId || lease?.idClient;
+    // idClient debe ser el ID del inquilino como cliente, no el tenantId de la agencia
+    const renterClientId = lease?.renterId || lease?.Renter?.idClient || lease?.Tenant?.idClient;
     
     if (!lease || !leaseId) {
       console.error('Contrato inválido seleccionado:', lease);
@@ -72,7 +73,7 @@ const PaymentForm = () => {
     setFormData(prev => ({
       ...prev,
       leaseId: leaseId,
-      idClient: tenantId,
+      idClient: renterClientId || "",
       amount: lease.rentAmount || "",
       totalInstallments: lease.totalMonths || lease.duration || "",
       installmentNumber: null,
@@ -81,8 +82,8 @@ const PaymentForm = () => {
     setShowPaymentForm(true);
 
     // Cargar datos del cliente si es necesario
-    if (tenantId) {
-      dispatch(getClientById(tenantId));
+    if (renterClientId) {
+      dispatch(getClientById(renterClientId));
     }
 
     // Cargar pagos existentes del contrato para el InstallmentSelector

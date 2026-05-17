@@ -555,6 +555,8 @@ export const createPayment = (paymentData) => async (dispatch) => {
       type: CREATE_PAYMENT_SUCCESS,
       payload: response.data,
     });
+    // Refresh the full payments list so PaymentList reflects the new entry
+    dispatch(getAllPayments());
     return response.data;
   } catch (error) {
     dispatch({
