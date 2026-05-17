@@ -87,6 +87,7 @@ exports.createPayment = async (req, res) => {
         }
       }
   
+      // Al registrar manualmente desde el panel el admin, el cobro ya se efectuó → status paid
       const newPaymentReceipt = await prisma.PaymentReceipts.create({
         data: {
           tenantId,
@@ -99,6 +100,8 @@ exports.createPayment = async (req, res) => {
           dolarRateUsed: dolarRateUsed ?? null,                              // cotización al momento del cobro
           period: finalPeriod,
           type,
+          status: 'paid',
+          paidAt: new Date(paymentDate),
           installmentNumber: type === "installment" ? finalInstallmentNumber : null,
           totalInstallments: type === "installment" ? finalTotalInstallments : null,
         },
@@ -183,7 +186,22 @@ exports.getAllPayments = async (req, res) => {
       ? await prisma.Leases.findMany({ where: { id: { in: leaseIds } }, include: { Property: true } })
       : [];
     const leaseMap = Object.fromEntries(leases.map(l => [l.id, l]));
-    const enriched = payments.map(p => ({ ...p, Lease: leaseMap[p.leaseId] || null }));
+
+    // Enrich with owner settlement data (one per paymentReceiptId, unique)
+    const paymentIds = payments.map(p => p.id);
+    const settlements = paymentIds.length
+      ? await prisma.OwnerSettlements.findMany({
+          where: { paymentReceiptId: { in: paymentIds }, tenantId },
+          select: { paymentReceiptId: true, status: true, id: true, netAmount: true, landlordName: true },
+        })
+      : [];
+    const settlementMap = Object.fromEntries(settlements.map(s => [s.paymentReceiptId, s]));
+
+    const enriched = payments.map(p => ({
+      ...p,
+      Lease: leaseMap[p.leaseId] || null,
+      ownerSettlement: settlementMap[p.id] || null,
+    }));
 
     // ✅ Devolver array vacío si no hay pagos, no un error 404
     res.status(200).json(enriched);

@@ -407,6 +407,7 @@ const PaymentReport = () => {
                           <th className="text-center text-slate-400 font-medium py-3 px-4">Estado</th>
                           <th className="text-right text-slate-400 font-medium py-3 px-4">Monto</th>
                           <th className="text-right text-slate-400 font-medium py-3 px-4">Comisión</th>
+                          <th className="text-center text-slate-400 font-medium py-3 px-4">Liq. propietario</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -442,6 +443,23 @@ const PaymentReport = () => {
                               </td>
                               <td className="py-2.5 px-4 text-right text-white font-semibold">{fmt(p.amount)}</td>
                               <td className="py-2.5 px-4 text-right text-amber-400">{comm > 0 ? fmt(comm) : '—'}</td>
+                              <td className="py-2.5 px-4 text-center">
+                                {p.type === 'installment' ? (
+                                  p.ownerSettlement ? (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs border ${
+                                      p.ownerSettlement.status === 'liquidated'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30'
+                                        : 'bg-amber-500/20 text-amber-400 border-amber-400/30'
+                                    }`}>
+                                      {p.ownerSettlement.status === 'liquidated' ? 'Liquidada' : 'Pendiente'}
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-xs bg-slate-500/20 text-slate-500 border border-slate-400/20">
+                                      Sin liquidar
+                                    </span>
+                                  )
+                                ) : <span className="text-slate-600">—</span>}
+                              </td>
                             </tr>
                           );
                         })}
