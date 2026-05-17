@@ -9,7 +9,7 @@ import {
   IoReceiptOutline,
   IoCalendarOutline,
   IoCashOutline,
-  IoPersonOutline,
+
   IoDocumentTextOutline,
   IoSearchOutline,
   IoFilterOutline,
@@ -431,122 +431,99 @@ const PaymentList = () => {
               <p className="text-slate-500 text-sm">Intenta ajustar los filtros de búsqueda</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {filteredPayments.map((payment) => (
-                <div
-                  key={payment.id}
-                  className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-white/20 transition-all duration-300"
-                >
-                  {/* Header del pago */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-emerald-500/20 rounded-lg">
-                        <IoReceiptOutline className="w-5 h-5 text-emerald-400" />
-                      </div>
-                      <div>
-                        <h4 className="text-white font-semibold">
-                          Pago #{payment.id}
-                        </h4>
-                        <p className="text-slate-400 text-sm">
-                          {new Date(payment.paymentDate).toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-1">
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getPaymentTypeColor(payment.type)}`}>
-                        {getPaymentTypeName(payment.type)}
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
-                        {getStatusName(payment.status)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Información del pago */}
-                  <div className="grid grid-cols-1 gap-4">
-                    {/* Monto */}
-                    <div className="bg-white/5 rounded-xl p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <IoCashOutline className="w-5 h-5 text-emerald-400" />
-                          <span className="text-slate-300 font-medium">Monto</span>
-                        </div>
-                        <span className="text-white text-xl font-bold">
-                          {formatCurrency(payment.amount)}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">#</th>
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">Fecha</th>
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">Contrato</th>
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">Inquilino</th>
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">Período</th>
+                    <th className="text-left text-slate-400 font-medium py-3 px-4">Tipo</th>
+                    <th className="text-right text-slate-400 font-medium py-3 px-4">Monto</th>
+                    <th className="text-center text-slate-400 font-medium py-3 px-4">Estado</th>
+                    <th className="text-center text-slate-400 font-medium py-3 px-4">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPayments.map((payment, idx) => (
+                    <tr
+                      key={payment.id}
+                      className={`border-b border-white/5 hover:bg-white/5 transition-colors ${idx % 2 === 0 ? '' : 'bg-white/[0.02]'}`}
+                    >
+                      <td className="py-3 px-4 text-slate-400 font-mono text-xs">{payment.id}</td>
+                      <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
+                        {payment.paymentDate
+                          ? new Date(payment.paymentDate).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                          : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-white font-medium">
+                        #{payment.leaseId || '—'}
+                        {payment.Lease?.Property?.address && (
+                          <span className="block text-slate-500 text-xs font-normal truncate max-w-[140px]">
+                            {payment.Lease.Property.address}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-white">
+                        {payment.Clients?.name || payment.Client?.name || <span className="text-slate-500">—</span>}
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">
+                        {payment.period || <span className="text-slate-500">—</span>}
+                        {payment.installmentNumber && payment.totalInstallments && (
+                          <span className="block text-slate-500 text-xs">
+                            Cuota {payment.installmentNumber}/{payment.totalInstallments}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getPaymentTypeColor(payment.type)}`}>
+                          {getPaymentTypeName(payment.type)}
                         </span>
-                      </div>
-                    </div>
-
-                    {/* Cliente y Contrato */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoPersonOutline className="w-4 h-4 mr-2 text-blue-400" />
-                          Cliente
-                        </label>
-                        <div className="text-white font-medium">
-                          {payment.Clients?.name || payment.Client?.name || 'N/A'}
+                      </td>
+                      <td className="py-3 px-4 text-right text-white font-semibold whitespace-nowrap">
+                        {formatCurrency(payment.amount)}
+                        {payment.originalCurrency && payment.originalCurrency !== 'ARS' && (
+                          <span className="block text-slate-500 text-xs font-normal">
+                            USD {payment.originalAmount}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
+                          {getStatusName(payment.status)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleDownloadReceipt(payment)}
+                            title="Descargar recibo"
+                            className="p-1.5 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 transition-colors border border-blue-400/20"
+                          >
+                            <IoDownloadOutline className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEditClick(payment)}
+                            title="Editar"
+                            className="p-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 transition-colors border border-amber-400/20"
+                          >
+                            <IoCreateOutline className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(payment)}
+                            title="Eliminar"
+                            className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors border border-red-400/20"
+                          >
+                            <IoTrashOutline className="w-4 h-4" />
+                          </button>
                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoDocumentTextOutline className="w-4 h-4 mr-2 text-purple-400" />
-                          Contrato
-                        </label>
-                        <div className="text-white font-medium">
-                          #{payment.leaseId}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Período */}
-                    <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-slate-300">
-                        <IoTimeOutline className="w-4 h-4 mr-2 text-amber-400" />
-                        Período
-                      </label>
-                      <div className="text-white">
-                        {payment.period || 'No especificado'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Acciones */}
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleDownloadReceipt(payment)}
-                        className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg transition-colors border border-blue-400/30"
-                      >
-                        <IoDownloadOutline className="w-4 h-4 mr-2" />
-                        Descargar
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleEditClick(payment)}
-                        className="flex items-center justify-center px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-colors border border-amber-400/30"
-                        title="Editar pago"
-                      >
-                        <IoCreateOutline className="w-4 h-4" />
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleDelete(payment)}
-                        className="flex items-center justify-center px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-colors border border-red-400/30"
-                        title="Eliminar pago"
-                      >
-                        <IoTrashOutline className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
