@@ -4,38 +4,56 @@ export const LEGAL_STATUS_LABELS = {
   PURCHASE_AGREEMENT: 'Boleto',
   POSSESSION: 'Posesión',
   ASSIGNMENT_OF_RIGHTS: 'Cesión de derechos',
-  INHERITANCE_IN_PROCESS: 'Herencia',
+  INHERITANCE_IN_PROCESS: 'Herencia en trámite',
+  SUCCESSION: 'Sucesión',
   TRUST: 'Fideicomiso',
   ADVERSE_POSSESSION: 'Usucapión',
+  ADVERSE_POSSESSION_IN_PROCESS: 'Prescripción en trámite',
   TITLE_REGULARIZATION: 'Regularización',
   HORIZONTAL_PROPERTY: 'PH',
+  CONDOMINIUM: 'Condominio',
+  DONATION: 'Donación',
   SUBDIVISION: 'Loteo',
 };
 
 export const LEGAL_STATUS_BY_OPERATION_TYPE = {
   sale: [
     'DEED',
+    'DEED_IN_PROCESS',
     'PURCHASE_AGREEMENT',
     'POSSESSION',
     'ASSIGNMENT_OF_RIGHTS',
     'INHERITANCE_IN_PROCESS',
+    'SUCCESSION',
     'TRUST',
     'ADVERSE_POSSESSION',
+    'ADVERSE_POSSESSION_IN_PROCESS',
     'TITLE_REGULARIZATION',
     'HORIZONTAL_PROPERTY',
+    'CONDOMINIUM',
+    'DONATION',
     'SUBDIVISION',
   ],
   rent: [
     'DEED',
     'DEED_IN_PROCESS',
     'HORIZONTAL_PROPERTY',
+    'CONDOMINIUM',
     'TRUST',
+    'SUCCESSION',
+    'DONATION',
   ],
 };
 
-const SAFE_STATUSES = new Set(['DEED', 'HORIZONTAL_PROPERTY']);
-const MEDIUM_STATUSES = new Set(['PURCHASE_AGREEMENT', 'TRUST', 'INHERITANCE_IN_PROCESS', 'SUBDIVISION']);
-MEDIUM_STATUSES.add('DEED_IN_PROCESS');
+const SAFE_STATUSES = new Set(['DEED', 'HORIZONTAL_PROPERTY', 'CONDOMINIUM', 'DONATION']);
+const MEDIUM_STATUSES = new Set([
+  'DEED_IN_PROCESS',
+  'PURCHASE_AGREEMENT',
+  'TRUST',
+  'INHERITANCE_IN_PROCESS',
+  'SUCCESSION',
+  'SUBDIVISION',
+]);
 
 export const getLegalStatusOptionsByOperationType = (operationType) => {
   const statuses = LEGAL_STATUS_BY_OPERATION_TYPE[operationType] || [];
