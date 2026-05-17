@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import {
+  IoArrowBackOutline,
   IoHomeOutline,
   IoPersonOutline,
   IoReceiptOutline,
@@ -39,6 +41,7 @@ const StatusBadge = ({ status }) =>
   );
 
 export default function PanelLiquidaciones() {
+  const navigate = useNavigate();
   const token = useSelector((s) => s.token);
 
   const headers = { Authorization: `Bearer ${token}` };
@@ -176,23 +179,31 @@ export default function PanelLiquidaciones() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
-                <IoReceiptOutline className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Liquidaciones al Propietario</h1>
-                <p className="text-sm text-gray-500">Seguimiento de honorarios y neto a liquidar</p>
-              </div>
-            </div>
-            <button onClick={() => load(page)} className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-              <IoRefreshOutline className="w-4 h-4" /> Actualizar
+      {/* Navbar de navegación */}
+      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 shadow-lg bg-slate-900">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-white hover:text-blue-300 transition-colors flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30"
+            >
+              <IoArrowBackOutline className="w-5 h-5" />
+              <span className="hidden sm:inline">Volver</span>
             </button>
+            <nav className="flex items-center space-x-2 text-slate-300">
+              <button onClick={() => navigate('/panel')} className="hover:text-white transition-colors">
+                <IoHomeOutline className="w-4 h-4" />
+              </button>
+              <span>/</span>
+              <span className="text-white font-medium">Liquidaciones al Propietario</span>
+            </nav>
           </div>
+          <button
+            onClick={() => load(page)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-colors border border-white/10"
+          >
+            <IoRefreshOutline className="w-4 h-4" /> Actualizar
+          </button>
         </div>
       </div>
 
