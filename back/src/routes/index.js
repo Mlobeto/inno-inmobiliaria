@@ -65,7 +65,8 @@ router.use("/admin", require("./admin")); // Maneja auth + tenancy internamente
 router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./client"));
 router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./clientDocumentRoutes")); // NUEVO: Rutas de documentos de clientes
 router.use("/lease", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./lease"));
-router.use("/payment", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./payment"));
+router.use("/payment",  authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./payment"));
+router.use("/expenses", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./expenses"));
 router.use("/property", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./property"));
 router.use("/garantor", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./garantor"));
 router.use("/import", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./import"));

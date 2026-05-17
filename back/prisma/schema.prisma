@@ -748,6 +748,7 @@ model tenants {
   MercadoLibreMessages MercadoLibreMessages[]
   PaymentReceipts      PaymentReceipts[]
   OwnerSettlements     OwnerSettlements[]
+  Expenses             Expenses[]
   ContractClauses      ContractClauses[]
   PaymentMethods       PaymentMethods[]
   Property             Property[]
@@ -1329,4 +1330,20 @@ enum TemporaryRentalPaymentStatus {
   PAID         // Pagado completamente
   REFUNDED     // Reembolsado
   CANCELLED    // Cancelado
+}
+
+model Expenses {
+  id          Int      @id @default(autoincrement())
+  tenantId    Int
+  date        DateTime @db.Date
+  amount      Decimal  @db.Decimal(12, 2)
+  category    String   @db.VarChar(100)
+  description String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants     tenants  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+
+  @@index([tenantId], map: "idx_expenses_tenant")
+  @@index([date],     map: "idx_expenses_date")
 }
