@@ -109,8 +109,8 @@ exports.createPayment = async (req, res) => {
 
       // Auto-crear liquidación al propietario para cuotas de alquiler
       if (type === 'installment') {
-        const lease = await prisma.Leases.findUnique({
-          where: { id: parseInt(leaseId) },
+        const lease = await prisma.Leases.findFirst({
+          where: { id: parseInt(leaseId), tenantId },
           include: { Property: true },
         });
         await createFromPayment({ tenantId, paymentReceipt: newPaymentReceipt, lease });
@@ -183,7 +183,10 @@ exports.getAllPayments = async (req, res) => {
     // Enrich with lease + property data
     const leaseIds = [...new Set(payments.map(p => p.leaseId).filter(Boolean))];
     const leases = leaseIds.length
-      ? await prisma.Leases.findMany({ where: { id: { in: leaseIds } }, include: { Property: true } })
+      ? await prisma.Leases.findMany({
+          where: { id: { in: leaseIds }, tenantId },
+          include: { Property: true },
+        })
       : [];
     const leaseMap = Object.fromEntries(leases.map(l => [l.id, l]));
 

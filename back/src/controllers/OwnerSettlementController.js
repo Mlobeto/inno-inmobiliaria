@@ -186,7 +186,9 @@ exports.createFromPayment = async ({ tenantId, paymentReceipt, lease }) => {
     const commissionAmt = parseFloat((gross * commissionPct / 100).toFixed(2));
     const netAmount     = parseFloat((gross - commissionAmt).toFixed(2));
 
-    const landlord = await prisma.Clients.findUnique({ where: { idClient: lease.landlordId } });
+    const landlord = await prisma.Clients.findFirst({
+      where: { idClient: lease.landlordId, tenantId },
+    });
 
     await prisma.OwnerSettlements.create({
       data: {

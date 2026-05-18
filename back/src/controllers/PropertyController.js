@@ -608,7 +608,9 @@ exports.getWhatsAppText = async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user.tenantId;
 
-    const property = await prisma.Property.findUnique({ where: { propertyId: parseInt(id) } });
+    const property = await prisma.Property.findFirst({
+      where: { propertyId: parseInt(id), tenantId },
+    });
 
     if (!property) {
       return res.status(404).json({ error: 'Propiedad no encontrada' });

@@ -39,7 +39,9 @@ exports.createGarantorsForLease = async (req, res) => {
     const createdGuarantors = await Promise.all(
       guarantors.map((guarantorData, index) => {
         console.log(`[createGarantorsForLease] Creando garante ${index + 1}:`, guarantorData);
-        return prisma.Garantors.create({ data: { ...guarantorData, leaseId: parseInt(leaseId) } });
+        return prisma.Garantors.create({
+          data: { ...guarantorData, leaseId: parseInt(leaseId), tenantId: lease.tenantId },
+        });
       })
     );
     console.log("[createGarantorsForLease] Garantes creados:", createdGuarantors);

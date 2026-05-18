@@ -84,19 +84,26 @@ function needsUpdate(startDate, updateFrequency) {
 async function enrichLeases(leases) {
   if (!leases.length) return [];
 
+  const tenantIds = [...new Set(leases.map((l) => l.tenantId).filter((id) => id != null))];
+  if (tenantIds.length !== 1) {
+    console.error('[enrichLeases] expected a single tenant in batch', { tenantIds, leaseCount: leases.length });
+    throw new Error('Inconsistencia de tenant al enriquecer contratos');
+  }
+  const tenantId = tenantIds[0];
+
   const leaseIds = leases.map((l) => l.id);
   const propertyIds = [...new Set(leases.map((l) => l.propertyId))];
   const renterIds = [...new Set(leases.map((l) => l.renterId))];
   const landlordIds = [...new Set(leases.map((l) => l.landlordId))];
 
   const [properties, renters, landlords, receipts, garantors, updates] = await Promise.all([
-    prisma.Property.findMany({ where: { propertyId: { in: propertyIds } } }),
+    prisma.Property.findMany({ where: { propertyId: { in: propertyIds }, tenantId } }),
     prisma.Clients.findMany({
-      where: { idClient: { in: renterIds } },
+      where: { idClient: { in: renterIds }, tenantId },
       select: { name: true, cuil: true, direccion: true, ciudad: true, provincia: true, email: true, mobilePhone: true, idClient: true },
     }),
     prisma.Clients.findMany({
-      where: { idClient: { in: landlordIds } },
+      where: { idClient: { in: landlordIds }, tenantId },
       select: { name: true, cuil: true, direccion: true, ciudad: true, provincia: true, email: true, mobilePhone: true, idClient: true },
     }),
     prisma.PaymentReceipts.findMany({ where: { leaseId: { in: leaseIds } } }),

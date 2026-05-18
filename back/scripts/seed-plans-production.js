@@ -1,4 +1,9 @@
-require('dotenv').config({ path: '.env.production' });
+const path = require('path');
+
+// .env tiene prioridad; .env.production completa vars faltantes (p. ej. solo producción tiene DATABASE_URL).
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
+
 const prisma = require('../src/utils/prismaClient');
 
 const plans = [

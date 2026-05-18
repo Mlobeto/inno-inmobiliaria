@@ -16,5 +16,3 @@ router.put('/:id', updatePayment);
 router.delete('/:id', deletePayment);
 
 module.exports = router;
-
-module.exports = router;

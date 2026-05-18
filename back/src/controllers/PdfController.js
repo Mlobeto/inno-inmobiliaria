@@ -7,9 +7,9 @@ async function getLeasePdfData(tenantId, dataId) {
   if (!lease) return null;
 
   const [property, renter, landlord, garantors] = await Promise.all([
-    prisma.Property.findUnique({ where: { propertyId: lease.propertyId } }),
-    prisma.Clients.findUnique({ where: { idClient: lease.renterId } }),
-    prisma.Clients.findUnique({ where: { idClient: lease.landlordId } }),
+    prisma.Property.findFirst({ where: { propertyId: lease.propertyId, tenantId } }),
+    prisma.Clients.findFirst({ where: { idClient: lease.renterId, tenantId } }),
+    prisma.Clients.findFirst({ where: { idClient: lease.landlordId, tenantId } }),
     prisma.Garantors.findMany({ where: { leaseId: lease.id } }),
   ]);
 
@@ -79,13 +79,15 @@ const generatePdf = async (req, res) => {
           where: { propertyId: property.propertyId, tenantId, role: 'propietario' },
         });
         const owner = ownerRelation
-          ? await prisma.Clients.findUnique({ where: { idClient: ownerRelation.clientId } })
+          ? await prisma.Clients.findFirst({ where: { idClient: ownerRelation.clientId, tenantId } })
           : null;
         data = { ...property, Owner: owner };
         break;
       }
       case 'RECIBO_PAGO': {
-        const payment = await prisma.PaymentReceipts.findFirst({ where: { id: Number(dataId) } });
+        const payment = await prisma.PaymentReceipts.findFirst({
+          where: { id: Number(dataId), tenantId },
+        });
         if (!payment) {
           data = null;
           break;

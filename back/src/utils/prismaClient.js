@@ -8,7 +8,7 @@
  *
  * Uso:
  *   const prisma = require('../utils/prismaClient');
- *   const properties = await prisma.properties.findMany({ where: { tenantId: 1 } });
+ *   const properties = await prisma.Property.findMany({ where: { tenantId: 1 } });
  */
 
 const { PrismaPg } = require('@prisma/adapter-pg');
