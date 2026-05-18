@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
+  selectCurrentUser,
   useGetCommissionsQuery,
   useGetAgentsQuery,
   useGetSettlementQuery,
@@ -68,12 +70,18 @@ const EMPTY_FORM = {
   transactionAmount: '',
   inmobiliariaCommissionPercent: '',
   agentCommissionPercent: '',
+  agentCommissionFixedAmount: '',
+  commissionBasis: 'percent', // 'percent' | 'fixed'
   notes: '',
 };
 
 const now = new Date();
 
 export default function PanelComisiones() {
+  const currentUser = useSelector(selectCurrentUser);
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const isAgent = currentUser?.role === 'AGENT';
+
   const [activeTab, setActiveTab] = useState('lista'); // 'lista' | 'liquidacion'
   const [filters, setFilters] = useState({
     agentId: '',
@@ -95,8 +103,10 @@ export default function PanelComisiones() {
   const [success, setSuccess] = useState('');
 
   const { data: commData, isLoading } = useGetCommissionsQuery(filters);
-  const { data: settlementData } = useGetSettlementQuery(settlementPeriod, { skip: activeTab !== 'liquidacion' });
-  const { data: agentsRaw = [] } = useGetAgentsQuery();
+  const { data: settlementData } = useGetSettlementQuery(settlementPeriod, {
+    skip: activeTab !== 'liquidacion' || !isSuperAdmin,
+  });
+  const { data: agentsRaw = [] } = useGetAgentsQuery(undefined, { skip: !currentUser?.tenantId });
 
   const [createCommission, { isLoading: isCreating }] = useCreateCommissionMutation();
   const [updateCommission, { isLoading: isUpdating }] = useUpdateCommissionMutation();
@@ -109,15 +119,27 @@ export default function PanelComisiones() {
   const settlement = settlementData?.settlement || [];
   const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
 
+  useEffect(() => {
+    if (!isSuperAdmin && activeTab === 'liquidacion') {
+      setActiveTab('lista');
+    }
+  }, [isSuperAdmin, activeTab]);
+
+  const propertyRequired = form.transactionType !== 'VENTA_LOTE';
   const openCreate = () => {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      agentId:
+        isAgent && currentUser?.adminId !== undefined ? String(currentUser.adminId) : '',
+    });
     setError('');
     setShowModal(true);
   };
 
   const openEdit = (comm) => {
     setEditingId(comm.id);
+    const fixed = comm.agentCommissionFixedAmount != null;
     setForm({
       agentId: String(comm.agentId),
       transactionType: comm.transactionType,
@@ -127,6 +149,9 @@ export default function PanelComisiones() {
       transactionAmount: String(comm.transactionAmount),
       inmobiliariaCommissionPercent: comm.inmobiliariaCommissionPercent != null ? String(comm.inmobiliariaCommissionPercent) : '',
       agentCommissionPercent: comm.agentCommissionPercent != null ? String(comm.agentCommissionPercent) : '',
+      agentCommissionFixedAmount:
+        fixed && comm.agentCommissionFixedAmount != null ? String(comm.agentCommissionFixedAmount) : '',
+      commissionBasis: fixed ? 'fixed' : 'percent',
       notes: comm.notes || '',
     });
     setError('');
@@ -143,18 +168,40 @@ export default function PanelComisiones() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    const isVentaLote = form.transactionType === 'VENTA_LOTE';
     try {
+      const agentPct =
+        form.commissionBasis === 'percent' && form.agentCommissionPercent
+          ? Number(form.agentCommissionPercent)
+          : null;
+      const agentFixed =
+        form.commissionBasis === 'fixed' && form.agentCommissionFixedAmount
+          ? Number(form.agentCommissionFixedAmount)
+          : null;
+
       const payload = {
         agentId: Number(form.agentId),
         transactionType: form.transactionType,
         transactionId: form.transactionId ? Number(form.transactionId) : undefined,
-        propertyId: Number(form.propertyId),
+        ...(isVentaLote ? {} : { propertyId: Number(form.propertyId) }),
         clientId: form.clientId ? Number(form.clientId) : undefined,
         transactionAmount: Number(form.transactionAmount),
-        inmobiliariaCommissionPercent: form.inmobiliariaCommissionPercent ? Number(form.inmobiliariaCommissionPercent) : null,
-        agentCommissionPercent: form.agentCommissionPercent ? Number(form.agentCommissionPercent) : null,
+        inmobiliariaCommissionPercent: form.inmobiliariaCommissionPercent
+          ? Number(form.inmobiliariaCommissionPercent)
+          : null,
+        agentCommissionPercent: agentPct,
+        agentCommissionFixedAmount: agentFixed,
         notes: form.notes || '',
       };
+
+      if (!payload.agentId || Number.isNaN(payload.agentId)) {
+        setError('Seleccioná un agente');
+        return;
+      }
+      if (!isVentaLote && (!form.propertyId || Number.isNaN(Number(form.propertyId)))) {
+        setError('El ID de propiedad es obligatorio para esta operación');
+        return;
+      }
 
       if (editingId) {
         await updateCommission({ id: editingId, ...payload }).unwrap();
@@ -218,7 +265,11 @@ export default function PanelComisiones() {
                 <IoCashOutline className="w-7 h-7 text-emerald-400" />
                 Comisiones
               </h1>
-              <p className="text-slate-400 text-sm mt-1">Gestioná y liquidá las comisiones de tus agentes</p>
+              <p className="text-slate-400 text-sm mt-1">
+                {isAgent
+                  ? 'Registrá tus operaciones; el administrador aprueba el pago'
+                  : 'Gestioná y liquidá las comisiones de tus agentes'}
+              </p>
             </div>
           </div>
           <button
@@ -226,7 +277,7 @@ export default function PanelComisiones() {
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors"
           >
             <IoAdd className="w-5 h-5" />
-            <span className="hidden sm:inline">Nueva</span>
+            <span className="hidden sm:inline">{isAgent ? 'Registrar mi comisión' : 'Nueva'}</span>
           </button>
         </div>
 
@@ -248,6 +299,7 @@ export default function PanelComisiones() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
           <button
+            type="button"
             onClick={() => setActiveTab('lista')}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
               activeTab === 'lista' ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
@@ -256,15 +308,18 @@ export default function PanelComisiones() {
             <IoDocumentTextOutline className="inline w-4 h-4 mr-1" />
             Lista de comisiones
           </button>
-          <button
-            onClick={() => setActiveTab('liquidacion')}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              activeTab === 'liquidacion' ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <IoStatsChartOutline className="inline w-4 h-4 mr-1" />
-            Liquidación
-          </button>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('liquidacion')}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                activeTab === 'liquidacion' ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              <IoStatsChartOutline className="inline w-4 h-4 mr-1" />
+              Liquidación
+            </button>
+          )}
         </div>
 
         {activeTab === 'lista' && (
@@ -293,7 +348,8 @@ export default function PanelComisiones() {
                 <select
                   value={filters.agentId}
                   onChange={(e) => setFilters({ ...filters, agentId: e.target.value, page: 1 })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
+                  disabled={isAgent}
+                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none disabled:opacity-50"
                 >
                   <option value="">Todos</option>
                   {agents.map((a) => (
@@ -397,7 +453,10 @@ export default function PanelComisiones() {
                           <td className="px-4 py-3 text-right text-sm">{formatCurrency(c.transactionAmount)}</td>
                           <td className="px-4 py-3 text-right text-sm font-medium text-emerald-400">
                             {c.agentCommissionAmount != null ? formatCurrency(c.agentCommissionAmount) : '—'}
-                            {c.agentCommissionPercent != null && (
+                            {c.agentCommissionFixedAmount != null && (
+                              <span className="text-slate-500 text-xs ml-1">(fijo)</span>
+                            )}
+                            {c.agentCommissionFixedAmount == null && c.agentCommissionPercent != null && (
                               <span className="text-slate-500 text-xs ml-1">({c.agentCommissionPercent}%)</span>
                             )}
                           </td>
@@ -409,7 +468,7 @@ export default function PanelComisiones() {
                           <td className="px-4 py-3 text-xs text-slate-400">{formatDate(c.createdAt)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
-                              {c.status === 'PENDING' && (
+                              {isSuperAdmin && c.status === 'PENDING' && (
                                 <>
                                   <button
                                     onClick={() => openEdit(c)}
@@ -434,7 +493,7 @@ export default function PanelComisiones() {
                                   </button>
                                 </>
                               )}
-                              {c.status === 'APPROVED' && (
+                              {isSuperAdmin && c.status === 'APPROVED' && (
                                 <>
                                   <button
                                     onClick={() => handlePay(c.id)}
@@ -545,7 +604,7 @@ export default function PanelComisiones() {
                 <IoCashOutline className="w-5 h-5 text-emerald-400" />
                 {editingId ? 'Editar comisión' : 'Nueva comisión'}
               </h2>
-              <button onClick={closeModal} className="text-slate-400 hover:text-white">
+              <button type="button" onClick={closeModal} className="text-slate-400 hover:text-white">
                 <IoCloseOutline className="w-6 h-6" />
               </button>
             </div>
@@ -564,7 +623,8 @@ export default function PanelComisiones() {
                   <select
                     value={form.agentId}
                     onChange={(e) => setForm({ ...form, agentId: e.target.value })}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    disabled={isAgent}
+                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60"
                     required
                   >
                     <option value="">Seleccionar agente</option>
@@ -574,6 +634,11 @@ export default function PanelComisiones() {
                       </option>
                     ))}
                   </select>
+                  {isAgent && (
+                    <p className="text-slate-500 text-xs mt-1">
+                      Solo podés cargar comisiones a tu nombre para revisión del administrador.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -589,14 +654,17 @@ export default function PanelComisiones() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">ID Propiedad *</label>
+                  <label className="block text-sm text-slate-300 mb-1">
+                    ID Propiedad {propertyRequired ? '*' : '(opcional)'}
+                  </label>
                   <input
                     type="number"
                     value={form.propertyId}
                     onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
-                    placeholder="ID"
+                    placeholder={propertyRequired ? 'ID propiedad' : 'Solo si aplica'}
                     className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    required
+                    required={propertyRequired}
+                    min={0}
                   />
                 </div>
 
@@ -635,16 +703,49 @@ export default function PanelComisiones() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">% com. agente</label>
-                  <input
-                    type="number"
-                    value={form.agentCommissionPercent}
-                    onChange={(e) => setForm({ ...form, agentCommissionPercent: e.target.value })}
-                    placeholder="ej: 50"
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                    min="0" max="100" step="0.01"
-                  />
+                <div className="col-span-2 space-y-2">
+                  <span className="block text-sm text-slate-300">Comisión del agente *</span>
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="commissionBasis"
+                        checked={form.commissionBasis === 'percent'}
+                        onChange={() => setForm({ ...form, commissionBasis: 'percent' })}
+                        className="text-emerald-500"
+                      />
+                      <span className="text-slate-300">Porcentaje del importe</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="commissionBasis"
+                        checked={form.commissionBasis === 'fixed'}
+                        onChange={() => setForm({ ...form, commissionBasis: 'fixed' })}
+                        className="text-emerald-500"
+                      />
+                      <span className="text-slate-300">Monto fijo ($)</span>
+                    </label>
+                  </div>
+                  {form.commissionBasis === 'percent' ? (
+                    <input
+                      type="number"
+                      value={form.agentCommissionPercent}
+                      onChange={(e) => setForm({ ...form, agentCommissionPercent: e.target.value })}
+                      placeholder="ej: 50 (sobre la operación)"
+                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                      min="0" max="100" step="0.01"
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      value={form.agentCommissionFixedAmount}
+                      onChange={(e) => setForm({ ...form, agentCommissionFixedAmount: e.target.value })}
+                      placeholder="Monto fijo en $"
+                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                      min="0" step="0.01"
+                    />
+                  )}
                 </div>
 
                 <div className="col-span-2">
@@ -659,18 +760,24 @@ export default function PanelComisiones() {
                 </div>
               </div>
 
-              {/* Preview de montos */}
-              {form.transactionAmount && (form.inmobiliariaCommissionPercent || form.agentCommissionPercent) && (
+              {form.transactionAmount && (form.inmobiliariaCommissionPercent || (form.commissionBasis === 'percent' ? form.agentCommissionPercent : form.agentCommissionFixedAmount)) && (
                 <div className="bg-slate-700/50 rounded-lg p-3 text-sm space-y-1">
                   <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Vista previa</p>
                   {form.inmobiliariaCommissionPercent && (
                     <p className="text-blue-300">
-                      Com. inmobiliaria: {formatCurrency((parseFloat(form.transactionAmount) * parseFloat(form.inmobiliariaCommissionPercent)) / 100)}
+                      Com. inmobiliaria:{' '}
+                      {formatCurrency((parseFloat(form.transactionAmount, 10) * parseFloat(form.inmobiliariaCommissionPercent, 10)) / 100)}
                     </p>
                   )}
-                  {form.agentCommissionPercent && (
+                  {form.commissionBasis === 'percent' && form.agentCommissionPercent && (
                     <p className="text-emerald-300 font-medium">
-                      Com. agente: {formatCurrency((parseFloat(form.transactionAmount) * parseFloat(form.agentCommissionPercent)) / 100)}
+                      Com. agente:{' '}
+                      {formatCurrency((parseFloat(form.transactionAmount, 10) * parseFloat(form.agentCommissionPercent, 10)) / 100)}
+                    </p>
+                  )}
+                  {form.commissionBasis === 'fixed' && form.agentCommissionFixedAmount && (
+                    <p className="text-emerald-300 font-medium">
+                      Com. agente (fijo): {formatCurrency(parseFloat(form.agentCommissionFixedAmount, 10))}
                     </p>
                   )}
                 </div>

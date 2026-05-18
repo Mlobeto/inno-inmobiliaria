@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import {
+  selectCurrentUser,
   useGetAllLeadsQuery,
+  useGetAgentsQuery,
   useCreateLeadMutation,
   useUpdateLeadMutation,
+  useAssignLeadAgentMutation,
+  useUnassignLeadAgentMutation,
   useDeleteLeadMutation,
 } from '@shared/redux';
 import {
@@ -12,6 +17,7 @@ import {
   IoTrashOutline,
   IoPencilOutline,
   IoPersonOutline,
+  IoPersonAddOutline,
   IoCallOutline,
   IoMailOutline,
   IoLocationOutline,
@@ -53,15 +59,24 @@ const EMPTY_FORM = {
   zone: '',
   notes: '',
   status: 'NUEVO',
+  agentIds: [],
 };
 
 export default function PanelLeads() {
+  const currentUser = useSelector(selectCurrentUser);
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  const isAgent = currentUser?.role === 'AGENT';
+
   const { data, isLoading } = useGetAllLeadsQuery();
+  const { data: agentsRaw = [] } = useGetAgentsQuery(undefined, { skip: !isSuperAdmin });
   const [createLead] = useCreateLeadMutation();
   const [updateLead] = useUpdateLeadMutation();
+  const [assignLeadAgent] = useAssignLeadAgentMutation();
+  const [unassignLeadAgent] = useUnassignLeadAgentMutation();
   const [deleteLead] = useDeleteLeadMutation();
 
   const leads = data?.leads || [];
+  const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
 
   const [showModal, setShowModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -73,13 +88,14 @@ export default function PanelLeads() {
 
   const openCreate = () => {
     setEditingLead(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM });
     setError('');
     setShowModal(true);
   };
 
   const openEdit = (lead) => {
     setEditingLead(lead);
+    const assigned = lead.assignedAgents || [];
     setForm({
       name: lead.name || '',
       phone: lead.phone || '',
@@ -90,10 +106,23 @@ export default function PanelLeads() {
       zone: lead.zone || '',
       notes: lead.notes || '',
       status: lead.status || 'NUEVO',
+      agentIds: assigned.map((a) => a.adminId),
     });
     setError('');
     setShowModal(true);
   };
+
+  const buildPayloadFields = () => ({
+    name: form.name.trim(),
+    phone: form.phone.trim() || undefined,
+    email: form.email.trim() || undefined,
+    operationType: form.operationType || undefined,
+    budget: form.budget === '' ? null : Number(form.budget),
+    currency: form.currency || 'ARS',
+    zone: form.zone.trim() || undefined,
+    notes: form.notes.trim() || undefined,
+    status: form.status,
+  });
 
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -107,10 +136,18 @@ export default function PanelLeads() {
     setSaving(true);
     setError('');
     try {
+      const base = buildPayloadFields();
       if (editingLead) {
-        await updateLead({ id: editingLead.id, ...form }).unwrap();
+        await updateLead({
+          id: editingLead.id,
+          ...base,
+          ...(isSuperAdmin ? { agentIds: form.agentIds } : {}),
+        }).unwrap();
       } else {
-        await createLead(form).unwrap();
+        await createLead({
+          ...base,
+          ...(isSuperAdmin ? { agentIds: form.agentIds } : {}),
+        }).unwrap();
       }
       setShowModal(false);
     } catch {
@@ -137,6 +174,38 @@ export default function PanelLeads() {
     }
   };
 
+  const subtitle = useMemo(() => {
+    if (isAgent) return `${leads.length} lead${leads.length !== 1 ? 's' : ''} asignados a vos`;
+    return `${leads.length} lead${leads.length !== 1 ? 's' : ''} en total`;
+  }, [isAgent, leads.length]);
+
+  const toggleAgentId = (adminId) => {
+    setForm((prev) => {
+      const has = prev.agentIds.includes(adminId);
+      return {
+        ...prev,
+        agentIds: has ? prev.agentIds.filter((x) => x !== adminId) : [...prev.agentIds, adminId],
+      };
+    });
+  };
+
+  const handleQuickAssignAgent = async (leadId, agentId) => {
+    try {
+      await assignLeadAgent({ leadId, agentId }).unwrap();
+    } catch {
+      alert('No se pudo asignar el agente. Intentá de nuevo.');
+    }
+  };
+
+  const handleQuickUnassignAgent = async (leadId, agentId) => {
+    if (!window.confirm('¿Quitar a este agente del lead?')) return;
+    try {
+      await unassignLeadAgent({ leadId, agentId }).unwrap();
+    } catch {
+      alert('No se pudo quitar la asignación.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -152,7 +221,7 @@ export default function PanelLeads() {
             </Link>
             <h1 className="text-white text-xl font-bold">CRM / Leads</h1>
             <span className="text-slate-400 text-sm hidden sm:inline">
-              {leads.length} lead{leads.length !== 1 ? 's' : ''} en total
+              {subtitle}
             </span>
           </div>
           <button
@@ -194,7 +263,12 @@ export default function PanelLeads() {
                     <LeadCard
                       key={lead.id}
                       lead={lead}
+                      agents={agents}
                       columns={COLUMNS}
+                      canDelete={!isAgent}
+                      showQuickAssign={isSuperAdmin && agents.length > 0}
+                      onQuickAssign={(agentId) => handleQuickAssignAgent(lead.id, agentId)}
+                      onQuickUnassign={(agentId) => handleQuickUnassignAgent(lead.id, agentId)}
                       onEdit={() => openEdit(lead)}
                       onDelete={() => handleDelete(lead)}
                       onStatusChange={(s) => handleStatusChange(lead, s)}
@@ -217,28 +291,112 @@ export default function PanelLeads() {
           onChange={handleChange}
           onSave={handleSave}
           onClose={() => setShowModal(false)}
+          agents={agents}
+          showAssignments={isSuperAdmin}
+          onToggleAgent={toggleAgentId}
         />
       )}
     </div>
   );
 }
 
-function LeadCard({ lead, columns, onEdit, onDelete, onStatusChange }) {
+function LeadCard({
+  lead,
+  agents,
+  columns,
+  canDelete,
+  showQuickAssign,
+  onQuickAssign,
+  onQuickUnassign,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}) {
   const [showMove, setShowMove] = useState(false);
+  const [showAddAgent, setShowAddAgent] = useState(false);
+
+  const assigned = lead.assignedAgents || [];
+  const assignedIds = new Set(assigned.map((a) => a.adminId));
+  const availableToAdd = (agents || []).filter((a) => !assignedIds.has(a.adminId));
 
   return (
-    <div className="bg-slate-800/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2 hover:border-white/20 transition-colors">
+    <div className="relative bg-slate-800/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2 hover:border-white/20 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <p className="text-white text-sm font-semibold leading-tight break-words">{lead.name}</p>
         <div className="flex items-center gap-1 flex-shrink-0">
-          <button onClick={onEdit} className="text-slate-400 hover:text-white transition-colors" title="Editar">
+          {showQuickAssign && (
+            <button
+              type="button"
+              onClick={() => setShowAddAgent((v) => !v)}
+              className={`text-slate-400 hover:text-indigo-300 transition-colors rounded p-0.5 ${showAddAgent ? 'text-indigo-300' : ''}`}
+              title="Asignar agente"
+              aria-expanded={showAddAgent}
+              aria-haspopup="listbox"
+            >
+              <IoPersonAddOutline className="w-4 h-4" />
+            </button>
+          )}
+          <button type="button" onClick={onEdit} className="text-slate-400 hover:text-white transition-colors" title="Editar">
             <IoPencilOutline className="w-4 h-4" />
           </button>
-          <button onClick={onDelete} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
-            <IoTrashOutline className="w-4 h-4" />
-          </button>
+          {canDelete && (
+            <button type="button" onClick={onDelete} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
+              <IoTrashOutline className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
+
+      {showQuickAssign && showAddAgent && (
+        <div className="absolute right-2 top-9 z-[15] bg-slate-900 border border-indigo-500/30 rounded-lg shadow-xl py-1 min-w-[180px] max-h-40 overflow-y-auto">
+          {availableToAdd.length === 0 ? (
+            <p className="px-3 py-2 text-[11px] text-slate-500">Todos ya asignados</p>
+          ) : (
+            availableToAdd.map((a) => (
+              <button
+                key={a.adminId}
+                type="button"
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-indigo-500/20 truncate"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onQuickAssign(a.adminId);
+                  setShowAddAgent(false);
+                }}
+              >
+                + {a.fullName || a.username}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      {assigned.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {assigned.map((a) => (
+            <span
+              key={a.adminId}
+              title={a.email || ''}
+              className="inline-flex items-center gap-1 text-[10px] pl-2 pr-1 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-500/30 max-w-full"
+            >
+              <span className="truncate">{a.fullName || a.username || `Agente #${a.adminId}`}</span>
+              {showQuickAssign && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onQuickUnassign(a.adminId);
+                  }}
+                  className="flex-shrink-0 p-0.5 rounded-full hover:bg-red-500/30 text-indigo-200 hover:text-red-300"
+                  title="Quitar agente"
+                  aria-label="Quitar agente"
+                >
+                  <IoCloseOutline className="w-3 h-3" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
 
       {lead.phone && (
         <div className="flex items-center gap-1 text-xs text-slate-400">
@@ -276,6 +434,7 @@ function LeadCard({ lead, columns, onEdit, onDelete, onStatusChange }) {
       {/* Mover columna */}
       <div className="relative mt-1">
         <button
+          type="button"
           onClick={() => setShowMove((v) => !v)}
           className="text-xs text-slate-500 hover:text-slate-300 transition-colors w-full text-left"
         >
@@ -287,6 +446,7 @@ function LeadCard({ lead, columns, onEdit, onDelete, onStatusChange }) {
               .filter((c) => c.key !== lead.status)
               .map((c) => (
                 <button
+                  type="button"
                   key={c.key}
                   onClick={() => { onStatusChange(c.key); setShowMove(false); }}
                   className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition-colors"
@@ -302,7 +462,18 @@ function LeadCard({ lead, columns, onEdit, onDelete, onStatusChange }) {
   );
 }
 
-function LeadModal({ form, editing, saving, error, onChange, onSave, onClose }) {
+function LeadModal({
+  form,
+  editing,
+  saving,
+  error,
+  onChange,
+  onSave,
+  onClose,
+  agents,
+  showAssignments,
+  onToggleAgent,
+}) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -440,6 +611,38 @@ function LeadModal({ form, editing, saving, error, onChange, onSave, onClose }) 
               className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm resize-none"
             />
           </div>
+
+          {/* Asignación a agentes (solo admin principal) */}
+          {showAssignments && (
+            <div>
+              <label className="text-slate-300 text-sm font-medium mb-2 block">
+                Agentes asignados <span className="text-slate-500 font-normal">(opcional, varios)</span>
+              </label>
+              {agents.length === 0 ? (
+                <p className="text-slate-500 text-xs">No hay agentes cargados.</p>
+              ) : (
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-900/40 p-2 space-y-1.5">
+                  {agents.map((a) => (
+                    <label
+                      key={a.adminId}
+                      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/5 cursor-pointer text-sm text-slate-200"
+                    >
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-500 text-blue-600 focus:ring-blue-500"
+                        checked={form.agentIds?.includes?.(a.adminId) ?? false}
+                        onChange={() => onToggleAgent(a.adminId)}
+                      />
+                      <span>{a.fullName || a.username}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              <p className="text-slate-500 text-xs mt-1">
+                Los nuevos leads creados por un agente se asignan siempre al agente automáticamente.
+              </p>
+            </div>
+          )}
 
           {error && (
             <p className="text-red-400 text-sm">{error}</p>

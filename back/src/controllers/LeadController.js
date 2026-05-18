@@ -168,7 +168,10 @@ exports.updateLead = async (req, res) => {
 // Agrega un agente a un lead SIN borrar los existentes (solo SUPER_ADMIN).
 exports.assignAgent = async (req, res) => {
   try {
-    const { tenantId } = req.user;
+    const { tenantId, role } = req.user;
+    if (role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, message: 'Solo el administrador puede asignar agentes' });
+    }
     const { id } = req.params;
     const { agentId } = req.body;
 
@@ -204,7 +207,10 @@ exports.assignAgent = async (req, res) => {
 // Quita un agente de un lead (solo SUPER_ADMIN).
 exports.unassignAgent = async (req, res) => {
   try {
-    const { tenantId } = req.user;
+    const { tenantId, role } = req.user;
+    if (role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, message: 'Solo el administrador puede quitar asignaciones' });
+    }
     const { id, agentId } = req.params;
 
     const lead = await prisma.leads.findFirst({ where: { id: Number(id), tenantId } });

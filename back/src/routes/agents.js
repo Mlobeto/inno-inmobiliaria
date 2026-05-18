@@ -10,8 +10,8 @@ function requireSuperAdmin(req, res, next) {
   next();
 }
 
-// GET /agents — listar agentes del tenant
-router.get('/', requireSuperAdmin, AgentController.listAgents);
+// GET /agents — SUPER_ADMIN: todos; AGENT: solo él mismo (para combos en comisiones)
+router.get('/', AgentController.listAgents);
 
 // GET /agents/:agentId — detalle de agente
 router.get('/:agentId', requireSuperAdmin, AgentController.getAgentById);

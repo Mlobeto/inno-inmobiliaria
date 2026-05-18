@@ -13,7 +13,52 @@ const prisma = require('../utils/prismaClient');
  */
 exports.listAgents = async (req, res) => {
   try {
-    const { tenantId } = req.user;
+    const { tenantId, adminId, role } = req.user;
+
+    // El agente autenticado solo ve sus propios datos (para selects / perfil)
+    if (role === 'AGENT') {
+      const agent = await prisma.admins.findFirst({
+        where: { adminId, tenantId, role: 'AGENT', deletedAt: null },
+        select: {
+          adminId: true,
+          username: true,
+          fullName: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          _count: {
+            select: { commissions_commissions_agentIdToadmins: true },
+          },
+        },
+      });
+      if (!agent) {
+        return res.status(200).json({ success: true, agents: [] });
+      }
+      const commissionStats = await prisma.commissions.aggregate({
+        where: { tenantId, agentId: adminId },
+        _sum: { agentCommissionAmount: true },
+        _count: { id: true },
+      });
+      const pendingCount = await prisma.commissions.count({
+        where: { tenantId, agentId: adminId, status: 'PENDING' },
+      });
+      return res.status(200).json({
+        success: true,
+        agents: [{
+          ...agent,
+          totalCommissions: Number(commissionStats._sum.agentCommissionAmount || 0),
+          commissionsCount: commissionStats._count.id,
+          pendingCommissions: pendingCount,
+        }],
+      });
+    }
+
+    if (role !== 'SUPER_ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Sin permiso para listar el equipo completo',
+      });
+    }
 
     const agents = await prisma.admins.findMany({
       where: {

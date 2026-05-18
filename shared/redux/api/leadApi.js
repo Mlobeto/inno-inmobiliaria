@@ -30,6 +30,23 @@ export const leadApi = baseApi.injectEndpoints({
       invalidatesTags: ['Lead'],
     }),
 
+    assignLeadAgent: builder.mutation({
+      query: ({ leadId, agentId }) => ({
+        url: `/leads/${leadId}/assign`,
+        method: 'POST',
+        body: { agentId },
+      }),
+      invalidatesTags: ['Lead'],
+    }),
+
+    unassignLeadAgent: builder.mutation({
+      query: ({ leadId, agentId }) => ({
+        url: `/leads/${leadId}/assign/${agentId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Lead'],
+    }),
+
     deleteLead: builder.mutation({
       query: (id) => ({
         url: `/leads/${id}`,
@@ -46,5 +63,7 @@ export const {
   useGetAllLeadsQuery,
   useCreateLeadMutation,
   useUpdateLeadMutation,
+  useAssignLeadAgentMutation,
+  useUnassignLeadAgentMutation,
   useDeleteLeadMutation,
 } = leadApi;

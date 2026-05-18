@@ -141,6 +141,8 @@ export {
   useGetAllLeadsQuery,
   useCreateLeadMutation,
   useUpdateLeadMutation,
+  useAssignLeadAgentMutation,
+  useUnassignLeadAgentMutation,
   useDeleteLeadMutation,
 } from './api/leadApi';
 
