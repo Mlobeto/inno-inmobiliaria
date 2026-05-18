@@ -149,20 +149,53 @@ export default function PanelLiquidaciones() {
 
   // ── PDF ──────────────────────────────────────────────────────────────────────
   const handlePdf = async (landlordId, landlordName) => {
+    const params = new URLSearchParams();
+    if (statusFilter) params.set('status', statusFilter);
+    if (periodFilter) params.set('period', periodFilter);
+    const qs = params.toString();
+    const pdfUrl = `${API}/owner-settlements/pdf/${landlordId}${qs ? `?${qs}` : ''}`;
+
     try {
-      const params = new URLSearchParams({ status: statusFilter });
-      if (periodFilter) params.set('period', periodFilter);
-      const res = await axios.get(
-        `${API}/owner-settlements/pdf/${landlordId}?${params}`,
-        { headers, responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-      const a   = document.createElement('a');
+      const res = await axios.get(pdfUrl, { headers, responseType: 'arraybuffer' });
+      const raw = res.data;
+      const buf = raw instanceof ArrayBuffer
+        ? new Uint8Array(raw)
+        : new Uint8Array(raw.buffer, raw.byteOffset ?? 0, raw.byteLength);
+      const head = String.fromCharCode(buf[0] || 0, buf[1] || 0, buf[2] || 0, buf[3] || 0);
+
+      if (res.status !== 200 || head !== '%PDF') {
+        let msg = 'No se pudo generar el PDF';
+        try {
+          const txt = new TextDecoder().decode(buf);
+          const j = JSON.parse(txt);
+          if (j.message) msg = j.message;
+        } catch {
+          /* cuerpo no JSON */
+        }
+        Swal.fire('Error', msg, 'error');
+        return;
+      }
+
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `liquidacion-${landlordName.replace(/\s+/g, '-')}.pdf`;
+      a.download = `liquidacion-${String(landlordName || '').replace(/\s+/g, '-')}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      Swal.fire('Error', 'No se pudo generar el PDF', 'error');
+    } catch (err) {
+      let msg = 'No se pudo generar el PDF';
+      try {
+        const d = err.response?.data;
+        if (d instanceof ArrayBuffer) {
+          const txt = new TextDecoder().decode(new Uint8Array(d));
+          const j = JSON.parse(txt);
+          if (j.message) msg = j.message;
+        }
+      } catch {
+        /* ignore */
+      }
+      Swal.fire('Error', msg, 'error');
     }
   };
 

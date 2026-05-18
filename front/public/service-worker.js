@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'gestprop-v3'; // Incrementar versión para forzar actualización
+const CACHE_NAME = 'gestprop-v4'; // Incrementar versión para forzar actualización
 const urlsToCache = [
   '/',
   '/index.html',
@@ -54,8 +54,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        // No cachear llamadas API (PDF/binarios y JSON pueden corromperse o quedar stale)
+        const isApi = url.includes('/api/');
         // Solo cachear respuestas exitosas
-        if (response && response.status === 200 && response.type === 'basic') {
+        if (response && response.status === 200 && response.type === 'basic' && !isApi) {
           const responseToCache = response.clone();
           
           caches.open(CACHE_NAME)
