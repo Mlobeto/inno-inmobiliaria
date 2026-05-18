@@ -269,6 +269,12 @@ const MercadoLibreIntegration = () => {
             </button>
           </div>
 
+          <p className="text-sm text-gray-600 mb-3 max-w-2xl">
+            Las consultas sin responder también se registran en <strong className="text-gray-800">CRM → Leads</strong>, con{' '}
+            <strong className="text-gray-800">clave única</strong> por número de pregunta de Mercado Libre (sin duplicar al actualizar).
+            Podés seguir contestando desde aquí o mover el lead en el tablero.
+          </p>
+
           {questionsLoading ? (
             <div className="flex items-center justify-center py-10 text-gray-500">
               <IoSyncOutline className="w-5 h-5 animate-spin mr-2" />

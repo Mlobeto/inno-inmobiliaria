@@ -349,8 +349,18 @@ function LeadCard({
 
   return (
     <div className="relative bg-slate-800/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2 hover:border-white/20 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-white text-sm font-semibold leading-tight break-words">{lead.name}</p>
+        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <p className="text-white text-sm font-semibold leading-tight break-words">{lead.name}</p>
+          {lead.mercadolibreQuestionId && (
+            <span
+              className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-200 border border-amber-500/35"
+              title="Origen: pregunta en publicación Mercado Libre"
+            >
+              ML · #{lead.mercadolibreQuestionId}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {showQuickAssign && (
             <button

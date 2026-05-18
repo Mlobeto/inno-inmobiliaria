@@ -293,6 +293,7 @@ model Property {
   SaleContracts        SaleContracts[]
   commissions          commissions[]
   TemporaryRental      TemporaryRental[]
+  leads                leads[]
 
   @@index([agentId], map: "idx_property_agent")
   @@index([tenantId], map: "idx_property_tenant")
@@ -1040,24 +1041,31 @@ model subscription_payment_logs {
 // ============================================================
 
 model leads {
-  id            Int               @id @default(autoincrement())
-  tenantId      Int
-  name          String            @db.VarChar(255)
-  phone         String?           @db.VarChar(50)
-  email         String?           @db.VarChar(255)
-  operationType String?           @db.VarChar(50)
-  budget        Decimal?          @db.Decimal(12, 2)
-  currency      String?           @default("ARS") @db.VarChar(3)
-  zone          String?           @db.VarChar(255)
-  notes         String?
-  status        enum_leads_status @default(NUEVO)
-  createdAt     DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
-  tenants       tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
-  agents        lead_agents[]
+  id                     Int               @id @default(autoincrement())
+  tenantId               Int
+  name                   String            @db.VarChar(255)
+  phone                  String?           @db.VarChar(50)
+  email                  String?           @db.VarChar(255)
+  operationType          String?           @db.VarChar(50)
+  budget                 Decimal?          @db.Decimal(12, 2)
+  currency               String?           @default("ARS") @db.VarChar(3)
+  zone                   String?           @db.VarChar(255)
+  notes                  String?
+  /** ID de pregunta en Mercado Libre; permite upsert único por tenant + pregunta */
+  mercadolibreQuestionId String?           @db.VarChar(64)
+  /** Propiedad ML asociada a la consulta (opcional). */
+  propertyId             Int?
+  status                 enum_leads_status @default(NUEVO)
+  createdAt              DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt              DateTime          @default(now()) @updatedAt @db.Timestamptz(6)
+  tenants                tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  agents                 lead_agents[]
+  Property               Property?         @relation(fields: [propertyId], references: [propertyId], onDelete: SetNull, onUpdate: NoAction)
 
+  @@unique([tenantId, mercadolibreQuestionId], map: "uq_leads_tenant_ml_question")
   @@index([tenantId], map: "idx_leads_tenant")
   @@index([status], map: "idx_leads_status")
+  @@index([propertyId], map: "idx_leads_property")
 }
 
 model lead_agents {

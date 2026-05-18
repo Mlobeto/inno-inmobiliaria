@@ -780,6 +780,64 @@ class MercadoLibreController {
   // ========================================
 
   /**
+   * Crea o actualiza leads en CRM por cada pregunta ML (clave única tenant + mercadolibreQuestionId).
+   */
+  async syncMlQuestionsToLeads(tenantId, questionsPayload) {
+    for (const q of questionsPayload) {
+      try {
+        const mqid = q.questionId != null ? String(q.questionId).trim() : '';
+        if (!mqid) continue;
+
+        const nick = typeof q.buyerNickname === 'string' ? q.buyerNickname.trim() : '';
+        const displayName = nick || (q.buyerId != null ? `Consulta ML (${q.buyerId})` : 'Consulta Mercado Libre');
+
+        const lines = [
+          `[Mercado Libre — pregunta #${mqid}]`,
+          q.propertyAddress ? `Propiedad: ${q.propertyAddress}` : null,
+          q.operationTypeHint ? `Operación: ${q.operationTypeHint}` : null,
+          q.mlPermalink ? `Publicación: ${q.mlPermalink}` : null,
+          '',
+          (q.text && String(q.text).trim()) || '(sin texto)',
+        ];
+        const notes = lines.filter((l) => l != null && l !== '').join('\n');
+
+        const propertyId = q.propertyId != null ? Number(q.propertyId) : null;
+
+        await prisma.leads.upsert({
+          where: {
+            tenantId_mercadolibreQuestionId: {
+              tenantId,
+              mercadolibreQuestionId: mqid,
+            },
+          },
+          create: {
+            tenantId,
+            name: displayName.slice(0, 255),
+            notes,
+            mercadolibreQuestionId: mqid,
+            propertyId: Number.isFinite(propertyId) ? propertyId : null,
+            operationType: q.operationTypeHint || null,
+            zone: q.zoneHint || null,
+          },
+          update: {
+            name: displayName.slice(0, 255),
+            notes,
+            ...(Number.isFinite(propertyId) ? { propertyId } : {}),
+            ...(q.operationTypeHint ? { operationType: q.operationTypeHint } : {}),
+            ...(q.zoneHint != null ? { zone: q.zoneHint } : {}),
+          },
+        });
+      } catch (err) {
+        logger.warn('syncMlQuestionsToLeads: upsert omitido', {
+          tenantId,
+          questionId: q?.questionId,
+          message: err.message,
+        });
+      }
+    }
+  }
+
+  /**
    * Obtener preguntas de todas las publicaciones del tenant
    */
   async getQuestions(req, res) {
@@ -799,7 +857,18 @@ class MercadoLibreController {
       // Obtener todas las publicaciones activas del tenant
       const listings = await prisma.PropertyMLListings.findMany({
         where: { tenantId },
-        include: { Property: { select: { address: true, typeProperty: true } } },
+        include: {
+          Property: {
+            select: {
+              propertyId: true,
+              address: true,
+              typeProperty: true,
+              type: true,
+              city: true,
+              neighborhood: true,
+            },
+          },
+        },
       });
 
       if (listings.length === 0) {
@@ -813,16 +882,22 @@ class MercadoLibreController {
         listings.map(async (listing) => {
           try {
             const data = await meli.get(`/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`);
+            const p = listing.Property;
+            const zoneHint = [p?.neighborhood, p?.city].filter(Boolean).join(' · ') || null;
             const questions = (data.questions || []).map((q) => ({
               questionId: q.id,
               text: q.text,
               status: q.status,
               dateCreated: q.date_created,
               buyerId: q.from?.id,
+              buyerNickname: q.from?.nickname,
               mlListingId: listing.mlListingId,
               mlPermalink: listing.mlPermalink,
-              propertyAddress: listing.Property?.address || 'Sin dirección',
-              propertyType: listing.Property?.typeProperty || '',
+              propertyId: listing.propertyId,
+              propertyAddress: p?.address || 'Sin dirección',
+              propertyType: p?.typeProperty || '',
+              operationTypeHint: p?.type ? String(p.type) : null,
+              zoneHint,
               answer: q.answer || null,
             }));
             return questions;
@@ -836,6 +911,8 @@ class MercadoLibreController {
         .filter((r) => r.status === 'fulfilled')
         .flatMap((r) => r.value)
         .sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
+
+      await this.syncMlQuestionsToLeads(tenantId, allQuestions);
 
       res.json({ success: true, questions: allQuestions });
     } catch (error) {
