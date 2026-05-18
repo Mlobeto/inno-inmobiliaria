@@ -1,8 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '@shared/redux';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+function parseStoredUserRole() {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    if (!raw) return null;
+    return JSON.parse(raw)?.role ?? null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Guard que verifica si el perfil de la empresa está completo
@@ -11,26 +23,28 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const ProfileCompletionGuard = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const storeUser = useSelector(selectCurrentUser);
   const [isChecking, setIsChecking] = useState(true);
   const [isComplete, setIsComplete] = useState(false);
 
   useEffect(() => {
     checkProfileCompletion();
-  }, [location.pathname]);
+  }, [location.pathname, storeUser?.role]);
 
   const checkProfileCompletion = async () => {
     try {
-      let userRole = null;
-      try {
-        const raw = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-        if (raw) userRole = JSON.parse(raw)?.role ?? null;
-      } catch {
-        /* ignore */
-      }
-      // Los agentes no pasan por datos de empresa inmobiliaria (no pueden editarlos por API).
-      if (userRole === 'AGENT') {
+      const lsRole = parseStoredUserRole();
+      const isAgent =
+        storeUser?.role === 'AGENT' ||
+        lsRole === 'AGENT';
+
+      // Los agentes no cargan configuración de la inmobiliaria (403 en GET /admin/settings).
+      if (isAgent) {
         setIsComplete(true);
         setIsChecking(false);
+        if (location.pathname.includes('company-settings')) {
+          navigate('/panelLeads', { replace: true });
+        }
         return;
       }
 
@@ -87,8 +101,23 @@ const ProfileCompletionGuard = ({ children }) => {
       setIsChecking(false);
     } catch (error) {
       console.error('Error verificando perfil:', error);
+      const status = error.response?.status;
+      const code = error.response?.data?.code;
+      const lsRole = parseStoredUserRole();
+      const fallbackAgent =
+        storeUser?.role === 'AGENT' ||
+        lsRole === 'AGENT' ||
+        (status === 403 && code === 'AGENT_RESTRICTED');
+
+      if (fallbackAgent) {
+        setIsComplete(true);
+        setIsChecking(false);
+        navigate('/panelLeads', { replace: true });
+        return;
+      }
+
       setIsChecking(false);
-      // En caso de error, redirigir a settings por seguridad
+      // En otros errores, redirigir a settings sólo usuarios tenant admin (no agentes)
       navigate('/admin/company-settings?incomplete=true', { replace: true });
     }
   };
