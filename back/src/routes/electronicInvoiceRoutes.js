@@ -23,6 +23,7 @@ const authMiddleware = require('../middlewares/authMiddleware');
 const { requireTenantScope } = require('../middlewares/platformAdminMiddleware');
 const { tenancyMiddleware, requireFeature } = require('../middlewares/tenancyMiddleware');
 const { tenantLimiter } = require('../middlewares/rateLimiter');
+const forbidAgents = require('../middlewares/forbidAgents');
 const ctrl = require('../controllers/electronicInvoiceController');
 
 // ─── Middleware stack común ─────────────────────────────────────────────────
@@ -31,6 +32,7 @@ const ctrl = require('../controllers/electronicInvoiceController');
 router.use(authMiddleware);
 router.use(requireTenantScope);
 router.use(tenancyMiddleware);
+router.use(forbidAgents);
 router.use(tenantLimiter);
 router.use(requireFeature('electronic_invoicing'));
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   selectCurrentUser,
+  logout as logoutAction,
   useGetCommissionsQuery,
   useGetAgentsQuery,
   useGetSettlementQuery,
@@ -25,6 +26,8 @@ import {
   IoDocumentTextOutline,
   IoCheckmarkDoneOutline,
   IoCloseCircleOutline,
+  IoLogOutOutline,
+  IoChatbubblesOutline,
 } from 'react-icons/io5';
 
 const TRANSACTION_TYPES = [
@@ -78,6 +81,8 @@ const EMPTY_FORM = {
 const now = new Date();
 
 export default function PanelComisiones() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const isAgent = currentUser?.role === 'AGENT';
@@ -256,9 +261,12 @@ export default function PanelComisiones() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
-            <Link to="/panel" className="flex items-center text-slate-300 hover:text-white transition-colors">
+            <Link
+              to={isAgent ? '/panelLeads' : '/panel'}
+              className="flex items-center text-slate-300 hover:text-white transition-colors"
+            >
               <IoArrowBack className="w-5 h-5 mr-2" />
-              <span className="hidden sm:inline">Panel</span>
+              <span className="hidden sm:inline">{isAgent ? 'Mis leads' : 'Panel'}</span>
             </Link>
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -272,13 +280,39 @@ export default function PanelComisiones() {
               </p>
             </div>
           </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors"
-          >
+          <div className="flex items-center gap-2">
+            {isAgent && (
+              <>
+                <Link
+                  to="/soporte"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-sm font-medium transition-colors border border-white/10"
+                  title="Soporte GestProp"
+                >
+                  <IoChatbubblesOutline className="w-5 h-5" />
+                  <span className="hidden sm:inline">Soporte</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(logoutAction());
+                    navigate('/login');
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-white/10 transition-colors"
+                  title="Cerrar sesión"
+                >
+                  <IoLogOutOutline className="w-5 h-5" />
+                  <span className="hidden sm:inline">Salir</span>
+                </button>
+              </>
+            )}
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors"
+            >
             <IoAdd className="w-5 h-5" />
             <span className="hidden sm:inline">{isAgent ? 'Registrar mi comisión' : 'Nueva'}</span>
-          </button>
+            </button>
+          </div>
         </div>
 
         {/* Alertas */}

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '@shared/redux';
 import {
   useGetMyTicketsQuery,
   useCreateTicketMutation,
@@ -252,6 +254,9 @@ function TicketThread({ ticket, onBack }) {
 }
 
 export default function SoporteTickets() {
+  const currentUser = useSelector(selectCurrentUser);
+  const agentBackHref = currentUser?.role === 'AGENT' ? '/panelLeads' : '/panel';
+
   const { data: tickets = [], isLoading } = useGetMyTicketsQuery();
   // transformResponse ya devuelve el array directamente
   const [showForm, setShowForm] = useState(false);
@@ -277,7 +282,7 @@ export default function SoporteTickets() {
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link to="/panel" className="text-gray-400 hover:text-gray-600">
+            <Link to={agentBackHref} className="text-gray-400 hover:text-gray-600" title="Volver">
               <IoArrowBack size={20} />
             </Link>
             <div>

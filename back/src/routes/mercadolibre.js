@@ -3,6 +3,8 @@ const router = express.Router();
 const authMiddleware = require('../middlewares/authMiddleware');
 const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 const MercadoLibreController = require('../controllers/MercadoLibreController');
+const { requireTenantScope } = require('../middlewares/platformAdminMiddleware');
+const forbidAgents = require('../middlewares/forbidAgents');
 
 // ====================================
 // AUTENTICACIÓN
@@ -14,7 +16,9 @@ router.get('/callback', MercadoLibreController.handleCallback.bind(MercadoLibreC
 
 // El resto de rutas requieren autenticación y tenancy
 router.use(authMiddleware);
+router.use(requireTenantScope);
 router.use(tenancyMiddleware);
+router.use(forbidAgents);
 
 // Iniciar flujo OAuth
 router.get('/auth/start', MercadoLibreController.startAuth.bind(MercadoLibreController));

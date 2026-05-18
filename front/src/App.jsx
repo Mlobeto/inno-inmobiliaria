@@ -156,31 +156,31 @@ function App() {
       {/* 🆕 NUEVA RUTA - Configuración de la inmobiliaria */}
       <Route 
         path="/company-settings" 
-        element={<CompanySettings />} 
+        element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} 
       />
       <Route 
         path="/admin/company-settings" 
-        element={<CompanySettings />} 
+        element={<ProtectedRoute><CompanySettings /></ProtectedRoute>} 
       />
 
       {/* 🆕 NUEVA RUTA - Gestión de suscripción */}
       <Route 
         path="/subscription" 
-        element={<SubscriptionManager />} 
+        element={<ProtectedRoute><SubscriptionManager /></ProtectedRoute>} 
       />
       <Route 
         path="/admin/subscription" 
-        element={<SubscriptionManager />} 
+        element={<ProtectedRoute><SubscriptionManager /></ProtectedRoute>} 
       />
 
       {/* 🆕 NUEVA RUTA - Gestión de plantillas PDF */}
       <Route 
         path="/pdf-templates" 
-        element={<PdfTemplateManager />} 
+        element={<ProtectedRoute><PdfTemplateManager /></ProtectedRoute>} 
       />
       <Route 
         path="/admin/pdf-templates" 
-        element={<PdfTemplateManager />} 
+        element={<ProtectedRoute><PdfTemplateManager /></ProtectedRoute>} 
       />
 
       {/* Autenticación */}

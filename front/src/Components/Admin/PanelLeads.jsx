@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   selectCurrentUser,
+  logout as logoutAction,
   useGetAllLeadsQuery,
   useGetAgentsQuery,
   useCreateLeadMutation,
@@ -23,6 +24,7 @@ import {
   IoLocationOutline,
   IoCloseOutline,
   IoCheckmarkOutline,
+  IoChatbubblesOutline,
 } from 'react-icons/io5';
 
 const COLUMNS = [
@@ -63,6 +65,8 @@ const EMPTY_FORM = {
 };
 
 export default function PanelLeads() {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const isAgent = currentUser?.role === 'AGENT';
@@ -213,24 +217,48 @@ export default function PanelLeads() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Link
-              to="/panel"
+              to={isAgent ? '/panelComisiones' : '/panel'}
               className="text-white flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
             >
               <IoArrowBack className="w-5 h-5" />
-              <span className="hidden sm:inline">Panel</span>
+              <span className="hidden sm:inline">{isAgent ? 'Mis comisiones' : 'Panel'}</span>
             </Link>
             <h1 className="text-white text-xl font-bold">CRM / Leads</h1>
             <span className="text-slate-400 text-sm hidden sm:inline">
               {subtitle}
             </span>
           </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-          >
-            <IoAdd className="w-5 h-5" />
-            Nuevo Lead
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              <IoAdd className="w-5 h-5" />
+              Nuevo Lead
+            </button>
+            {isAgent && (
+              <>
+                <Link
+                  to="/soporte"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
+                  title="Soporte GestProp"
+                >
+                  <IoChatbubblesOutline className="w-5 h-5" />
+                  <span className="hidden sm:inline">Soporte</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(logoutAction());
+                    navigate('/login');
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-slate-200 text-sm transition-colors border border-white/10"
+                >
+                  Salir
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

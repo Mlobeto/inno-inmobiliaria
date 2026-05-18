@@ -20,6 +20,20 @@ const ProfileCompletionGuard = ({ children }) => {
 
   const checkProfileCompletion = async () => {
     try {
+      let userRole = null;
+      try {
+        const raw = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+        if (raw) userRole = JSON.parse(raw)?.role ?? null;
+      } catch {
+        /* ignore */
+      }
+      // Los agentes no pasan por datos de empresa inmobiliaria (no pueden editarlos por API).
+      if (userRole === 'AGENT') {
+        setIsComplete(true);
+        setIsChecking(false);
+        return;
+      }
+
       // Si ya está en company-settings o subscription, permitir acceso
       if (location.pathname.includes('company-settings') || location.pathname.includes('subscription')) {
         setIsComplete(true);

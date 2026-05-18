@@ -37,6 +37,8 @@ const LoginAdmin = () => {
       dispatch(setCredentials({ token: result.token, admin: result.admin }));
       if (result.isPlatformAdmin) {
         navigate('/platform-admin/dashboard');
+      } else if (result.admin?.role === 'AGENT') {
+        navigate('/panelLeads');
       } else {
         navigate('/panel');
       }

@@ -5,6 +5,7 @@ const { tenancyMiddleware } = require("../middlewares/tenancyMiddleware");
 const { tenantLimiter } = require("../middlewares/rateLimiter");
 const { checkSubscription, checkFeature } = require("../middlewares/subscriptionMiddleware");
 const prisma = require('../utils/prismaClient');
+const forbidAgents = require('../middlewares/forbidAgents');
 
 const router = Router();
 
@@ -62,28 +63,28 @@ router.use("/platform-admin", require("./platformAdmin"));
 
 // Rutas de tenants (requieren tenantId - no accesibles por PLATFORM_ADMIN)
 router.use("/admin", require("./admin")); // Maneja auth + tenancy internamente
-router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./client"));
-router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./clientDocumentRoutes")); // NUEVO: Rutas de documentos de clientes
-router.use("/lease", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./lease"));
-router.use("/payment",  authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./payment"));
-router.use("/expenses", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./expenses"));
-router.use("/property", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./property"));
-router.use("/garantor", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./garantor"));
-router.use("/import", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./import"));
-router.use("/pdf", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./pdf")); // PDF generation and templates
-router.use("/pdf-templates", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./pdfTemplates")); // PDF template management
-router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./tenant")); // Tenant management and signature
-router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
+router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./client"));
+router.use("/client", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./clientDocumentRoutes")); // NUEVO: Rutas de documentos de clientes
+router.use("/lease", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./lease"));
+router.use("/payment",  authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./payment"));
+router.use("/expenses", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./expenses"));
+router.use("/property", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./property"));
+router.use("/garantor", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./garantor"));
+router.use("/import", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./import"));
+router.use("/pdf", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./pdf")); // PDF generation and templates
+router.use("/pdf-templates", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./pdfTemplates")); // PDF template management
+router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./tenant")); // Tenant management and signature
+router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
 router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('leads'), require("./leads")); // Leads/CRM
 router.use("/tickets", require("./tickets")); // Soporte / Tickets (maneja auth internamente)
-router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('loteos'), require("./loteos")); // Loteos y lotes
+router.use("/loteos", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, checkSubscription, checkFeature('loteos'), require("./loteos")); // Loteos y lotes
 router.use("/agents", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./agents")); // Gestión de agentes/usuarios del tenant
 router.use("/commissions", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./commissions")); // Comisiones de agentes
-router.use("/owner-settlements", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./ownerSettlements")); // Liquidaciones al propietario
-router.use("/clause-library",   authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./clauseLibrary")); // Biblioteca de cláusulas
-router.use("/temporary-rental", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, require("./temporaryRentalRoutes")); // Alquileres temporales
+router.use("/owner-settlements", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./ownerSettlements")); // Liquidaciones al propietario
+router.use("/clause-library",   authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./clauseLibrary")); // Biblioteca de cláusulas
+router.use("/temporary-rental", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./temporaryRentalRoutes")); // Alquileres temporales
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal
