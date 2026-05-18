@@ -10,6 +10,18 @@ const formatARS = (n) =>
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 
+/** Nombre seguro para headers Content-Disposition (evita caracteres que rompan el RFC 2616 quoted-string). */
+const asciiFilenameSlug = (name, fallback = 'propietario') => {
+  const base = String(name || fallback).trim() || fallback;
+  const ascii = base
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return ascii || fallback;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /owner-settlements  — lista con filtros opcionales
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,15 +110,23 @@ exports.liquidate = async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /owner-settlements/pdf/:landlordId  — PDF agrupado por propietario
-// Query: period? (filtrar por período), status? (default: pending)
+// Query: period? (filtrar por período), status? (omitir o vacío = todos los estados, igual que GET /owner-settlements)
 // ─────────────────────────────────────────────────────────────────────────────
 exports.generatePdf = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { landlordId } = req.params;
-    const { period, status = 'pending' } = req.query;
+    const { period } = req.query;
+    const rawStatus = req.query.status;
 
-    const where = { tenantId, landlordId: parseInt(landlordId), status };
+    const where = { tenantId, landlordId: parseInt(landlordId, 10) };
+    if (!Number.isFinite(where.landlordId)) {
+      return res.status(400).json({ success: false, message: 'Propietario inválido' });
+    }
+
+    const statusTrim = rawStatus !== undefined && rawStatus !== null ? String(rawStatus).trim() : '';
+    if (statusTrim !== '') where.status = statusTrim;
+
     if (period) where.period = { contains: period, mode: 'insensitive' };
 
     const settlements = await prisma.OwnerSettlements.findMany({
@@ -135,9 +155,13 @@ exports.generatePdf = async (req, res) => {
       margins: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
     });
 
+    const pdfBuf = Buffer.isBuffer(pdf) ? pdf : Buffer.from(pdf);
+
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="liquidacion-${settlements[0].landlordName.replace(/\s+/g, '-')}.pdf"`);
-    return res.send(pdf);
+    const safeSlug = asciiFilenameSlug(settlements[0].landlordName);
+    res.setHeader('Content-Disposition', `attachment; filename="liquidacion-${safeSlug}.pdf"`);
+    res.setHeader('Content-Length', String(pdfBuf.length));
+    return res.end(pdfBuf);
   } catch (err) {
     console.error('OwnerSettlementController.generatePdf:', err);
     return res.status(500).json({ success: false, message: 'Error al generar PDF' });
