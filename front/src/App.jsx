@@ -70,7 +70,7 @@ function App() {
     '/propiedades', '/contratos', '/configuracion', '/suscripcion',
     '/loteos', '/soporte', '/panelContratos', '/panelPropiedades',
     '/panelLeads', '/panelClientes', '/panelLoteos', '/firmas', '/leads',
-    '/plans', '/register', '/subscription', '/company-settings',
+    '/plans', '/register', '/registro', '/subscription', '/company-settings',
     '/platform-admin', '/contacto', '/terminos', '/privacidad',
     '/forgot-password', '/reset-password', '/pdf-templates',
   ];
@@ -98,7 +98,10 @@ function App() {
         {showPWA && <InstallPWA />}
         <Routes>
       <Route path="/" element={<Landing />} />
-      
+
+      {/* Misma pantalla que /register — debe ir ANTES de /:subdomain o “registro” se toma como landing de tenant */}
+      <Route path="/registro" element={<Register />} />
+
       {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
       <Route path="/:subdomain" element={<TenantLanding />} />
       <Route path="/:subdomain/property/:propertyId" element={<PropertyDetail />} />
