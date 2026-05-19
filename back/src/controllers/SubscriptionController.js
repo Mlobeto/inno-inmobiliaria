@@ -14,6 +14,40 @@ const paymentClient = new Payment(client);
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
+/** URL pública del front (MP exige https en producción). */
+function buildFrontendUrl(path = '') {
+  let base = (process.env.FRONTEND_URL || FRONTEND_URL || 'http://localhost:5173').trim();
+  if (!/^https?:\/\//i.test(base)) {
+    base = `https://${base}`;
+  }
+  return `${base.replace(/\/$/, '')}${path}`;
+}
+
+function mpCurrencyId(planCurrency) {
+  const code = (planCurrency || 'ARS').toUpperCase();
+  return code === 'ARS' || code === 'USD' ? code : 'ARS';
+}
+
+function extractMercadoPagoError(error) {
+  const message =
+    error?.message ||
+    error?.cause?.[0]?.description ||
+    error?.cause?.message ||
+    'Error desconocido de Mercado Pago';
+  const status = Number(error?.status) || 500;
+  return { message, status };
+}
+
+function userFacingMpError(message) {
+  if (/different countries/i.test(message)) {
+    return (
+      'Mercado Pago rechazó el pago: la cuenta del comprador y las credenciales de la app deben ser del mismo país (Argentina). ' +
+      'En producción usá MP_ACCESS_TOKEN de producción (.ar), no credenciales TEST, y un usuario de prueba/comprador argentino.'
+    );
+  }
+  return message;
+}
+
 class SubscriptionController {
   
   /**
@@ -138,55 +172,84 @@ class SubscriptionController {
         });
       }
 
-      // Crear suscripción (preapproval) en MercadoPago
+      const priorSubscription = await prisma.subscriptions.findFirst({
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+      });
+      const tenantAlreadyHadTrial =
+        Boolean(priorSubscription?.trialEnd) ||
+        ['trialing', 'trial', 'past_due', 'active', 'canceled'].includes(
+          (priorSubscription?.status || '').toLowerCase()
+        );
+
+      const currencyId = mpCurrencyId(plan.currency);
+      const canOfferMpTrial = plan.trialDays > 0 && !tenantAlreadyHadTrial;
+
       const preapprovalData = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: 'months', // 'days', 'months', 'years'
-          transaction_amount: parseFloat(plan.priceMonthly),
-          currency_id: plan.currency,
-          free_trial: plan.trialDays > 0 ? {
-            frequency: plan.trialDays,
-            frequency_type: 'days'
-          } : undefined
-        },
-        back_url: `${FRONTEND_URL}/subscription/success`,
+        back_url: buildFrontendUrl('/subscription/success'),
         payer_email: email,
         external_reference: `tenant_${tenantId}_plan_${planId}`,
-        status: 'pending'
+        status: 'pending',
       };
 
+      // Preferir plan asociado en MP (misma moneda/país que las credenciales)
+      if (plan.mpPlanId) {
+        preapprovalData.preapproval_plan_id = plan.mpPlanId;
+      } else {
+        console.warn(
+          `[subscriptions] Plan ${planId} sin mpPlanId — ejecutá: node src/scripts/syncPlansToMercadoPago.js`
+        );
+        preapprovalData.auto_recurring = {
+          frequency: 1,
+          frequency_type: 'months',
+          transaction_amount: parseFloat(plan.priceMonthly),
+          currency_id: currencyId,
+          ...(canOfferMpTrial
+            ? {
+                free_trial: {
+                  frequency: plan.trialDays,
+                  frequency_type: 'days',
+                },
+              }
+            : {}),
+        };
+      }
+
       const response = await preApprovalClient.create({ body: preapprovalData });
-      
-      // Crear registro de suscripción en estado pendiente
+
+      // Crear registro de suscripción en estado pendiente (sin nuevo trial local si ya lo usó)
       const subscription = await prisma.subscriptions.create({
         data: {
           tenantId,
           planId,
-          status: plan.trialDays > 0 ? 'trialing' : 'incomplete',
+          status: canOfferMpTrial ? 'trialing' : 'incomplete',
           paymentProvider: 'mercadopago',
           mpSubscriptionId: response.id,
           billingCycle: 'monthly',
           amount: plan.priceMonthly,
-          currency: plan.currency,
-          trialStart: plan.trialDays > 0 ? new Date() : null,
-          trialEnd: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null,
+          currency: currencyId,
+          trialStart: canOfferMpTrial ? new Date() : null,
+          trialEnd: canOfferMpTrial
+            ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000)
+            : null,
         },
       });
-      
+
       res.json({
         success: true,
-        subscriptionUrl: response.init_point,
+        subscriptionUrl: response.init_point || response.sandbox_init_point,
         subscriptionId: subscription.subscriptionId,
-        mpSubscriptionId: response.id
+        mpSubscriptionId: response.id,
       });
     } catch (error) {
+      const { message, status } = extractMercadoPagoError(error);
       console.error('Error creando suscripción:', error);
-      res.status(500).json({
+      const httpStatus = status >= 400 && status < 500 ? status : 500;
+      res.status(httpStatus).json({
         success: false,
-        error: 'Error al crear la suscripción',
-        details: error.message
+        error: userFacingMpError(message),
+        details: process.env.NODE_ENV === 'development' ? message : undefined,
       });
     }
   }
