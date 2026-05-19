@@ -100,7 +100,7 @@ const MP_SUBSCRIPTION_PAYMENT_METHODS = {
 };
 
 function buildAutoRecurring(plan, currencyId, includeTrial) {
-  return {
+  const recurring = {
     frequency: 1,
     frequency_type: 'months',
     transaction_amount: parseFloat(plan.priceMonthly),
@@ -114,6 +114,34 @@ function buildAutoRecurring(plan, currencyId, includeTrial) {
         }
       : {}),
   };
+  if (!includeTrial) {
+    recurring.start_date = new Date().toISOString();
+  }
+  return recurring;
+}
+
+/** Evita pre-login con el mail del cobrador (bloquea Confirmar si es la misma cuenta MP). */
+function resolvePayerEmailForCheckout(userEmail) {
+  const email = (userEmail || '').trim().toLowerCase();
+  if (!email) return undefined;
+
+  const collectorEmails = (process.env.MP_COLLECTOR_EMAILS || process.env.PLATFORM_ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (collectorEmails.includes(email)) {
+    console.warn(
+      `[subscriptions] payer_email omitido (${email}): coincide con cuenta cobradora MP; el comprador debe iniciar sesión con otra cuenta.`
+    );
+    return undefined;
+  }
+
+  if (process.env.MP_OMIT_PAYER_EMAIL === 'true') {
+    return undefined;
+  }
+
+  return userEmail;
 }
 
 function buildMpCheckoutRecurring(plan, currencyId, includeMpFreeTrial) {
@@ -336,12 +364,13 @@ class SubscriptionController {
       // Trial gratis solo en GestProp (registro). En MP: autorizar tarjeta y cobrar al confirmar.
       const includeMpFreeTrial = false;
 
+      const payerEmail = resolvePayerEmailForCheckout(email);
       const preapprovalBase = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
         back_url: buildFrontendUrl('/subscription/success'),
-        payer_email: email,
         external_reference: `tenant_${tenantId}_plan_${planId}`,
         status: 'pending',
+        ...(payerEmail ? { payer_email: payerEmail } : {}),
       };
 
       const mpPlanId = await resolveMpPlanId(plan, {
@@ -408,6 +437,11 @@ class SubscriptionController {
         subscriptionUrl: response.init_point || response.sandbox_init_point,
         subscriptionId: subscription.subscriptionId,
         mpSubscriptionId: response.id,
+        checkoutHints: [
+          'Iniciá sesión en Mercado Pago con una cuenta distinta a la que cobra (no la del vendedor de la app).',
+          'Elegí Tarjeta → Modificar e ingresá número, vencimiento y código de seguridad (las tarjetas guardadas tipo "PROVISIONAL" no habilitan suscripciones).',
+          'Si Confirmar sigue gris, probá otro navegador o una tarjeta de crédito distinta.',
+        ],
       });
     } catch (error) {
       const { message, status } = extractMercadoPagoError(error);
