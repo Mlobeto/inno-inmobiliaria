@@ -16,10 +16,20 @@ const client = new MercadoPagoConfig({
 });
 
 const preApprovalPlanClient = new PreApprovalPlan(client);
+const forceRecreate = process.argv.includes('--force');
 
 async function syncPlans() {
   try {
-    console.log('🔄 Iniciando sincronización de planes con MercadoPago...\n');
+    console.log('🔄 Iniciando sincronización de planes con MercadoPago...');
+    if (forceRecreate) {
+      console.log('   Modo --force: se recrean planes aunque ya tengan mpPlanId\n');
+    } else {
+      console.log('');
+    }
+
+    if (process.env.NODE_ENV === 'production' && (process.env.MP_ACCESS_TOKEN || '').startsWith('TEST-')) {
+      throw new Error('MP_ACCESS_TOKEN es TEST. Usá el token de producción antes de sincronizar.');
+    }
 
     await prisma.$connect();
     console.log('✅ Conexión a BD establecida\n');
@@ -43,17 +53,27 @@ async function syncPlans() {
           continue;
         }
 
-        // Si ya tiene mpPlanId, verificar si existe en MercadoPago
-        if (plan.mpPlanId) {
+        // Si ya tiene mpPlanId, verificar que sea del mismo entorno (token actual)
+        if (plan.mpPlanId && !forceRecreate) {
           console.log(`   ℹ️  Plan ya tiene ID de MercadoPago: ${plan.mpPlanId}`);
-          
+
           try {
             const existingPlan = await preApprovalPlanClient.get({ id: plan.mpPlanId });
             console.log(`   ✅ Plan existe en MercadoPago (estado: ${existingPlan.status})`);
             continue;
           } catch (error) {
-            console.log(`   ⚠️  Plan no encontrado en MercadoPago, creando nuevo...`);
+            console.log(`   ⚠️  mpPlanId no válido con este token (${error.message}), creando nuevo...`);
+            await prisma.plans.update({
+              where: { planId: plan.planId },
+              data: { mpPlanId: null },
+            });
           }
+        } else if (plan.mpPlanId && forceRecreate) {
+          console.log(`   ♻️  --force: reemplazando mpPlanId ${plan.mpPlanId}`);
+          await prisma.plans.update({
+            where: { planId: plan.planId },
+            data: { mpPlanId: null },
+          });
         }
 
         // Crear plan en MercadoPago

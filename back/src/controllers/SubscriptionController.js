@@ -31,11 +31,53 @@ function mpCurrencyId(planCurrency) {
 function extractMercadoPagoError(error) {
   const message =
     error?.message ||
+    error?.apiResponse?.message ||
     error?.cause?.[0]?.description ||
     error?.cause?.message ||
     'Error desconocido de Mercado Pago';
-  const status = Number(error?.status) || 500;
+  const status =
+    Number(error?.status || error?.statusCode || error?.apiResponse?.status) || 500;
   return { message, status };
+}
+
+function isMercadoPagoTestToken() {
+  return (process.env.MP_ACCESS_TOKEN || '').trim().startsWith('TEST-');
+}
+
+/** Valida que mpPlanId exista con el token actual (evita IDs creados en sandbox). */
+async function resolveMpPlanId(plan) {
+  if (!plan.mpPlanId) {
+    return null;
+  }
+  try {
+    await preApprovalPlanClient.get({ id: plan.mpPlanId });
+    return plan.mpPlanId;
+  } catch (err) {
+    console.warn(
+      `[subscriptions] mpPlanId ${plan.mpPlanId} inválido para el token actual: ${err.message}`
+    );
+    await prisma.plans
+      .update({ where: { planId: plan.planId }, data: { mpPlanId: null } })
+      .catch(() => {});
+    return null;
+  }
+}
+
+function buildAutoRecurring(plan, currencyId, includeTrial) {
+  return {
+    frequency: 1,
+    frequency_type: 'months',
+    transaction_amount: parseFloat(plan.priceMonthly),
+    currency_id: currencyId,
+    ...(includeTrial
+      ? {
+          free_trial: {
+            frequency: plan.trialDays,
+            frequency_type: 'days',
+          },
+        }
+      : {}),
+  };
 }
 
 function userFacingMpError(message) {
@@ -172,6 +214,14 @@ class SubscriptionController {
         });
       }
 
+      if (process.env.NODE_ENV === 'production' && isMercadoPagoTestToken()) {
+        return res.status(503).json({
+          success: false,
+          error:
+            'Mercado Pago está en modo TEST en el servidor. Actualizá el secreto mp-access-token en Azure con el Access Token de producción (.ar) y reiniciá la revisión del Container App.',
+        });
+      }
+
       const priorSubscription = await prisma.subscriptions.findFirst({
         where: { tenantId },
         orderBy: { createdAt: 'desc' },
@@ -185,7 +235,7 @@ class SubscriptionController {
       const currencyId = mpCurrencyId(plan.currency);
       const canOfferMpTrial = plan.trialDays > 0 && !tenantAlreadyHadTrial;
 
-      const preapprovalData = {
+      const preapprovalBase = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
         back_url: buildFrontendUrl('/subscription/success'),
         payer_email: email,
@@ -193,30 +243,39 @@ class SubscriptionController {
         status: 'pending',
       };
 
-      // Preferir plan asociado en MP (misma moneda/país que las credenciales)
-      if (plan.mpPlanId) {
-        preapprovalData.preapproval_plan_id = plan.mpPlanId;
+      const mpPlanId = await resolveMpPlanId(plan);
+      let preapprovalData = { ...preapprovalBase };
+
+      if (mpPlanId) {
+        preapprovalData.preapproval_plan_id = mpPlanId;
       } else {
         console.warn(
-          `[subscriptions] Plan ${planId} sin mpPlanId — ejecutá: node src/scripts/syncPlansToMercadoPago.js`
+          `[subscriptions] Plan ${planId} sin mpPlanId válido — ejecutá con token de prod: node src/scripts/syncPlansToMercadoPago.js`
         );
-        preapprovalData.auto_recurring = {
-          frequency: 1,
-          frequency_type: 'months',
-          transaction_amount: parseFloat(plan.priceMonthly),
-          currency_id: currencyId,
-          ...(canOfferMpTrial
-            ? {
-                free_trial: {
-                  frequency: plan.trialDays,
-                  frequency_type: 'days',
-                },
-              }
-            : {}),
-        };
+        preapprovalData.auto_recurring = buildAutoRecurring(plan, currencyId, canOfferMpTrial);
       }
 
-      const response = await preApprovalClient.create({ body: preapprovalData });
+      let response;
+      try {
+        response = await preApprovalClient.create({ body: preapprovalData });
+      } catch (firstError) {
+        const firstMsg = extractMercadoPagoError(firstError).message;
+        if (mpPlanId && /different countries/i.test(firstMsg)) {
+          console.warn(
+            `[subscriptions] Reintentando sin preapproval_plan_id (plan sandbox vs token prod)`
+          );
+          await prisma.plans
+            .update({ where: { planId }, data: { mpPlanId: null } })
+            .catch(() => {});
+          preapprovalData = {
+            ...preapprovalBase,
+            auto_recurring: buildAutoRecurring(plan, currencyId, false),
+          };
+          response = await preApprovalClient.create({ body: preapprovalData });
+        } else {
+          throw firstError;
+        }
+      }
 
       // Crear registro de suscripción en estado pendiente (sin nuevo trial local si ya lo usó)
       const subscription = await prisma.subscriptions.create({
