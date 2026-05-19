@@ -90,7 +90,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         });
         const tenant = response.data?.data || response.data;
         setTenantHasLanding(tenant?.features?.landingPage === true);
-        setTenantHasMl(tenant?.features?.ml === true);
+        setTenantHasMl(tenant?.features?.mercadoLibreIntegration === true);
       } catch (error) {
         console.error('Error al obtener tenant:', error);
         setTenantHasLanding(false);

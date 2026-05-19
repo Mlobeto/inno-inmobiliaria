@@ -5,6 +5,7 @@ const { tenancyMiddleware } = require('../middlewares/tenancyMiddleware');
 const MercadoLibreController = require('../controllers/MercadoLibreController');
 const { requireTenantScope } = require('../middlewares/platformAdminMiddleware');
 const forbidAgents = require('../middlewares/forbidAgents');
+const { checkSubscription, checkFeature } = require('../middlewares/subscriptionMiddleware');
 
 // ====================================
 // AUTENTICACIÓN
@@ -19,6 +20,8 @@ router.use(authMiddleware);
 router.use(requireTenantScope);
 router.use(tenancyMiddleware);
 router.use(forbidAgents);
+router.use(checkSubscription);
+router.use(checkFeature('mercadoLibreIntegration'));
 
 // Iniciar flujo OAuth
 router.get('/auth/start', MercadoLibreController.startAuth.bind(MercadoLibreController));

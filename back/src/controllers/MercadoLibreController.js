@@ -105,7 +105,9 @@ class MercadoLibreController {
       // Si el usuario canceló o hubo error
       if (oauthError || !code) {
         logger.warn('Usuario canceló o error OAuth', { oauthError });
-        return res.redirect(`${process.env.FRONTEND_URL}/admin/integraciones?ml_error=${oauthError || 'no_code'}`);
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${oauthError || 'no_code'}`
+        );
       }
       
       // Extraer tenantId del state
@@ -113,7 +115,9 @@ class MercadoLibreController {
       
       if (!tenantId || isNaN(tenantId)) {
         logger.error('TenantId inválido en state OAuth ML', { state });
-        return res.redirect(`${process.env.FRONTEND_URL}/admin/integraciones?ml_error=invalid_state`);
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=invalid_state`
+        );
       }
       
       logger.info('Intercambiando código OAuth por tokens ML', { tenantId });

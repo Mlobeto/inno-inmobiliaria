@@ -209,7 +209,8 @@ const getTenantInfo = async (req, res) => {
     const tenantData = tenant;
     const normalizedFeatures = {
       ...tenantData.features,
-      hasLanding: tenantData.features?.landingPage || false
+      hasLanding: tenantData.features?.landingPage || false,
+      mercadoLibreIntegration: tenantData.features?.mercadoLibreIntegration === true,
     };
 
     res.status(200).json({
