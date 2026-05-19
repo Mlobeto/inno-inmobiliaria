@@ -40,8 +40,29 @@ function extractMercadoPagoError(error) {
   return { message, status };
 }
 
+function normalizeMpAccessToken() {
+  const raw = process.env.MP_ACCESS_TOKEN || '';
+  return raw.trim().replace(/^["']|["']$/g, '');
+}
+
+/** test | production | missing | unknown */
+function getMercadoPagoTokenInfo() {
+  const token = normalizeMpAccessToken();
+  if (!token) {
+    return { mode: 'missing', prefix: '', length: 0 };
+  }
+  const prefix = token.slice(0, 12);
+  if (token.startsWith('TEST-')) {
+    return { mode: 'test', prefix, length: token.length };
+  }
+  if (token.startsWith('APP_USR-') || token.startsWith('APP-')) {
+    return { mode: 'production', prefix, length: token.length };
+  }
+  return { mode: 'unknown', prefix, length: token.length };
+}
+
 function isMercadoPagoTestToken() {
-  return (process.env.MP_ACCESS_TOKEN || '').trim().startsWith('TEST-');
+  return getMercadoPagoTokenInfo().mode === 'test';
 }
 
 /** Valida que mpPlanId exista con el token actual (evita IDs creados en sandbox). */
@@ -154,7 +175,18 @@ class SubscriptionController {
         finalStatus = 'canceled';
       } else if (
         ['trialing', 'trial'].includes(finalStatus) &&
-        subscription.currentPeriodEnd && now > subscription.currentPeriodEnd
+        subscription.trialEnd &&
+        now > new Date(subscription.trialEnd)
+      ) {
+        await prisma.subscriptions.update({
+          where: { subscriptionId: subscription.subscriptionId },
+          data: { status: 'past_due' },
+        });
+        finalStatus = 'past_due';
+      } else if (
+        ['trialing', 'trial'].includes(finalStatus) &&
+        subscription.currentPeriodEnd &&
+        now > subscription.currentPeriodEnd
       ) {
         await prisma.subscriptions.update({
           where: { subscriptionId: subscription.subscriptionId },
@@ -181,6 +213,25 @@ class SubscriptionController {
   }
   
   /**
+   * Diagnóstico: qué token de MP ve el servidor (sin exponer el valor completo).
+   * GET /api/subscriptions/mp-config
+   */
+  async getMpConfig(req, res) {
+    const mpInfo = getMercadoPagoTokenInfo();
+    res.json({
+      success: true,
+      nodeEnv: process.env.NODE_ENV || 'development',
+      mercadoPago: {
+        mode: mpInfo.mode,
+        tokenPrefix: mpInfo.prefix ? `${mpInfo.prefix}...` : null,
+        tokenLength: mpInfo.length,
+        expectedProductionPrefix: 'APP_USR-',
+        isTestBlocked: process.env.NODE_ENV === 'production' && mpInfo.mode === 'test',
+      },
+    });
+  }
+
+  /**
    * Crear suscripción con plan asociado (MercadoPago Preapproval)
    * POST /api/subscriptions/create-subscription
    * Body: { planId }
@@ -199,26 +250,52 @@ class SubscriptionController {
         });
       }
       
-      // Verificar si ya tiene suscripción activa
+      // Bloquear solo si hay suscripción realmente vigente (trial aún no venció)
       const existingSubscription = await prisma.subscriptions.findFirst({
         where: {
           tenantId,
-          status: { in: ['trialing', 'active'] }
-        }
+          status: { in: ['trialing', 'trial', 'active'] },
+        },
+        orderBy: { createdAt: 'desc' },
       });
-      
+
       if (existingSubscription) {
-        return res.status(400).json({
-          success: false,
-          error: 'Ya tienes una suscripción activa'
-        });
+        const existingStatus = (existingSubscription.status || '').toLowerCase();
+        const now = new Date();
+        const trialStillActive =
+          ['trialing', 'trial'].includes(existingStatus) &&
+          (!existingSubscription.trialEnd ||
+            now <= new Date(existingSubscription.trialEnd));
+
+        if (existingStatus === 'active' || trialStillActive) {
+          return res.status(400).json({
+            success: false,
+            code: 'SUBSCRIPTION_ALREADY_ACTIVE',
+            error: 'Ya tienes una suscripción activa',
+          });
+        }
+
+        if (['trialing', 'trial'].includes(existingStatus)) {
+          await prisma.subscriptions.update({
+            where: { subscriptionId: existingSubscription.subscriptionId },
+            data: { status: 'past_due' },
+          });
+        }
       }
 
       if (process.env.NODE_ENV === 'production' && isMercadoPagoTestToken()) {
+        const mpInfo = getMercadoPagoTokenInfo();
         return res.status(503).json({
           success: false,
           error:
-            'Mercado Pago está en modo TEST en el servidor. Actualizá el secreto mp-access-token en Azure con el Access Token de producción (.ar) y reiniciá la revisión del Container App.',
+            'Mercado Pago está en modo TEST en el servidor. El Access Token cargado sigue siendo de prueba (prefijo TEST-).',
+          mercadoPago: {
+            mode: mpInfo.mode,
+            tokenPrefix: mpInfo.prefix ? `${mpInfo.prefix}...` : null,
+            expectedProductionPrefix: 'APP_USR-',
+          },
+          fix:
+            'En GitHub: Settings → Secrets → MP_ACCESS_TOKEN (producción). Luego Actions → Deploy Backend. Verificá en Azure que mp-access-token empiece con APP_USR-.',
         });
       }
 
@@ -308,7 +385,8 @@ class SubscriptionController {
       res.status(httpStatus).json({
         success: false,
         error: userFacingMpError(message),
-        details: process.env.NODE_ENV === 'development' ? message : undefined,
+        details: message,
+        source: status >= 400 && status < 500 ? 'mercadopago' : 'server',
       });
     }
   }
@@ -783,6 +861,7 @@ const controller = new SubscriptionController();
 // Exportar métodos con bind correcto
 module.exports = {
   getPlans: controller.getPlans.bind(controller),
+  getMpConfig: controller.getMpConfig.bind(controller),
   getCurrentSubscription: controller.getCurrentSubscription.bind(controller),
   createSubscription: controller.createSubscription.bind(controller),
   cancelSubscription: controller.cancelSubscription.bind(controller),

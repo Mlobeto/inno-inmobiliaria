@@ -19,7 +19,9 @@ const AGENT_FORBIDDEN_BODY = {
 function subscriptionAgentScope(req, res, next) {
   if (req.user?.role !== 'AGENT') return next();
   const normalized = (req.path || '').replace(/\/$/, '') || '/';
-  if (req.method === 'GET' && normalized === '/current') return next();
+  if (req.method === 'GET' && (normalized === '/current' || normalized === '/mp-config')) {
+    return next();
+  }
   res.status(403).json(AGENT_FORBIDDEN_BODY);
 }
 
@@ -31,6 +33,7 @@ router.use(authMiddleware);
 router.use(tenancyMiddleware);
 router.use(subscriptionAgentScope);
 
+router.get('/mp-config', SubscriptionController.getMpConfig);
 router.get('/current', SubscriptionController.getCurrentSubscription);
 router.get('/payment-history', SubscriptionController.getPaymentHistory);
 router.post('/create-subscription', SubscriptionController.createSubscription);

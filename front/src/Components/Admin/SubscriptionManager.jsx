@@ -87,7 +87,15 @@ const SubscriptionManager = () => {
       window.location.href = response.data.subscriptionUrl;
     } catch (error) {
       console.error('Error al crear suscripción:', error);
-      toast.error(error.response?.data?.error || 'Error al crear la suscripción');
+      const data = error.response?.data;
+      const detail = data?.fix || data?.mercadoPago?.tokenPrefix
+        ? ` (servidor: ${data.mercadoPago.tokenPrefix})`
+        : '';
+      const mpDetail =
+        data?.details && data.details !== data?.error ? ` — ${data.details}` : '';
+      toast.error((data?.error || 'Error al crear la suscripción') + detail + mpDetail, {
+        autoClose: 12000,
+      });
     } finally {
       setIsChangingPlan(false);
     }
