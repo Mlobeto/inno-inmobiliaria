@@ -74,7 +74,14 @@ const SubscriptionManager = () => {
   };
 
   const handleCreateSubscription = async (planId) => {
-    if (!window.confirm('¿Querés suscribirte a este plan?')) return;
+    const needsPayment = subscriptionNeedsPayment(subscription);
+    const confirmMsg = needsPayment
+      ? 'Vas a Mercado Pago para activar la suscripción.\n\n' +
+        '• El período de prueba ya lo usaste en GestProp: el primer cobro es al confirmar (o en el próximo ciclo según MP).\n' +
+        '• Las suscripciones se debitan con tarjeta de crédito o débito; el dinero en cuenta de MP no suele estar habilitado para pagos recurrentes.\n\n' +
+        '¿Continuar?'
+      : '¿Querés suscribirte a este plan?';
+    if (!window.confirm(confirmMsg)) return;
     setIsChangingPlan(true);
     try {
       const token = localStorage.getItem('token');

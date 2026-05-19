@@ -65,13 +65,23 @@ function isMercadoPagoTestToken() {
   return getMercadoPagoTokenInfo().mode === 'test';
 }
 
-/** Valida que mpPlanId exista con el token actual (evita IDs creados en sandbox). */
-async function resolveMpPlanId(plan) {
+/**
+ * Valida mpPlanId con el token actual. Si el plan en MP trae free_trial y no
+ * queremos trial en checkout (trial ya lo dio GestProp al registrarse), devuelve null.
+ */
+async function resolveMpPlanId(plan, { allowMpFreeTrial = false } = {}) {
   if (!plan.mpPlanId) {
     return null;
   }
   try {
-    await preApprovalPlanClient.get({ id: plan.mpPlanId });
+    const mpPlan = await preApprovalPlanClient.get({ id: plan.mpPlanId });
+    const mpTrial = mpPlan?.auto_recurring?.free_trial;
+    if (mpTrial && !allowMpFreeTrial) {
+      console.warn(
+        `[subscriptions] Plan MP ${plan.mpPlanId} tiene free_trial (${mpTrial.frequency}d); checkout sin trial en MP`
+      );
+      return null;
+    }
     return plan.mpPlanId;
   } catch (err) {
     console.warn(
@@ -83,6 +93,11 @@ async function resolveMpPlanId(plan) {
     return null;
   }
 }
+
+/** Suscripciones recurrentes: MP exige tarjeta/débito (no dinero en cuenta). */
+const MP_SUBSCRIPTION_PAYMENT_METHODS = {
+  payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }],
+};
 
 function buildAutoRecurring(plan, currencyId, includeTrial) {
   return {
@@ -98,6 +113,13 @@ function buildAutoRecurring(plan, currencyId, includeTrial) {
           },
         }
       : {}),
+  };
+}
+
+function buildMpCheckoutRecurring(plan, currencyId, includeMpFreeTrial) {
+  return {
+    auto_recurring: buildAutoRecurring(plan, currencyId, includeMpFreeTrial),
+    payment_methods_allowed: MP_SUBSCRIPTION_PAYMENT_METHODS,
   };
 }
 
@@ -311,6 +333,8 @@ class SubscriptionController {
 
       const currencyId = mpCurrencyId(plan.currency);
       const canOfferMpTrial = plan.trialDays > 0 && !tenantAlreadyHadTrial;
+      // Trial gratis solo en GestProp (registro). En MP: autorizar tarjeta y cobrar al confirmar.
+      const includeMpFreeTrial = false;
 
       const preapprovalBase = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
@@ -320,16 +344,23 @@ class SubscriptionController {
         status: 'pending',
       };
 
-      const mpPlanId = await resolveMpPlanId(plan);
+      const mpPlanId = await resolveMpPlanId(plan, {
+        allowMpFreeTrial: includeMpFreeTrial,
+      });
       let preapprovalData = { ...preapprovalBase };
 
       if (mpPlanId) {
         preapprovalData.preapproval_plan_id = mpPlanId;
       } else {
-        console.warn(
-          `[subscriptions] Plan ${planId} sin mpPlanId válido — ejecutá con token de prod: node src/scripts/syncPlansToMercadoPago.js`
+        if (!plan.mpPlanId) {
+          console.warn(
+            `[subscriptions] Plan ${planId} sin mpPlanId — sync: node src/scripts/syncPlansToMercadoPago.js`
+          );
+        }
+        Object.assign(
+          preapprovalData,
+          buildMpCheckoutRecurring(plan, currencyId, includeMpFreeTrial)
         );
-        preapprovalData.auto_recurring = buildAutoRecurring(plan, currencyId, canOfferMpTrial);
       }
 
       let response;
@@ -346,7 +377,7 @@ class SubscriptionController {
             .catch(() => {});
           preapprovalData = {
             ...preapprovalBase,
-            auto_recurring: buildAutoRecurring(plan, currencyId, false),
+            ...buildMpCheckoutRecurring(plan, currencyId, false),
           };
           response = await preApprovalClient.create({ body: preapprovalData });
         } else {

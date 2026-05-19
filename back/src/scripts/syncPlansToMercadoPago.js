@@ -77,6 +77,7 @@ async function syncPlans() {
         }
 
         // Crear plan en MercadoPago
+        // Trial gratis solo en GestProp (registro). MP cobra con tarjeta al suscribirse.
         const mpPlanData = {
           reason: plan.name,
           auto_recurring: {
@@ -84,18 +85,11 @@ async function syncPlans() {
             frequency_type: 'months',
             transaction_amount: parseFloat(plan.priceMonthly),
             currency_id: plan.currency || 'ARS',
-            free_trial: plan.trialDays > 0 ? {
-              frequency: plan.trialDays,
-              frequency_type: 'days'
-            } : undefined
           },
           payment_methods_allowed: {
-            payment_types: [
-              { id: 'credit_card' },
-              { id: 'debit_card' }
-            ]
+            payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }],
           },
-          back_url: 'https://www.mercadopago.com.ar'
+          back_url: 'https://www.mercadopago.com.ar',
         };
 
         console.log(`   📤 Creando plan en MercadoPago...`);
@@ -110,7 +104,9 @@ async function syncPlans() {
         console.log(`   ✅ Plan creado exitosamente en MercadoPago`);
         console.log(`      - MP Plan ID: ${response.id}`);
         console.log(`      - Precio: ${plan.currency} ${plan.priceMonthly}/mes`);
-        console.log(`      - Trial: ${plan.trialDays} días`);
+        console.log(
+          `      - Trial en app: ${plan.trialDays} días (no se replica en MP; usar --force tras cambiar planes)`
+        );
 
       } catch (error) {
         console.error(`   ❌ Error procesando plan ${plan.planId}:`, error.message);
