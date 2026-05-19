@@ -17,6 +17,14 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+/** Estados en los que el tenant debe volver a pagar (no puede usar "Plan Actual" bloqueado). */
+const STATUSES_NEEDING_PAYMENT = ['past_due', 'canceled', 'incomplete', 'expired'];
+
+function subscriptionNeedsPayment(sub) {
+  const status = sub?.status?.toLowerCase() || '';
+  return !sub || STATUSES_NEEDING_PAYMENT.includes(status);
+}
+
 const SubscriptionManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,7 +34,6 @@ const SubscriptionManager = () => {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isChangingPlan, setIsChangingPlan] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
 
   useEffect(() => {
     loadSubscriptionData();
@@ -101,7 +108,6 @@ const SubscriptionManager = () => {
       );
 
       toast.success('Plan actualizado exitosamente');
-      setSelectedPlan(null);
       await loadSubscriptionData();
     } catch (error) {
       console.error('Error al cambiar plan:', error);
@@ -209,9 +215,16 @@ const SubscriptionManager = () => {
                   <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
                   <p className="text-white/90 mb-5 leading-relaxed">{message}</p>
                   <button
+                    type="button"
                     onClick={() => {
-                      const element = document.getElementById('available-plans');
-                      element?.scrollIntoView({ behavior: 'smooth' });
+                      const plansSection = document.getElementById('available-plans');
+                      if (plansSection) {
+                        plansSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        return;
+                      }
+                      if (subscription?.planId) {
+                        handleCreateSubscription(subscription.planId);
+                      }
                     }}
                     className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white font-bold rounded-xl transition-colors shadow-lg text-base"
                   >
@@ -339,18 +352,37 @@ const SubscriptionManager = () => {
         </div>
 
         {/* Planes disponibles */}
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8 shadow-xl">
+        <div
+          id="available-plans"
+          className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8 shadow-xl scroll-mt-6"
+        >
           <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
             <IoRocketOutline className="w-6 h-6" />
-            <span>Cambiar Plan</span>
+            <span>
+              {subscriptionNeedsPayment(subscription)
+                ? 'Renovar o elegir plan'
+                : 'Cambiar Plan'}
+            </span>
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {plans.filter(plan => plan.isActive && plan.planId !== 'lifetime').map((plan) => (
+            {plans.filter(plan => plan.isActive && plan.planId !== 'lifetime').map((plan) => {
+              const isCurrentPlan = subscription?.planId === plan.planId;
+              const needsPayment = subscriptionNeedsPayment(subscription);
+              const isDisabled = isChangingPlan || (isCurrentPlan && !needsPayment);
+
+              let buttonLabel = 'Suscribirse';
+              if (isCurrentPlan) {
+                buttonLabel = needsPayment ? 'Pagar y reactivar' : 'Plan Actual';
+              } else if (subscription && !needsPayment) {
+                buttonLabel = 'Cambiar a este plan';
+              }
+
+              return (
               <div
                 key={plan.planId}
                 className={`bg-white/5 rounded-xl p-6 border transition-all ${
-                  subscription?.planId === plan.planId
+                  isCurrentPlan
                     ? 'border-blue-400 bg-blue-500/10'
                     : 'border-white/10 hover:border-white/30'
                 }`}
@@ -380,29 +412,28 @@ const SubscriptionManager = () => {
                 </ul>
 
                 <button
+                  type="button"
                   onClick={() => {
-                    const noActiveSub = !subscription || ['incomplete', 'canceled', 'past_due'].includes(subscription?.status);
-                    if (noActiveSub) {
+                    if (needsPayment || !subscription) {
                       handleCreateSubscription(plan.planId);
                     } else {
                       handleChangePlan(plan.planId);
                     }
                   }}
-                  disabled={subscription?.planId === plan.planId || isChangingPlan}
+                  disabled={isDisabled}
                   className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
-                    subscription?.planId === plan.planId
+                    isDisabled
                       ? 'bg-gray-500 text-white cursor-not-allowed'
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                      : needsPayment && isCurrentPlan
+                        ? 'bg-red-500 hover:bg-red-400 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
                   }`}
                 >
-                  {subscription?.planId === plan.planId
-                    ? 'Plan Actual'
-                    : (!subscription || ['incomplete', 'canceled', 'past_due'].includes(subscription?.status))
-                      ? 'Suscribirse'
-                      : 'Cambiar a este plan'}
+                  {isChangingPlan ? 'Procesando...' : buttonLabel}
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
