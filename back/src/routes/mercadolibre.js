@@ -42,6 +42,9 @@ router.get('/listings', MercadoLibreController.getListings.bind(MercadoLibreCont
 // Publicar propiedad
 router.post('/publish/:propertyId', MercadoLibreController.publishProperty.bind(MercadoLibreController));
 
+// Sincronizar cambios de la propiedad al aviso en ML
+router.post('/listings/:propertyId/sync', MercadoLibreController.syncListing.bind(MercadoLibreController));
+
 // Actualizar estado (pausar/reactivar)
 router.put('/listings/:propertyId/status', MercadoLibreController.updateListingStatus.bind(MercadoLibreController));
 

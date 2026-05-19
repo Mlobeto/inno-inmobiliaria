@@ -1,5 +1,7 @@
 const prisma = require('../utils/prismaClient');
 const { logAudit } = require('../utils/audit');
+const logger = require('../utils/logger');
+const MercadoLibreController = require('./MercadoLibreController');
 
 const OPERATION_TYPE_MAP = {
   venta: 'venta',
@@ -334,7 +336,33 @@ exports.updateProperty = async (req, res) => {
       newValues: cleanedData,
       req,
     });
-    res.status(200).json({ message: "Propiedad actualizada" });
+
+    setImmediate(() => {
+      MercadoLibreController.syncPropertyListing(tenantId, parseInt(propertyId, 10))
+        .then((mlResult) => {
+          if (mlResult.synced) {
+            logger.info('ML auto-sync tras editar propiedad', { tenantId, propertyId });
+          }
+        })
+        .catch((err) => {
+          logger.warn('ML auto-sync falló', {
+            tenantId,
+            propertyId,
+            error: err.message,
+          });
+          MercadoLibreController.recordSyncError(tenantId, propertyId, err.message).catch(
+            () => {}
+          );
+        });
+    });
+
+    res.status(200).json({
+      message: 'Propiedad actualizada',
+      mercadoLibre: {
+        syncScheduled: true,
+        hint: 'Si está publicada en Mercado Libre, el aviso se actualiza en segundo plano.',
+      },
+    });
   } catch (error) {
     console.error('[UpdateProperty] Error:', {
       message: error.message,

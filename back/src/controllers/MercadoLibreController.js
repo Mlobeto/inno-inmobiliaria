@@ -3,6 +3,7 @@ const prisma = require('../utils/prismaClient');
 const { getMercadoLibreCategory, getListingType } = require('../utils/mercadoLibreCategoryMapper');
 const logger = require('../utils/logger');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { signMlOAuthState, resolveMlOAuthTenantId } = require('../utils/mlOAuthState');
 
 // Configuración del cliente ML
 const meli = new mercadolibre.Meli(
@@ -11,7 +12,36 @@ const meli = new mercadolibre.Meli(
   process.env.ML_REDIRECT_URI
 );
 
+function getMlWebhookUrl() {
+  const base = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
+  return `${base}/api/webhooks/mercadolibre`;
+}
+
 class MercadoLibreController {
+  async getActiveMlConfig(tenantId) {
+    const config = await prisma.MercadoLibreConfig.findFirst({
+      where: { tenantId, isActive: true },
+    });
+    if (!config) return null;
+
+    if (config.tokenExpiresAt < new Date()) {
+      try {
+        return await this.refreshAccessToken(config);
+      } catch {
+        return null;
+      }
+    }
+    return config;
+  }
+
+  async getAccessTokenForConfig(mlConfig) {
+    let config = mlConfig;
+    if (config.tokenExpiresAt < new Date()) {
+      config = await this.refreshAccessToken(config);
+    }
+    return this.decryptStoredToken(config, 'accessToken');
+  }
+
   encryptTokenValue(token) {
     if (!token) {
       return {
@@ -71,17 +101,18 @@ class MercadoLibreController {
       logger.info('Iniciando OAuth ML', { tenantId });
       
       // Generar URL de autorización
-      const authUrl = meli.getAuthURL(
-        process.env.ML_REDIRECT_URI,
-        'AR', // País Argentina
-        `tenant_${tenantId}` // State para identificar al tenant en callback
-      );
-      
+      const oauthState = signMlOAuthState(tenantId);
+      const authUrl = meli.getAuthURL(process.env.ML_REDIRECT_URI, 'AR', oauthState);
+
       logger.info('URL OAuth ML generada', { tenantId });
-      
+
       res.json({
         success: true,
-        authUrl
+        authUrl,
+        integration: {
+          redirectUri: process.env.ML_REDIRECT_URI,
+          webhookUrl: getMlWebhookUrl(),
+        },
       });
     } catch (error) {
       logger.error('Error al iniciar auth ML', { tenantId, error: error.message });
@@ -110,11 +141,10 @@ class MercadoLibreController {
         );
       }
       
-      // Extraer tenantId del state
-      const tenantId = parseInt(state.replace('tenant_', ''));
-      
-      if (!tenantId || isNaN(tenantId)) {
-        logger.error('TenantId inválido en state OAuth ML', { state });
+      const tenantId = resolveMlOAuthTenantId(state);
+
+      if (!tenantId) {
+        logger.error('State OAuth ML inválido o alterado', { state: state?.slice?.(0, 40) });
         return res.redirect(
           `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=invalid_state`
         );
@@ -200,10 +230,17 @@ class MercadoLibreController {
       
       const config = await prisma.MercadoLibreConfig.findUnique({ where: { tenantId } });
       
+      const integrationMeta = {
+        redirectUri: process.env.ML_REDIRECT_URI,
+        webhookUrl: getMlWebhookUrl(),
+        webhookTopics: ['questions', 'items'],
+      };
+
       if (!config || !config.isActive) {
         return res.json({
           success: true,
-          connected: false
+          connected: false,
+          integration: integrationMeta,
         });
       }
       
@@ -222,14 +259,16 @@ class MercadoLibreController {
             success: true,
             connected: true,
             mlUserId: refreshedConfig.mlUserId,
-            lastSync: refreshedConfig.lastSync
+            lastSync: refreshedConfig.lastSync,
+            integration: integrationMeta,
           });
         } catch (error) {
           logger.error('Error al refrescar token ML', { tenantId, error: error.message });
           return res.json({
             success: true,
             connected: false,
-            error: 'token_expired'
+            error: 'token_expired',
+            integration: integrationMeta,
           });
         }
       }
@@ -238,7 +277,8 @@ class MercadoLibreController {
         success: true,
         connected: true,
         mlUserId: config.mlUserId,
-        lastSync: config.lastSync
+        lastSync: config.lastSync,
+        integration: integrationMeta,
       });
     } catch (error) {
       logger.error('Error al verificar conexión ML', { tenantId, error: error.message });
@@ -407,40 +447,12 @@ class MercadoLibreController {
         orderBy: { createdAt: 'desc' },
       });
       
-      const listingType = subscription?.plans?.planId 
-        ? getListingType(subscription.plans.planId) 
+      const listingType = subscription?.plans?.planId
+        ? getListingType(subscription.plans.planId)
         : 'classified';
-      
-      // 6. Preparar datos para ML
-      const mlData = {
-        title: this.buildTitle(property),
-        category_id: getMercadoLibreCategory(property),
-        price: parseFloat(property.price),
-        currency_id: 'ARS',
-        available_quantity: 1,
-        buying_mode: 'classified', // Para inmuebles siempre es 'classified'
-        listing_type_id: listingType,
-        condition: 'not_specified',
-        description: this.buildDescription(property),
-        pictures: this.buildPictures(property),
-        attributes: this.buildAttributes(property),
-      };
-      
-      // Solo agregar location si tenemos los datos
-      if (property.address) {
-        mlData.location = {
-          address_line: property.address,
-        };
-        
-        if (property.neighborhood) {
-          mlData.location.neighborhood = { name: property.neighborhood };
-        }
-        
-        if (property.city) {
-          mlData.location.city = { name: property.city };
-        }
-      }
-      
+
+      const mlData = this.buildItemCreatePayload(property, listingType);
+
       logger.info('Datos preparados para ML', {
         title: mlData.title,
         category: mlData.category_id,
@@ -652,6 +664,178 @@ class MercadoLibreController {
     
     return attrs;
   }
+
+  buildItemLocation(property) {
+    if (!property.address) return null;
+    const location = { address_line: property.address };
+    if (property.neighborhood) {
+      location.neighborhood = { name: property.neighborhood };
+    }
+    if (property.city) {
+      location.city = { name: property.city };
+    }
+    return location;
+  }
+
+  buildItemCreatePayload(property, listingType) {
+    const payload = {
+      title: this.buildTitle(property),
+      category_id: getMercadoLibreCategory(property),
+      price: parseFloat(property.price),
+      currency_id: 'ARS',
+      available_quantity: 1,
+      buying_mode: 'classified',
+      listing_type_id: listingType,
+      condition: 'not_specified',
+      description: this.buildDescription(property),
+      pictures: this.buildPictures(property),
+      attributes: this.buildAttributes(property),
+    };
+    const location = this.buildItemLocation(property);
+    if (location) payload.location = location;
+    return payload;
+  }
+
+  buildItemUpdatePayload(property) {
+    const payload = {
+      title: this.buildTitle(property),
+      price: parseFloat(property.price),
+      pictures: this.buildPictures(property),
+      attributes: this.buildAttributes(property),
+    };
+    const location = this.buildItemLocation(property);
+    if (location) payload.location = location;
+    return payload;
+  }
+
+  /**
+   * Sincroniza una propiedad ya publicada en ML (título, precio, fotos, descripción, atributos).
+   * Usado tras editar en GestProp y desde POST /listings/:propertyId/sync.
+   */
+  async syncPropertyListing(tenantId, propertyId) {
+    const pid = parseInt(propertyId, 10);
+    if (!Number.isFinite(pid)) {
+      return { synced: false, skipped: 'invalid_property_id' };
+    }
+
+    const listing = await prisma.PropertyMLListings.findFirst({
+      where: { tenantId, propertyId: pid },
+    });
+
+    if (!listing?.mlListingId) {
+      return { synced: false, skipped: 'no_listing' };
+    }
+
+    if (!['active', 'paused'].includes((listing.mlStatus || '').toLowerCase())) {
+      return {
+        synced: false,
+        skipped: 'listing_not_editable',
+        mlStatus: listing.mlStatus,
+      };
+    }
+
+    const mlConfig = await this.getActiveMlConfig(tenantId);
+    if (!mlConfig) {
+      return { synced: false, skipped: 'not_connected' };
+    }
+
+    const property = await prisma.Property.findFirst({
+      where: { propertyId: pid, tenantId },
+    });
+    if (!property) {
+      return { synced: false, skipped: 'property_not_found' };
+    }
+
+    const accessToken = await this.getAccessTokenForConfig(mlConfig);
+    meli.setAccessToken(accessToken);
+
+    const itemBody = this.buildItemUpdatePayload(property);
+    await meli.put(`/items/${listing.mlListingId}`, itemBody);
+
+    const plainDescription = this.buildDescription(property);
+    try {
+      await meli.put(`/items/${listing.mlListingId}/description?api_version=2`, {
+        plain_text: plainDescription,
+      });
+    } catch (descErr) {
+      // Si no existía descripción, crear con POST
+      if (/404|not found|bad request/i.test(descErr.message || '')) {
+        await meli.post(`/items/${listing.mlListingId}/description`, {
+          plain_text: plainDescription,
+        });
+      } else {
+        throw descErr;
+      }
+    }
+
+    await prisma.PropertyMLListings.update({
+      where: { id: listing.id },
+      data: {
+        mlTitle: itemBody.title,
+        mlPrice: itemBody.price,
+        lastSync: new Date(),
+        syncErrors: null,
+      },
+    });
+
+    logger.info('Propiedad sincronizada con ML', {
+      tenantId,
+      propertyId: pid,
+      mlListingId: listing.mlListingId,
+    });
+
+    return {
+      synced: true,
+      mlListingId: listing.mlListingId,
+      mlPermalink: listing.mlPermalink,
+    };
+  }
+
+  async recordSyncError(tenantId, propertyId, message) {
+    await prisma.PropertyMLListings.updateMany({
+      where: { tenantId, propertyId: parseInt(propertyId, 10) },
+      data: { syncErrors: message, lastSync: new Date() },
+    });
+  }
+
+  /**
+   * POST /api/mercadolibre/listings/:propertyId/sync
+   */
+  async syncListing(req, res) {
+    const { tenantId } = req.user;
+    const { propertyId } = req.params;
+    try {
+      const result = await this.syncPropertyListing(tenantId, propertyId);
+      if (result.synced) {
+        return res.json({
+          success: true,
+          message: 'Publicación actualizada en Mercado Libre',
+          ...result,
+        });
+      }
+
+      const messages = {
+        no_listing: 'Esta propiedad no tiene publicación en Mercado Libre',
+        not_connected: 'Conectá Mercado Libre en Integraciones',
+        listing_not_editable: `No se puede editar un aviso en estado "${result.mlStatus}"`,
+        property_not_found: 'Propiedad no encontrada',
+      };
+
+      const statusCode = result.skipped === 'not_connected' ? 400 : 404;
+      return res.status(statusCode).json({
+        success: false,
+        message: messages[result.skipped] || 'No se pudo sincronizar',
+        ...result,
+      });
+    } catch (error) {
+      logger.error('Error sync listing ML', { tenantId, propertyId, error: error.message });
+      await this.recordSyncError(tenantId, propertyId, error.message).catch(() => {});
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al sincronizar con Mercado Libre',
+      });
+    }
+  }
   
   /**
    * Actualizar estado de publicación (pausar/reactivar)
@@ -847,75 +1031,12 @@ class MercadoLibreController {
   async getQuestions(req, res) {
     const { tenantId } = req.user;
     try {
-      const mlConfig = await prisma.MercadoLibreConfig.findFirst({ where: { tenantId, isActive: true } });
+      const mlConfig = await this.getActiveMlConfig(tenantId);
       if (!mlConfig) {
         return res.status(400).json({ success: false, message: 'No estás conectado a MercadoLibre' });
       }
 
-      let accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
-      if (mlConfig.tokenExpiresAt < new Date()) {
-        const refreshed = await this.refreshAccessToken(mlConfig);
-        accessToken = this.decryptStoredToken(refreshed, 'accessToken');
-      }
-
-      // Obtener todas las publicaciones activas del tenant
-      const listings = await prisma.PropertyMLListings.findMany({
-        where: { tenantId },
-        include: {
-          Property: {
-            select: {
-              propertyId: true,
-              address: true,
-              typeProperty: true,
-              type: true,
-              city: true,
-              neighborhood: true,
-            },
-          },
-        },
-      });
-
-      if (listings.length === 0) {
-        return res.json({ success: true, questions: [] });
-      }
-
-      meli.setAccessToken(accessToken);
-
-      // Obtener preguntas de cada publicación en paralelo
-      const questionsPerListing = await Promise.allSettled(
-        listings.map(async (listing) => {
-          try {
-            const data = await meli.get(`/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`);
-            const p = listing.Property;
-            const zoneHint = [p?.neighborhood, p?.city].filter(Boolean).join(' · ') || null;
-            const questions = (data.questions || []).map((q) => ({
-              questionId: q.id,
-              text: q.text,
-              status: q.status,
-              dateCreated: q.date_created,
-              buyerId: q.from?.id,
-              buyerNickname: q.from?.nickname,
-              mlListingId: listing.mlListingId,
-              mlPermalink: listing.mlPermalink,
-              propertyId: listing.propertyId,
-              propertyAddress: p?.address || 'Sin dirección',
-              propertyType: p?.typeProperty || '',
-              operationTypeHint: p?.type ? String(p.type) : null,
-              zoneHint,
-              answer: q.answer || null,
-            }));
-            return questions;
-          } catch {
-            return [];
-          }
-        })
-      );
-
-      const allQuestions = questionsPerListing
-        .filter((r) => r.status === 'fulfilled')
-        .flatMap((r) => r.value)
-        .sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
-
+      const allQuestions = await this.fetchUnansweredQuestionsForTenant(tenantId);
       await this.syncMlQuestionsToLeads(tenantId, allQuestions);
 
       res.json({ success: true, questions: allQuestions });
@@ -955,6 +1076,150 @@ class MercadoLibreController {
     } catch (error) {
       logger.error('Error al responder pregunta ML', { tenantId, questionId, error: error.message });
       res.status(500).json({ success: false, message: error.message || 'Error al responder la pregunta' });
+    }
+  }
+
+  mapMlQuestionToPayload(q, listing) {
+    const p = listing?.Property;
+    const zoneHint = [p?.neighborhood, p?.city].filter(Boolean).join(' · ') || null;
+    return {
+      questionId: q.id,
+      text: q.text,
+      status: q.status,
+      dateCreated: q.date_created,
+      buyerId: q.from?.id,
+      buyerNickname: q.from?.nickname,
+      mlListingId: listing?.mlListingId || q.item_id,
+      mlPermalink: listing?.mlPermalink,
+      propertyId: listing?.propertyId,
+      propertyAddress: p?.address || 'Sin dirección',
+      propertyType: p?.typeProperty || '',
+      operationTypeHint: p?.type ? String(p.type) : null,
+      zoneHint,
+      answer: q.answer || null,
+    };
+  }
+
+  async fetchUnansweredQuestionsForTenant(tenantId) {
+    const mlConfig = await this.getActiveMlConfig(tenantId);
+    if (!mlConfig) return [];
+
+    const listings = await prisma.PropertyMLListings.findMany({
+      where: { tenantId },
+      include: {
+        Property: {
+          select: {
+            propertyId: true,
+            address: true,
+            typeProperty: true,
+            type: true,
+            city: true,
+            neighborhood: true,
+          },
+        },
+      },
+    });
+
+    if (listings.length === 0) return [];
+
+    const accessToken = await this.getAccessTokenForConfig(mlConfig);
+    meli.setAccessToken(accessToken);
+
+    const questionsPerListing = await Promise.allSettled(
+      listings.map(async (listing) => {
+        const data = await meli.get(
+          `/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`
+        );
+        return (data.questions || []).map((q) => this.mapMlQuestionToPayload(q, listing));
+      })
+    );
+
+    return questionsPerListing
+      .filter((r) => r.status === 'fulfilled')
+      .flatMap((r) => r.value)
+      .sort((a, b) => new Date(b.dateCreated) - new Date(a.dateCreated));
+  }
+
+  /**
+   * Webhook de notificaciones Mercado Libre (preguntas, ítems).
+   * POST /api/webhooks/mercadolibre
+   */
+  async handleWebhook(req, res) {
+    res.status(200).send('OK');
+
+    const body = req.body || {};
+    setImmediate(() => {
+      this.processMlWebhookNotification(body).catch((err) => {
+        logger.error('Error procesando webhook ML', { error: err.message, topic: body.topic });
+      });
+    });
+  }
+
+  async processMlWebhookNotification(body) {
+    const { topic, resource, user_id: userId } = body;
+    if (!topic || !userId) return;
+
+    const config = await prisma.MercadoLibreConfig.findFirst({
+      where: { mlUserId: String(userId), isActive: true },
+    });
+    if (!config) {
+      logger.warn('Webhook ML sin tenant para user_id', { userId, topic });
+      return;
+    }
+
+    const accessToken = await this.getAccessTokenForConfig(config);
+    meli.setAccessToken(accessToken);
+
+    if (topic === 'questions' && resource) {
+      const match = String(resource).match(/questions\/(\d+)/i);
+      const questionId = match?.[1];
+      if (!questionId) return;
+
+      const q = await meli.get(`/questions/${questionId}`);
+      if (!q || q.status !== 'UNANSWERED') return;
+
+      const listing = await prisma.PropertyMLListings.findFirst({
+        where: { tenantId: config.tenantId, mlListingId: String(q.item_id) },
+        include: {
+          Property: {
+            select: {
+              propertyId: true,
+              address: true,
+              typeProperty: true,
+              type: true,
+              city: true,
+              neighborhood: true,
+            },
+          },
+        },
+      });
+
+      const payload = this.mapMlQuestionToPayload(q, listing);
+      await this.syncMlQuestionsToLeads(config.tenantId, [payload]);
+      logger.info('Webhook ML: pregunta sincronizada a leads', {
+        tenantId: config.tenantId,
+        questionId,
+      });
+      return;
+    }
+
+    if (topic === 'items' && resource) {
+      const match = String(resource).match(/items\/([A-Z0-9]+)/i);
+      const itemId = match?.[1];
+      if (!itemId) return;
+
+      const item = await meli.get(`/items/${itemId}`);
+      const listingUpdate = {
+        mlStatus: item.status,
+        lastSync: new Date(),
+      };
+      if (item.price != null) listingUpdate.mlPrice = parseFloat(item.price);
+
+      await prisma.PropertyMLListings.updateMany({
+        where: { tenantId: config.tenantId, mlListingId: itemId },
+        data: listingUpdate,
+      });
+      logger.info('Webhook ML: ítem actualizado', { tenantId: config.tenantId, itemId, status: item.status });
     }
   }
 

@@ -9,6 +9,8 @@
 6. [Webhooks](#webhooks)
 7. [Testing](#testing)
 
+> **Actualización (2026):** La integración está implementada en código. Los tenants conectan desde **Configuración → Integraciones** (`MercadoLibreIntegration.jsx`). Webhook: `POST {BACKEND_URL}/api/webhooks/mercadolibre`. OAuth state firmado con `JWT_SECRET_KEY`. Las consultas se sincronizan a **leads**, no a `MercadoLibreMessages`.
+
 ---
 
 ## 🏗️ Arquitectura de la Integración {#arquitectura}

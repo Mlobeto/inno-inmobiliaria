@@ -154,8 +154,9 @@ const EditPropertyModal = ({ property, onClose }) => {
       Swal.fire({
         icon: 'success',
         title: '¡Actualizado!',
-        text: 'La propiedad se actualizó correctamente',
-        timer: 2000,
+        text:
+          'La propiedad se actualizó correctamente. Si está publicada en Mercado Libre, el aviso se sincroniza en segundo plano (precio, fotos, descripción).',
+        timer: 3500,
         showConfirmButton: false
       });
       
