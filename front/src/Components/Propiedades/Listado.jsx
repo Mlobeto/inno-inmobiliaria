@@ -1,6 +1,6 @@
 import  { useState, useMemo, useEffect } from 'react';
 import { useGetAllPropertiesQuery, useUpdatePropertyMutation, useDeletePropertyMutation, useTogglePublishLandingMutation } from '@shared/redux';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import axios from 'axios';
@@ -35,7 +35,6 @@ import {
   IoCheckmarkCircle,
   IoCloseCircle,
   IoLogoBuffer,
-  IoRefreshOutline,
   IoHelpCircleOutline
 } from 'react-icons/io5';
 
@@ -56,7 +55,6 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   const [mlConnection, setMlConnection] = useState({ connected: false, loading: true });
   const [mlListings, setMlListings] = useState({});
   const [publishingML, setPublishingML] = useState({});
-  const [syncingML, setSyncingML] = useState({});
 
   // Función para formatear precio como moneda
   const formatCurrency = (value) => {
@@ -271,38 +269,6 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
     }
   };
 
-  const handleSyncML = async (propertyId) => {
-    if (!mlConnection.connected) {
-      toast.warning('Conectá Mercado Libre en Configuración → Integraciones');
-      return;
-    }
-    setSyncingML((prev) => ({ ...prev, [propertyId]: true }));
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/mercadolibre/listings/${propertyId}/sync`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success(response.data?.message || 'Aviso actualizado en Mercado Libre');
-      const listingsResponse = await axios.get(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/mercadolibre/listings`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const listingsMap = {};
-      listingsResponse.data.listings?.forEach((listing) => {
-        listingsMap[listing.propertyId] = listing;
-      });
-      setMlListings(listingsMap);
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || 'No se pudo sincronizar con Mercado Libre'
-      );
-    } finally {
-      setSyncingML((prev) => ({ ...prev, [propertyId]: false }));
-    }
-  };
-
   const handlePublishML = async (propertyId) => {
     if (!mlConnection.connected) {
       toast.warning('Conecta tu cuenta de MercadoLibre en Configuración → Integraciones');
@@ -338,8 +304,12 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       }
     } catch (error) {
       console.error('Error al publicar en ML:', error);
-      const errorMsg = error.response?.data?.details || error.response?.data?.error || 'Error al publicar en MercadoLibre';
-      toast.error(errorMsg);
+      const errorMsg =
+        error.response?.data?.message ||
+        error.response?.data?.details ||
+        error.response?.data?.error ||
+        'No se pudo publicar en Mercado Libre';
+      toast.error(errorMsg, { autoClose: 8000 });
     } finally {
       setPublishingML(prev => ({ ...prev, [propertyId]: false }));
     }
@@ -678,33 +648,28 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                     </button>
                   )}
                   
-                  {/* Publicado en ML + sincronizar cambios */}
+                  {/* Publicado en ML (cambios se sincronizan al guardar la propiedad) */}
                   {tenantHasMl && mlListings[property.propertyId] && (
-                    <>
-                      <a
-                        href={mlListings[property.propertyId].mlPermalink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-yellow-500/30 transition-colors"
-                        title="Ver en MercadoLibre"
-                      >
-                        <IoLogoBuffer className="w-4 h-4" />
-                        <span>Ver en ML</span>
-                        <IoCheckmarkCircle className="w-4 h-4" />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleSyncML(property.propertyId)}
-                        disabled={syncingML[property.propertyId]}
-                        className="px-4 py-2 bg-white/10 border border-white/30 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-white/20 disabled:opacity-50"
-                        title="Enviar precio, fotos y descripción a Mercado Libre"
-                      >
-                        <IoRefreshOutline
-                          className={`w-4 h-4 ${syncingML[property.propertyId] ? 'animate-spin' : ''}`}
-                        />
-                        {syncingML[property.propertyId] ? 'Sincronizando...' : 'Sync ML'}
-                      </button>
-                    </>
+                    <a
+                      href={mlListings[property.propertyId].mlPermalink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-yellow-500/30 transition-colors"
+                      title="Ver en Mercado Libre. Los cambios se actualizan al guardar la propiedad."
+                    >
+                      <IoLogoBuffer className="w-4 h-4" />
+                      <span>Ver en ML</span>
+                      <IoCheckmarkCircle className="w-4 h-4" />
+                    </a>
+                  )}
+
+                  {tenantHasMl && !mlConnection.loading && !mlConnection.connected && (
+                    <Link
+                      to="/admin/company-settings?tab=integrations"
+                      className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-500/20"
+                    >
+                      Conectar Mercado Libre
+                    </Link>
                   )}
                   
                   {/* Botón de Autorización de Venta - solo para propiedades de venta */}

@@ -4,6 +4,10 @@ const { getMercadoLibreCategory, getListingType } = require('../utils/mercadoLib
 const logger = require('../utils/logger');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { signMlOAuthState, resolveMlOAuthTenantId } = require('../utils/mlOAuthState');
+const {
+  validatePropertyForMlPublish,
+  formatMlPublishError,
+} = require('../utils/mlPublishHelpers');
 
 // Configuración del cliente ML
 const meli = new mercadolibre.Meli(
@@ -246,19 +250,19 @@ class MercadoLibreController {
       
       const config = await prisma.MercadoLibreConfig.findUnique({ where: { tenantId } });
       
-      const integrationMeta = {
-        redirectUri: process.env.ML_REDIRECT_URI,
-        webhookUrl: getMlWebhookUrl(),
-        webhookTopics: ['questions', 'items'],
-      };
-
       if (!config || !config.isActive) {
         return res.json({
           success: true,
           connected: false,
-          integration: integrationMeta,
         });
       }
+
+      const listingsCount = await prisma.PropertyMLListings.count({
+        where: {
+          tenantId,
+          mlStatus: { in: ['active', 'paused', 'under_review'] },
+        },
+      });
       
       // Verificar si el token está expirado
       const now = new Date();
@@ -276,7 +280,7 @@ class MercadoLibreController {
             connected: true,
             mlUserId: refreshedConfig.mlUserId,
             lastSync: refreshedConfig.lastSync,
-            integration: integrationMeta,
+            listingsCount,
           });
         } catch (error) {
           logger.error('Error al refrescar token ML', { tenantId, error: error.message });
@@ -284,7 +288,6 @@ class MercadoLibreController {
             success: true,
             connected: false,
             error: 'token_expired',
-            integration: integrationMeta,
           });
         }
       }
@@ -294,7 +297,7 @@ class MercadoLibreController {
         connected: true,
         mlUserId: config.mlUserId,
         lastSync: config.lastSync,
-        integration: integrationMeta,
+        listingsCount,
       });
     } catch (error) {
       logger.error('Error al verificar conexión ML', { tenantId, error: error.message });
@@ -452,6 +455,15 @@ class MercadoLibreController {
           message: 'Propiedad no encontrada'
         });
       }
+
+      const validation = validatePropertyForMlPublish(property);
+      if (!validation.ok) {
+        return res.status(400).json({
+          success: false,
+          message: `Completá antes de publicar: ${validation.missing.join(', ')}.`,
+          missing: validation.missing,
+        });
+      }
       
       // 5. Obtener plan del tenant para determinar tipo de publicación
       const subscription = await prisma.subscriptions.findFirst({
@@ -538,7 +550,7 @@ class MercadoLibreController {
       
       res.status(500).json({
         success: false,
-        message: error.message || 'Error al publicar propiedad en MercadoLibre'
+        message: formatMlPublishError(error),
       });
     }
   }
