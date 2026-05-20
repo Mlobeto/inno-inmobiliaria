@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { isLifetimeSubscription } = require('../utils/subscriptionHelpers');
 
 /**
  * Middleware para verificar que el tenant tenga una suscripción activa
@@ -14,8 +15,7 @@ async function checkSubscription(req, res, next) {
       });
     }
 
-    // Buscar suscripción activa o en trial
-    const subscription = await prisma.subscriptions.findFirst({
+    let subscription = await prisma.subscriptions.findFirst({
       where: {
         tenantId,
         status: { in: ['trialing', 'active'] },
@@ -25,14 +25,37 @@ async function checkSubscription(req, res, next) {
     });
 
     if (!subscription) {
+      const latest = await prisma.subscriptions.findFirst({
+        where: { tenantId },
+        include: { plans: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (latest && isLifetimeSubscription(latest)) {
+        subscription = latest;
+        if (subscription.status !== 'active') {
+          await prisma.subscriptions.update({
+            where: { subscriptionId: subscription.subscriptionId },
+            data: { status: 'active', currentPeriodEnd: null, trialEnd: null },
+          });
+          subscription.status = 'active';
+        }
+      }
+    }
+
+    if (!subscription) {
       return res.status(403).json({
         success: false,
         error: 'No tienes una suscripción activa',
-        code: 'NO_ACTIVE_SUBSCRIPTION'
+        code: 'NO_ACTIVE_SUBSCRIPTION',
       });
     }
 
-    // Verificar si expiró o si debe cancelarse al final del período
+    if (isLifetimeSubscription(subscription)) {
+      req.subscription = subscription;
+      req.plan = subscription.plans;
+      return next();
+    }
+
     const now = new Date();
 
     // Cancelación diferida: el usuario pidió cancelar al final del período

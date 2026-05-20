@@ -49,8 +49,16 @@ const SubscriptionGuard = ({ children }) => {
       
       setSubscriptionStatus(subscription.status);
 
-      // Si la suscripción está expirada o cancelada, redirigir
-      if (['expired', 'canceled', 'past_due'].includes(subscription.status)) {
+      const isLifetime =
+        String(subscription.planId || '').toLowerCase() === 'lifetime' ||
+        String(subscription.billingCycle || '').toLowerCase() === 'lifetime';
+
+      if (
+        !isLifetime &&
+        ['expired', 'canceled', 'past_due'].includes(
+          String(subscription.status || '').toLowerCase()
+        )
+      ) {
         navigate('/subscription?expired=true', { replace: true });
       }
 

@@ -1,5 +1,10 @@
 const prisma = require('../utils/prismaClient');
 const { invalidateTenantCache } = require('../utils/tenantCache');
+const {
+  isLifetimeSubscription,
+  normalizePlanId,
+  syncTenantSubscriptionPlan,
+} = require('../utils/subscriptionHelpers');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
@@ -242,10 +247,13 @@ exports.getTenantDetail = async (req, res) => {
       prisma.PaymentReceipts.count({ where: { tenantId } }),
     ]);
 
+    const latestSubscription = tenant.subscriptions?.[0] || null;
+
     res.status(200).json({
       success: true,
       data: {
         tenant,
+        subscription: latestSubscription,
         usage: {
           clients: clientsCount,
           properties: propertiesCount,
@@ -307,9 +315,12 @@ exports.updateTenant = async (req, res) => {
     let resolvedMaxAgents = maxAgents !== undefined ? maxAgents : tenant.maxAgents;
     let resolvedMaxProperties = maxProperties !== undefined ? maxProperties : tenant.maxProperties;
 
-    if (plan !== undefined && plan !== tenant.plan) {
-      const planRecord = await prisma.plans.findFirst({
-        where: { planId: plan.toLowerCase(), isActive: true },
+    let planRecord = null;
+    const planChanged = plan !== undefined && normalizePlanId(plan) !== normalizePlanId(tenant.plan);
+
+    if (plan !== undefined) {
+      planRecord = await prisma.plans.findFirst({
+        where: { planId: normalizePlanId(plan), isActive: true },
       });
       if (planRecord) {
         resolvedFeatures = planRecord.features ?? resolvedFeatures;
@@ -334,16 +345,26 @@ exports.updateTenant = async (req, res) => {
       },
     });
 
+    if (planChanged && plan !== undefined) {
+      await syncTenantSubscriptionPlan(prisma, tenantId, plan, planRecord);
+    }
+
     // Invalidar caché del subdomain viejo Y del nuevo si cambió
     await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
     if (subdomain !== undefined && subdomain !== tenant.subdomain) {
       await invalidateTenantCache(tenant.tenantId, subdomain, null);
     }
 
+    const latestSubscription = await prisma.subscriptions.findFirst({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
+
     res.status(200).json({
       success: true,
       message: 'Tenant actualizado exitosamente',
       data: updated,
+      subscription: latestSubscription,
     });
   } catch (error) {
     logger.error('Error actualizando tenant', { tenantId: req.params.tenantId, error: error.message });
@@ -1027,7 +1048,7 @@ exports.impersonateTenant = async (req, res) => {
 exports.updateTenantSubscription = async (req, res) => {
   try {
     const tenantId = parseInt(req.params.tenantId, 10);
-    const { status, trialEnd, currentPeriodEnd, trialStart, currentPeriodStart } = req.body;
+    const { status, planId, trialEnd, currentPeriodEnd, trialStart, currentPeriodStart } = req.body;
 
     const subscription = await prisma.subscriptions.findFirst({
       where: { tenantId },
@@ -1038,15 +1059,42 @@ exports.updateTenantSubscription = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Suscripción no encontrada para este tenant' });
     }
 
+    if (planId !== undefined) {
+      const planRecord = await prisma.plans.findFirst({
+        where: { planId: normalizePlanId(planId), isActive: true },
+      });
+      await syncTenantSubscriptionPlan(prisma, tenantId, planId, planRecord);
+      const updated = await prisma.subscriptions.findFirst({
+        where: { subscriptionId: subscription.subscriptionId },
+      });
+      await invalidateTenantCache(tenantId, null, null);
+      return res.status(200).json({
+        success: true,
+        message: 'Plan y suscripción actualizados',
+        data: updated,
+      });
+    }
+
     const updateData = {};
     if (status !== undefined) updateData.status = status;
-    if (trialEnd !== undefined) updateData.trialEnd = new Date(trialEnd);
-    if (trialStart !== undefined) updateData.trialStart = new Date(trialStart);
-    if (currentPeriodEnd !== undefined) updateData.currentPeriodEnd = new Date(currentPeriodEnd);
-    if (currentPeriodStart !== undefined) updateData.currentPeriodStart = new Date(currentPeriodStart);
+    if (trialEnd !== undefined) updateData.trialEnd = trialEnd ? new Date(trialEnd) : null;
+    if (trialStart !== undefined) updateData.trialStart = trialStart ? new Date(trialStart) : null;
+    if (currentPeriodEnd !== undefined) {
+      updateData.currentPeriodEnd = currentPeriodEnd ? new Date(currentPeriodEnd) : null;
+    }
+    if (currentPeriodStart !== undefined) {
+      updateData.currentPeriodStart = currentPeriodStart ? new Date(currentPeriodStart) : null;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ success: false, message: 'No se proporcionaron campos para actualizar' });
+    }
+
+    if (isLifetimeSubscription(subscription) && status === 'past_due') {
+      return res.status(400).json({
+        success: false,
+        message: 'No se puede marcar como vencido un plan lifetime',
+      });
     }
 
     const updated = await prisma.subscriptions.update({
@@ -1054,11 +1102,17 @@ exports.updateTenantSubscription = async (req, res) => {
       data: updateData,
     });
 
-    // Sincronizar trialEndsAt en el tenant si se actualizó trialEnd
     if (trialEnd !== undefined) {
       await prisma.tenants.update({
         where: { tenantId },
-        data: { trialEndsAt: new Date(trialEnd) },
+        data: { trialEndsAt: trialEnd ? new Date(trialEnd) : null },
+      });
+    }
+
+    if (status === 'active') {
+      await prisma.tenants.update({
+        where: { tenantId },
+        data: { status: 'active' },
       });
     }
 

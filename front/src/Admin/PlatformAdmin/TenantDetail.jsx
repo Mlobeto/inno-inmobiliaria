@@ -931,6 +931,9 @@ const TenantDetail = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-bold mb-4">💳 Editar Suscripción</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Para <strong>Lifetime</strong>, usá &quot;Cambiar plan&quot; → Lifetime (sincroniza tenant y suscripción).
+            </p>
             <form onSubmit={handleUpdateSubscription}>
               <div className="mb-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>

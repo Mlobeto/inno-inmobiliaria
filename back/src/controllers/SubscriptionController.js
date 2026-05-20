@@ -1,4 +1,5 @@
 const prisma = require('../utils/prismaClient');
+const { isLifetimePlanId, isLifetimeSubscription } = require('../utils/subscriptionHelpers');
 const { MercadoPagoConfig, PreApprovalPlan, PreApproval, Payment } = require('mercadopago');
 
 // Configurar MercadoPago con la nueva SDK
@@ -213,6 +214,26 @@ class SubscriptionController {
         });
       }
       
+      // Lifetime: sin vencimiento; corregir estado si quedó mal en BD
+      if (isLifetimeSubscription(subscription)) {
+        let finalStatus = 'active';
+        if (subscription.status !== 'active') {
+          await prisma.subscriptions.update({
+            where: { subscriptionId: subscription.subscriptionId },
+            data: { status: 'active', currentPeriodEnd: null, trialEnd: null },
+          });
+        }
+        return res.json({
+          success: true,
+          subscription: {
+            ...subscription,
+            status: finalStatus,
+            currentPeriodEnd: null,
+            Plan: subscription.plans,
+          },
+        });
+      }
+
       // Verificar expiración y actualizar estado en BD si corresponde
       const now = new Date();
       let finalStatus = subscription.status?.toLowerCase() || subscription.status;
@@ -689,31 +710,38 @@ class SubscriptionController {
     try {
       const { tenantId } = req.user;
       const { newPlanId, billingCycle = 'monthly' } = req.body;
-      
-      // Validar nuevo plan
+
+      if (isLifetimePlanId(newPlanId)) {
+        return res.status(400).json({
+          success: false,
+          error: 'El plan lifetime solo puede asignarlo el administrador de la plataforma',
+        });
+      }
+
       const newPlan = await prisma.plans.findUnique({ where: { planId: newPlanId } });
       if (!newPlan || !newPlan.isActive) {
         return res.status(400).json({
           success: false,
-          error: 'Plan no válido'
+          error: 'Plan no válido',
         });
       }
-      
-      // Buscar suscripción actual
+
       const subscription = await prisma.subscriptions.findFirst({
-        where: {
-          tenantId,
-          status: { in: ['trialing', 'active'] }
-        },
-        include: { plans: true }
+        where: { tenantId },
+        orderBy: { createdAt: 'desc' },
+        include: { plans: true },
       });
-      
+
       if (!subscription) {
         return res.status(404).json({
           success: false,
-          error: 'No tienes una suscripción activa'
+          error: 'No tienes una suscripción',
         });
       }
+
+      const reactivating = !['trialing', 'active'].includes(
+        (subscription.status || '').toLowerCase()
+      );
       
       // Actualizar preapproval en MercadoPago si la suscripción está activa
       if (subscription.mpSubscriptionId && subscription.status === 'active') {
@@ -741,10 +769,17 @@ class SubscriptionController {
         data: {
           planId: newPlanId,
           billingCycle,
-          amount: billingCycle === 'yearly'
-            ? Math.round(parseFloat(newPlan.priceYearly) / 12)
-            : parseFloat(newPlan.priceMonthly),
-        }
+          status: reactivating ? 'active' : subscription.status,
+          amount:
+            billingCycle === 'yearly'
+              ? Math.round(parseFloat(newPlan.priceYearly) / 12)
+              : parseFloat(newPlan.priceMonthly),
+        },
+      });
+
+      await prisma.tenants.update({
+        where: { tenantId },
+        data: { plan: newPlanId.toUpperCase() },
       });
 
       const updatedSubscription = await prisma.subscriptions.findUnique({
