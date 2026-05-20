@@ -83,6 +83,7 @@ jobs:
               "ENCRYPTION_KEY=secretref:encryption-key" \
               "MP_ACCESS_TOKEN=secretref:mp-access-token" \
               "MP_PUBLIC_KEY=secretref:mp-public-key" \
+              "BACKEND_URL=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io" \
               "ML_CLIENT_SECRET=secretref:ml-client-secret" \
               "AZURE_STORAGE_ACCOUNT_NAME=innomediaprod" \
               "FRONTEND_URL=https://gestprop.com.ar" \

@@ -26,6 +26,16 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+/** Si el API aún no tiene BACKEND_URL en prod, mostrar la URL del front (VITE_API_URL). */
+function resolveWebhookDisplayUrl(url) {
+  if (!url) return url;
+  const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/i, '');
+  if (url.includes('localhost') && apiBase && !/localhost|127\.0\.0\.1/i.test(apiBase)) {
+    return `${apiBase}/api/webhooks/mercadolibre`;
+  }
+  return url;
+}
+
 const ML_STATUS_LABELS = {
   active: 'Activa',
   paused: 'Pausada',
@@ -61,6 +71,7 @@ const MercadoLibreIntegration = () => {
   const [listingActionId, setListingActionId] = useState(null);
 
   const integration = connectionStatus?.integration;
+  const webhookDisplayUrl = resolveWebhookDisplayUrl(integration?.webhookUrl);
 
   const checkConnectionStatus = useCallback(async () => {
     setIsLoading(true);
@@ -355,7 +366,7 @@ const MercadoLibreIntegration = () => {
                 <strong>CRM → Leads</strong> (sin duplicar).
               </li>
               <li>
-                <strong>Webhooks (recomendado):</strong> en{' '}
+                <strong>Webhooks (una sola URL para toda la app):</strong> en{' '}
                 <a
                   href="https://developers.mercadolibre.com.ar/es_ar/notificaciones"
                   target="_blank"
@@ -364,22 +375,22 @@ const MercadoLibreIntegration = () => {
                 >
                   developers.mercadolibre.com.ar
                 </a>
-                , configurá la URL de notificaciones de tu aplicación:
+                , en <strong>tu aplicación</strong> (no por tenant), pegá la URL de producción:
               </li>
             </ol>
 
-            {integration?.webhookUrl && (
+            {webhookDisplayUrl && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
                 <p className="font-medium text-blue-900 text-xs uppercase tracking-wide">
                   URL de notificaciones (webhook)
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200 break-all flex-1">
-                    {integration.webhookUrl}
+                    {webhookDisplayUrl}
                   </code>
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(integration.webhookUrl, 'URL')}
+                    onClick={() => copyToClipboard(webhookDisplayUrl, 'URL')}
                     className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     <IoCopyOutline className="w-3.5 h-3.5" />
@@ -387,8 +398,16 @@ const MercadoLibreIntegration = () => {
                   </button>
                 </div>
                 <p className="text-xs text-blue-800">
-                  Temas sugeridos: <strong>questions</strong>, <strong>items</strong>. Así las consultas
-                  llegan al instante sin pulsar &quot;Actualizar&quot;.
+                  Temas sugeridos: <strong>questions</strong>, <strong>items</strong>. Mercado Libre envía el{' '}
+                  <strong>user_id</strong> del vendedor; GestProp asocia cada aviso a la inmobiliaria que conectó
+                  esa cuenta. No hace falta una URL distinta por tenant.
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  En producción debe ser{' '}
+                  <code className="bg-white px-1 rounded">
+                    https://inno-prod-api.../api/webhooks/mercadolibre
+                  </code>
+                  , no localhost.
                 </p>
               </div>
             )}

@@ -12,9 +12,25 @@ const meli = new mercadolibre.Meli(
   process.env.ML_REDIRECT_URI
 );
 
+/** URL pública del API (webhooks). En prod debe coincidir con ML_REDIRECT_URI / Azure. */
+function getPublicBackendUrl() {
+  const explicit = (process.env.BACKEND_URL || process.env.API_URL || '').trim();
+  if (explicit) {
+    return explicit.replace(/\/$/, '').replace(/\/api\/?$/i, '');
+  }
+  const redirect = process.env.ML_REDIRECT_URI || '';
+  const match = redirect.match(/^(https?:\/\/[^/]+)/i);
+  if (match) {
+    return match[1];
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io';
+  }
+  return 'http://localhost:3001';
+}
+
 function getMlWebhookUrl() {
-  const base = (process.env.BACKEND_URL || 'http://localhost:3001').replace(/\/$/, '');
-  return `${base}/api/webhooks/mercadolibre`;
+  return `${getPublicBackendUrl()}/api/webhooks/mercadolibre`;
 }
 
 class MercadoLibreController {
