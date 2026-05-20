@@ -163,7 +163,20 @@ const CompanySettings = () => {
     }
     
     if (searchParams.get('ml_error')) {
-      toast.error('Error al conectar con MercadoLibre. Por favor, intenta nuevamente.');
+      const mlErr = searchParams.get('ml_error');
+      const mlErrorMessages = {
+        invalid_state: 'La conexión expiró. Volvé a pulsar Conectar cuenta.',
+        no_code: 'No se completó la autorización en Mercado Libre.',
+        callback_failed:
+          'No pudimos guardar la conexión. Verificá la URL de callback en developers.mercadolibre.com.ar (debe incluir /api/mercadolibre/callback).',
+        access_denied: 'No autorizaste el acceso o cancelaste en Mercado Libre.',
+        invalid_grant: 'El código expiró. Intentá conectar de nuevo.',
+      };
+      toast.error(
+        mlErrorMessages[mlErr] ||
+          'Error al conectar con Mercado Libre. Usá la cuenta de vendedor de tu inmobiliaria (no la de developers).',
+        { autoClose: 10000 }
+      );
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('ml_error');
       navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });

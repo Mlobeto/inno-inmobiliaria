@@ -208,12 +208,32 @@ const MercadoLibreIntegration = () => {
                     Tené una cuenta de <strong>vendedor</strong> en Mercado Libre Argentina.
                   </li>
                   <li>
-                    Pulsá <strong>Conectar cuenta</strong> y autorizá con el usuario de tu inmobiliaria.
+                    Pulsá <strong>Conectar cuenta</strong> y autorizá con el usuario de tu inmobiliaria (
+                    <strong>no</strong> la misma cuenta con la que creaste la app en developers).
                   </li>
                   <li>
                     Publicá desde <strong>Propiedades</strong> con el botón <strong>Publicar en ML</strong>.
                   </li>
                 </ol>
+              )}
+              {!connected && (
+                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2">
+                  Si Mercado Libre muestra &quot;la aplicación no puede conectarse a tu cuenta&quot;, suele ser la URL
+                  de callback mal configurada en{' '}
+                  <a
+                    href="https://applications.mercadolibre.com.ar"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-yellow-700 underline"
+                  >
+                    applications.mercadolibre.com.ar
+                  </a>
+                  : debe ser exactamente{' '}
+                  <code className="text-[11px] bg-white px-1 rounded break-all">
+                    https://inno-prod-api.../api/mercadolibre/callback
+                  </code>{' '}
+                  (con <strong>/api</strong>).
+                </p>
               )}
               <div className="flex items-start gap-2 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
                 <IoWarningOutline className="w-5 h-5 shrink-0 mt-0.5" />

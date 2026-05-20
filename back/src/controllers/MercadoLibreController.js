@@ -8,12 +8,15 @@ const {
   validatePropertyForMlPublish,
   formatMlPublishError,
 } = require('../utils/mlPublishHelpers');
+const { getMlRedirectUri } = require('../utils/mlOAuthConfig');
 
-// Configuración del cliente ML
+const mlRedirectUri = getMlRedirectUri();
+
+// Configuración del cliente ML (redirect_uri debe coincidir con developers.mercadolibre.com.ar)
 const meli = new mercadolibre.Meli(
   process.env.ML_CLIENT_ID,
   process.env.ML_CLIENT_SECRET,
-  process.env.ML_REDIRECT_URI
+  mlRedirectUri
 );
 
 /** URL pública del API (webhooks). En prod debe coincidir con ML_REDIRECT_URI / Azure. */
@@ -122,17 +125,14 @@ class MercadoLibreController {
       
       // Generar URL de autorización
       const oauthState = signMlOAuthState(tenantId);
-      const authUrl = meli.getAuthURL(process.env.ML_REDIRECT_URI, 'AR', oauthState);
+      const redirectUri = getMlRedirectUri();
+      const authUrl = meli.getAuthURL(redirectUri, 'AR', oauthState);
 
-      logger.info('URL OAuth ML generada', { tenantId });
+      logger.info('URL OAuth ML generada', { tenantId, redirectUri });
 
       res.json({
         success: true,
         authUrl,
-        integration: {
-          redirectUri: process.env.ML_REDIRECT_URI,
-          webhookUrl: getMlWebhookUrl(),
-        },
       });
     } catch (error) {
       logger.error('Error al iniciar auth ML', { tenantId, error: error.message });
@@ -156,8 +156,9 @@ class MercadoLibreController {
       // Si el usuario canceló o hubo error
       if (oauthError || !code) {
         logger.warn('Usuario canceló o error OAuth', { oauthError });
+        const errCode = encodeURIComponent(oauthError || 'no_code');
         return res.redirect(
-          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${oauthError || 'no_code'}`
+          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${errCode}`
         );
       }
       
@@ -173,7 +174,7 @@ class MercadoLibreController {
       logger.info('Intercambiando código OAuth por tokens ML', { tenantId });
       
       // Intercambiar código por access token
-      const response = await meli.authorize(code, process.env.ML_REDIRECT_URI);
+      const response = await meli.authorize(code, getMlRedirectUri());
       
       const {
         access_token,
