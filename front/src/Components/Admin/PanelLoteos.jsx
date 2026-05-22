@@ -2,7 +2,6 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import LoteoVentaPdf from '../PdfTemplates/LoteoVentaPdf';
 import { useDolarRate } from '../hooks/useDolarRate';
-import { Link } from 'react-router-dom';
 import {
   useGetLoteosQuery,
   useGetLoteoByIdQuery,
@@ -19,7 +18,6 @@ import {
   usePagarCuotaMutation,
 } from '@shared/redux';
 import {
-  IoArrowBack,
   IoAdd,
   IoTrashOutline,
   IoPencilOutline,
@@ -28,7 +26,6 @@ import {
   IoCloseOutline,
   IoCheckmarkOutline,
   IoMapOutline,
-  IoChevronBackOutline,
   IoImagesOutline,
   IoGridOutline,
   IoReceiptOutline,
@@ -37,6 +34,8 @@ import {
   IoCashOutline,
   IoAlertCircleOutline,
 } from 'react-icons/io5';
+import { AdminPanelLayout } from './AdminPanelLayout';
+import { btnPrimary, btnSecondary, card, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass } from './adminPanelTheme';
 import { uploadMultipleFiles } from '../../utils/azureUpload';
 
 // ── Constantes ──────────────────────────────────────────────────────────────
@@ -54,11 +53,11 @@ const LOTE_STATUS = [
 ];
 
 const STATUS_BADGE = {
-  ACTIVO:     'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  INACTIVO:   'bg-gray-500/20 text-gray-300 border border-gray-500/30',
-  VENDIDO:    'bg-red-500/20 text-red-300 border border-red-500/30',
-  DISPONIBLE: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  RESERVADO:  'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
+  ACTIVO:     'bg-brand-muted text-brand-light border border-borderStrong',
+  INACTIVO:   'bg-bgElevated text-textMuted border border-borderBase',
+  VENDIDO:    'bg-customRedMuted text-customRed border border-customRed/30',
+  DISPONIBLE: 'bg-brand-muted text-brand-light border border-borderStrong',
+  RESERVADO:  'bg-customYellowMuted text-customYellow border border-customYellow/30',
 };
 
 const EMPTY_LOTEO = {
@@ -408,55 +407,42 @@ export default function PanelLoteos() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-6">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto mb-6 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          {selectedLoteoId ? (
-            <button
-              onClick={() => setSelectedLoteoId(null)}
-              className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <IoChevronBackOutline className="w-6 h-6" />
-            </button>
-          ) : (
-            <Link to="/panel" className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors">
-              <IoArrowBack className="w-6 h-6" />
-            </Link>
-          )}
-          <div className="flex items-center space-x-2 text-white">
-            <IoMapOutline className="w-7 h-7" />
-            <h1 className="text-2xl font-bold">
-              {selectedLoteoId
-                ? loadingDetail ? 'Cargando...' : loteoDetail?.name || 'Loteo'
-                : 'Loteos'}
-            </h1>
-          </div>
-        </div>
-
+    <>
+    <AdminPanelLayout
+      wide
+      backTo="/panel"
+      backOnClick={selectedLoteoId ? () => setSelectedLoteoId(null) : undefined}
+      backLabel={selectedLoteoId ? 'Loteos' : 'Panel'}
+      title={
+        selectedLoteoId
+          ? loadingDetail ? 'Cargando...' : loteoDetail?.name || 'Loteo'
+          : 'Loteos'
+      }
+      icon={IoMapOutline}
+      actions={
         <button
+          type="button"
           onClick={selectedLoteoId ? openCreateLote : openCreateLoteo}
-          className="flex items-center space-x-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors"
+          className={btnPrimary}
         >
           <IoAdd className="w-5 h-5" />
-          <span>{selectedLoteoId ? 'Nuevo Lote' : 'Nuevo Loteo'}</span>
+          {selectedLoteoId ? 'Nuevo Lote' : 'Nuevo Loteo'}
         </button>
-      </div>
-
-      <div className="max-w-6xl mx-auto">
+      }
+    >
 
         {/* ── Vista: Lista de Loteos ── */}
         {!selectedLoteoId && (
           <>
             {isLoading ? (
-              <div className="text-white text-center py-12">Cargando loteos...</div>
+              <div className="text-textPrimary text-center py-12">Cargando loteos...</div>
             ) : loteos.length === 0 ? (
               <div className="text-center py-16">
-                <IoMapOutline className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400 text-lg">No hay loteos creados todavía.</p>
+                <IoMapOutline className="w-16 h-16 text-textMuted mx-auto mb-4" />
+                <p className="text-textMuted text-lg">No hay loteos creados todavía.</p>
                 <button
                   onClick={openCreateLoteo}
-                  className="mt-4 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-semibold transition-colors"
+                  className="mt-4 px-6 py-3 bg-brand hover:bg-brand-dark text-textWhite rounded-lg font-semibold transition-colors"
                 >
                   Crear primer loteo
                 </button>
@@ -466,7 +452,7 @@ export default function PanelLoteos() {
                 {loteos.map((loteo) => (
                   <div
                     key={loteo.id}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col space-y-3 hover:bg-white/8 transition-colors"
+                    className="bg-bgSurface border border-borderBase rounded-2xl p-5 flex flex-col space-y-3 hover:bg-brand-subtle/50 transition-colors"
                   >
                     {/* Foto principal */}
                     {loteo.photos?.[0] ? (
@@ -476,24 +462,24 @@ export default function PanelLoteos() {
                         className="w-full h-40 object-cover rounded-xl"
                       />
                     ) : (
-                      <div className="w-full h-40 bg-white/5 rounded-xl flex items-center justify-center">
-                        <IoImagesOutline className="w-10 h-10 text-slate-500" />
+                      <div className="w-full h-40 bg-brand-subtle/40 rounded-xl flex items-center justify-center">
+                        <IoImagesOutline className="w-10 h-10 text-textMuted" />
                       </div>
                     )}
 
                     {/* Info */}
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="text-white font-bold text-lg leading-tight">{loteo.name}</h3>
+                        <h3 className="text-textPrimary font-bold text-lg leading-tight">{loteo.name}</h3>
                         {(loteo.city || loteo.province) && (
-                          <p className="text-slate-400 text-sm">{[loteo.city, loteo.province].filter(Boolean).join(', ')}</p>
+                          <p className="text-textMuted text-sm">{[loteo.city, loteo.province].filter(Boolean).join(', ')}</p>
                         )}
                       </div>
                       <StatusBadge status={loteo.status} />
                     </div>
 
                     {/* Contador lotes */}
-                    <div className="flex items-center space-x-2 text-slate-400 text-sm">
+                    <div className="flex items-center space-x-2 text-textMuted text-sm">
                       <IoGridOutline className="w-4 h-4" />
                       <span>{loteo.totalLotes || 0} lote{loteo.totalLotes !== 1 ? 's' : ''}</span>
                       {loteo.isPublished && (
@@ -507,7 +493,7 @@ export default function PanelLoteos() {
                     <div className="flex items-center space-x-2 pt-1">
                       <button
                         onClick={() => setSelectedLoteoId(loteo.id)}
-                        className="flex-1 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-lg text-sm font-medium transition-colors"
+                        className="flex-1 py-2 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded-lg text-sm font-medium transition-colors"
                       >
                         Ver Lotes
                       </button>
@@ -542,20 +528,20 @@ export default function PanelLoteos() {
         {selectedLoteoId && (
           <>
             {loadingDetail ? (
-              <div className="text-white text-center py-12">Cargando lotes...</div>
+              <div className="text-textPrimary text-center py-12">Cargando lotes...</div>
             ) : !loteoDetail ? (
-              <div className="text-white text-center py-12">No se encontró el loteo.</div>
+              <div className="text-textPrimary text-center py-12">No se encontró el loteo.</div>
             ) : (
               <>
                 {/* Info del loteo */}
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-6">
+                <div className="bg-bgSurface border border-borderBase rounded-2xl p-5 mb-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       {loteoDetail.description && (
-                        <p className="text-slate-400 text-sm mt-1">{loteoDetail.description}</p>
+                        <p className="text-textMuted text-sm mt-1">{loteoDetail.description}</p>
                       )}
                       {loteoDetail.address && (
-                        <p className="text-slate-400 text-sm">{loteoDetail.address}</p>
+                        <p className="text-textMuted text-sm">{loteoDetail.address}</p>
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
@@ -587,45 +573,45 @@ export default function PanelLoteos() {
                 {/* Grid de lotes */}
                 {loteoDetail.lotes?.length === 0 ? (
                   <div className="text-center py-12">
-                    <IoGridOutline className="w-14 h-14 text-slate-500 mx-auto mb-3" />
-                    <p className="text-slate-400">No hay lotes en este loteo todavía.</p>
+                    <IoGridOutline className="w-14 h-14 text-textMuted mx-auto mb-3" />
+                    <p className="text-textMuted">No hay lotes en este loteo todavía.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {loteoDetail.lotes?.map((lote) => (
                       <div
                         key={lote.id}
-                        className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col space-y-2"
+                        className="bg-bgSurface border border-borderBase rounded-xl p-3 flex flex-col space-y-2"
                       >
                         {lote.photos?.[0] ? (
                           <img src={lote.photos[0]} alt={`Lote ${lote.number}`} className="w-full h-24 object-cover rounded-lg" />
                         ) : (
-                          <div className="w-full h-24 bg-white/5 rounded-lg flex items-center justify-center">
-                            <IoImagesOutline className="w-7 h-7 text-slate-500" />
+                          <div className="w-full h-24 bg-brand-subtle/40 rounded-lg flex items-center justify-center">
+                            <IoImagesOutline className="w-7 h-7 text-textMuted" />
                           </div>
                         )}
 
                         <div className="flex items-center justify-between">
-                          <span className="text-white font-bold text-sm">Lote {lote.number}</span>
+                          <span className="text-textPrimary font-bold text-sm">Lote {lote.number}</span>
                           <StatusBadge status={lote.status} />
                         </div>
 
                         {lote.surface && (
-                          <p className="text-slate-400 text-xs">{lote.surface} m²</p>
+                          <p className="text-textMuted text-xs">{lote.surface} m²</p>
                         )}
                         {lote.price && (
-                          <p className="text-slate-300 text-xs font-semibold">
+                          <p className="text-textSecondary text-xs font-semibold">
                             {lote.currency} {Number(lote.price).toLocaleString('es-AR')}
                           </p>
                         )}
                         {lote.description && (
-                          <p className="text-slate-500 text-xs line-clamp-2">{lote.description}</p>
+                          <p className="text-textMuted text-xs line-clamp-2">{lote.description}</p>
                         )}
 
                         <div className="flex space-x-1 pt-1">
                           <button
                             onClick={() => openVentaModal(lote)}
-                            className="flex-1 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded text-xs transition-colors"
+                            className="flex-1 py-1 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded text-xs transition-colors"
                             title="Plan de venta / financiación"
                           >
                             <IoReceiptOutline className="w-3.5 h-3.5 mx-auto" />
@@ -651,17 +637,17 @@ export default function PanelLoteos() {
             )}
           </>
         )}
-      </div>
+    </AdminPanelLayout>
 
       {/* ── Modal: Crear/Editar Loteo ── */}
       {showLoteoModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <h2 className="text-white font-bold text-lg">
+          <div className="bg-bgSurface border border-borderBase rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-borderBase">
+              <h2 className="text-textPrimary font-bold text-lg">
                 {editingLoteo ? 'Editar Loteo' : 'Nuevo Loteo'}
               </h2>
-              <button onClick={() => setShowLoteoModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowLoteoModal(false)} className="text-textMuted hover:text-textPrimary">
                 <IoCloseOutline className="w-6 h-6" />
               </button>
             </div>
@@ -672,9 +658,9 @@ export default function PanelLoteos() {
               )}
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Nombre *</label>
+                <label className="block text-textSecondary text-sm mb-1">Nombre *</label>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteoForm.name}
                   onChange={e => setLoteoForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="Ej: Loteo Los Álamos"
@@ -682,10 +668,10 @@ export default function PanelLoteos() {
               </div>
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Descripción</label>
+                <label className="block text-textSecondary text-sm mb-1">Descripción</label>
                 <textarea
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand resize-none"
                   value={loteoForm.description}
                   onChange={e => setLoteoForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Descripción del proyecto..."
@@ -693,9 +679,9 @@ export default function PanelLoteos() {
               </div>
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Dirección</label>
+                <label className="block text-textSecondary text-sm mb-1">Dirección</label>
                 <input
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteoForm.address}
                   onChange={e => setLoteoForm(f => ({ ...f, address: e.target.value }))}
                   placeholder="Calle y número"
@@ -704,18 +690,18 @@ export default function PanelLoteos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Ciudad</label>
+                  <label className="block text-textSecondary text-sm mb-1">Ciudad</label>
                   <input
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteoForm.city}
                     onChange={e => setLoteoForm(f => ({ ...f, city: e.target.value }))}
                     placeholder="Ciudad"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Provincia</label>
+                  <label className="block text-textSecondary text-sm mb-1">Provincia</label>
                   <input
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteoForm.province}
                     onChange={e => setLoteoForm(f => ({ ...f, province: e.target.value }))}
                     placeholder="Provincia"
@@ -725,11 +711,11 @@ export default function PanelLoteos() {
 
               {/* Cantidad de lotes y precio base */}
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Cantidad de lotes</label>
+                <label className="block text-textSecondary text-sm mb-1">Cantidad de lotes</label>
                 <input
                   type="number"
                   min="0"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteoForm.totalLotes}
                   onChange={e => setLoteoForm(f => ({ ...f, totalLotes: e.target.value }))}
                   placeholder="Ej: 80 (cantidad total de lotes del proyecto)"
@@ -738,10 +724,10 @@ export default function PanelLoteos() {
 
               {/* Fotos generales */}
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Fotos generales del loteo</label>
-                <label className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-dashed border-white/20 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                  <IoImagesOutline className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-400 text-sm">
+                <label className="block text-textSecondary text-sm mb-1">Fotos generales del loteo</label>
+                <label className="flex items-center space-x-2 px-3 py-2 bg-brand-subtle/40 border border-dashed border-borderStrong rounded-lg cursor-pointer hover:bg-brand-subtle transition-colors">
+                  <IoImagesOutline className="w-5 h-5 text-textMuted" />
+                  <span className="text-textMuted text-sm">
                     {uploadingLoteo ? 'Subiendo...' : 'Seleccionar fotos'}
                   </span>
                   <input
@@ -762,7 +748,7 @@ export default function PanelLoteos() {
                           onClick={() => removeLoteoPhoto(i)}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
                         >
-                          <IoCloseOutline className="w-3 h-3 text-white" />
+                          <IoCloseOutline className="w-3 h-3 text-textPrimary" />
                         </button>
                       </div>
                     ))}
@@ -771,17 +757,17 @@ export default function PanelLoteos() {
               </div>
             </div>
 
-            <div className="flex space-x-3 p-5 border-t border-white/10">
+            <div className="flex space-x-3 p-5 border-t border-borderBase">
               <button
                 onClick={() => setShowLoteoModal(false)}
-                className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={saveLoteo}
                 disabled={saving || uploadingLoteo}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-textWhite rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
               >
                 <IoCheckmarkOutline className="w-5 h-5" />
                 <span>{saving ? 'Guardando...' : 'Guardar'}</span>
@@ -794,12 +780,12 @@ export default function PanelLoteos() {
       {/* ── Modal: Crear/Editar Lote ── */}
       {showLoteModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <h2 className="text-white font-bold text-lg">
+          <div className="bg-bgSurface border border-borderBase rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-borderBase">
+              <h2 className="text-textPrimary font-bold text-lg">
                 {editingLote ? `Editar Lote ${editingLote.number}` : 'Nuevo Lote'}
               </h2>
-              <button onClick={() => setShowLoteModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowLoteModal(false)} className="text-textMuted hover:text-textPrimary">
                 <IoCloseOutline className="w-6 h-6" />
               </button>
             </div>
@@ -811,21 +797,21 @@ export default function PanelLoteos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Parcela</label>
+                  <label className="block text-textSecondary text-sm mb-1">Parcela</label>
                   <input
                     type="text"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteForm.parcela}
                     onChange={e => setLoteForm(f => ({ ...f, parcela: e.target.value }))}
                     placeholder="Ej: Parcela 1 / Manzana A"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Número de lote *</label>
+                  <label className="block text-textSecondary text-sm mb-1">Número de lote *</label>
                   <input
                     type="number"
                     min="1"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteForm.number}
                     onChange={e => setLoteForm(f => ({ ...f, number: e.target.value }))}
                     placeholder="1"
@@ -834,12 +820,12 @@ export default function PanelLoteos() {
               </div>
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Superficie (m²)</label>
+                <label className="block text-textSecondary text-sm mb-1">Superficie (m²)</label>
                 <input
                   type="number"
                   min="0"
                   step="0.01"
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteForm.surface}
                   onChange={e => setLoteForm(f => ({ ...f, surface: e.target.value }))}
                   placeholder="200"
@@ -848,20 +834,20 @@ export default function PanelLoteos() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Precio</label>
+                  <label className="block text-textSecondary text-sm mb-1">Precio</label>
                   <input
                     type="number"
                     min="0"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteForm.price}
                     onChange={e => setLoteForm(f => ({ ...f, price: e.target.value }))}
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Moneda</label>
+                  <label className="block text-textSecondary text-sm mb-1">Moneda</label>
                   <select
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-bgElevated border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
                     value={loteForm.currency}
                     onChange={e => setLoteForm(f => ({ ...f, currency: e.target.value }))}
                   >
@@ -878,13 +864,13 @@ export default function PanelLoteos() {
                     <p className="text-amber-400 text-xs">Obteniendo cotización...</p>
                   ) : dolar ? (
                     <div className="space-y-1 text-xs">
-                      <div className="flex justify-between text-slate-300">
+                      <div className="flex justify-between text-textSecondary">
                         <span>Dólar Oficial venta:</span>
-                        <span className="text-white font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
+                        <span className="text-textPrimary font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
                       </div>
-                      <div className="flex justify-between text-slate-300">
+                      <div className="flex justify-between text-textSecondary">
                         <span>Dólar Blue venta:</span>
-                        <span className="text-white font-semibold">{formatCurrency(dolar.blue?.venta, 'ARS')}</span>
+                        <span className="text-textPrimary font-semibold">{formatCurrency(dolar.blue?.venta, 'ARS')}</span>
                       </div>
                       {loteForm.price && (
                         <div className="border-t border-amber-500/20 pt-1 mt-1">
@@ -902,7 +888,7 @@ export default function PanelLoteos() {
                           </div>
                         </div>
                       )}
-                      <p className="text-slate-500 text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
+                      <p className="text-textMuted text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
                     </div>
                   ) : (
                     <p className="text-red-400 text-xs">No se pudo obtener la cotización</p>
@@ -911,9 +897,9 @@ export default function PanelLoteos() {
               )}
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Estado</label>
+                <label className="block text-textSecondary text-sm mb-1">Estado</label>
                 <select
-                  className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-bgElevated border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteForm.status}
                   onChange={e => setLoteForm(f => ({ ...f, status: e.target.value }))}
                 >
@@ -924,10 +910,10 @@ export default function PanelLoteos() {
               </div>
 
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Descripción</label>
+                <label className="block text-textSecondary text-sm mb-1">Descripción</label>
                 <textarea
                   rows={2}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                  className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand resize-none"
                   value={loteForm.description}
                   onChange={e => setLoteForm(f => ({ ...f, description: e.target.value }))}
                   placeholder="Observaciones del lote..."
@@ -936,10 +922,10 @@ export default function PanelLoteos() {
 
               {/* Fotos del lote */}
               <div>
-                <label className="block text-slate-300 text-sm mb-1">Fotos del lote</label>
-                <label className="flex items-center space-x-2 px-3 py-2 bg-white/5 border border-dashed border-white/20 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                  <IoImagesOutline className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-400 text-sm">
+                <label className="block text-textSecondary text-sm mb-1">Fotos del lote</label>
+                <label className="flex items-center space-x-2 px-3 py-2 bg-brand-subtle/40 border border-dashed border-borderStrong rounded-lg cursor-pointer hover:bg-brand-subtle transition-colors">
+                  <IoImagesOutline className="w-5 h-5 text-textMuted" />
+                  <span className="text-textMuted text-sm">
                     {uploadingLote ? 'Subiendo...' : 'Seleccionar fotos'}
                   </span>
                   <input
@@ -960,7 +946,7 @@ export default function PanelLoteos() {
                           onClick={() => removeLotePhoto(i)}
                           className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center"
                         >
-                          <IoCloseOutline className="w-3 h-3 text-white" />
+                          <IoCloseOutline className="w-3 h-3 text-textPrimary" />
                         </button>
                       </div>
                     ))}
@@ -969,17 +955,17 @@ export default function PanelLoteos() {
               </div>
             </div>
 
-            <div className="flex space-x-3 p-5 border-t border-white/10">
+            <div className="flex space-x-3 p-5 border-t border-borderBase">
               <button
                 onClick={() => setShowLoteModal(false)}
-                className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={saveLote}
                 disabled={saving || uploadingLote}
-                className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-textWhite rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
               >
                 <IoCheckmarkOutline className="w-5 h-5" />
                 <span>{saving ? 'Guardando...' : 'Guardar'}</span>
@@ -992,18 +978,18 @@ export default function PanelLoteos() {
       {/* ── Modal: Plan de Venta / Financiación ── */}
       {showVentaModal && selectedLoteForVenta && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-bgSurface border border-borderBase rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-borderBase">
               <div className="flex items-center space-x-3">
-                <IoReceiptOutline className="w-6 h-6 text-emerald-400" />
+                <IoReceiptOutline className="w-6 h-6 text-brand-light" />
                 <div>
-                  <h2 className="text-white font-bold text-lg">Plan de Venta</h2>
-                  <p className="text-slate-400 text-sm">Lote {selectedLoteForVenta.number}</p>
+                  <h2 className="text-textPrimary font-bold text-lg">Plan de Venta</h2>
+                  <p className="text-textMuted text-sm">Lote {selectedLoteForVenta.number}</p>
                 </div>
               </div>
-              <button onClick={closeVentaModal} className="text-slate-400 hover:text-white">
+              <button onClick={closeVentaModal} className="text-textMuted hover:text-textPrimary">
                 <IoCloseOutline className="w-6 h-6" />
               </button>
             </div>
@@ -1011,7 +997,7 @@ export default function PanelLoteos() {
             {/* Loading state */}
             {loadingVenta ? (
               <div className="p-10 flex justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-400" />
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand" />
               </div>
 
             /* Venta existente: mostrar plan y cuotas */
@@ -1019,47 +1005,47 @@ export default function PanelLoteos() {
               <div className="p-5 space-y-5">
 
                 {/* Info de la venta */}
-                <div className="grid grid-cols-2 gap-4 p-4 bg-white/5 rounded-xl border border-white/10">
+                <div className="grid grid-cols-2 gap-4 p-4 bg-brand-subtle/40 rounded-xl border border-borderBase">
                   <div>
-                    <p className="text-slate-400 text-xs mb-0.5">Comprador</p>
-                    <p className="text-white font-semibold">{venta.clienteNombre}</p>
-                    {venta.clienteCuil && <p className="text-slate-400 text-xs">{venta.clienteCuil}</p>}
-                    {venta.clienteTelefono && <p className="text-slate-400 text-xs">{venta.clienteTelefono}</p>}
+                    <p className="text-textMuted text-xs mb-0.5">Comprador</p>
+                    <p className="text-textPrimary font-semibold">{venta.clienteNombre}</p>
+                    {venta.clienteCuil && <p className="text-textMuted text-xs">{venta.clienteCuil}</p>}
+                    {venta.clienteTelefono && <p className="text-textMuted text-xs">{venta.clienteTelefono}</p>}
                   </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Fecha:</span>
-                      <span className="text-white">{new Date(venta.fechaVenta).toLocaleDateString('es-AR')}</span>
+                      <span className="text-textMuted">Fecha:</span>
+                      <span className="text-textPrimary">{new Date(venta.fechaVenta).toLocaleDateString('es-AR')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Precio total:</span>
-                      <span className="text-white font-semibold">{formatCurrency(venta.precioTotal, venta.currency)}</span>
+                      <span className="text-textMuted">Precio total:</span>
+                      <span className="text-textPrimary font-semibold">{formatCurrency(venta.precioTotal, venta.currency)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Anticipo:</span>
-                      <span className="text-white">{formatCurrency(venta.anticipo, venta.currency)}</span>
+                      <span className="text-textMuted">Anticipo:</span>
+                      <span className="text-textPrimary">{formatCurrency(venta.anticipo, venta.currency)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Saldo:</span>
-                      <span className="text-emerald-300 font-semibold">{formatCurrency(venta.saldo, venta.currency)}</span>
+                      <span className="text-textMuted">Saldo:</span>
+                      <span className="text-brand-light font-semibold">{formatCurrency(venta.saldo, venta.currency)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Cuotas:</span>
-                      <span className="text-white">{venta.cantidadCuotas} × {formatCurrency(venta.montoCuota, venta.currency)}</span>
+                      <span className="text-textMuted">Cuotas:</span>
+                      <span className="text-textPrimary">{venta.cantidadCuotas} × {formatCurrency(venta.montoCuota, venta.currency)}</span>
                     </div>
                     {venta.interes > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Interés:</span>
+                        <span className="text-textMuted">Interés:</span>
                         <span className="text-amber-300">{venta.interes}%</span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Periodicidad:</span>
-                      <span className="text-white">{venta.periodicidad}</span>
+                      <span className="text-textMuted">Periodicidad:</span>
+                      <span className="text-textPrimary">{venta.periodicidad}</span>
                     </div>
                     {venta.comisionPercent > 0 && (
-                      <div className="flex justify-between border-t border-white/10 pt-1 mt-1">
-                        <span className="text-slate-400 flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob.:</span>
+                      <div className="flex justify-between border-t border-borderBase pt-1 mt-1">
+                        <span className="text-textMuted flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob.:</span>
                         <span className="text-orange-300 font-semibold">
                           {venta.comisionPercent}% — {formatCurrency(venta.comisionMonto, venta.currency)}
                         </span>
@@ -1070,12 +1056,12 @@ export default function PanelLoteos() {
 
                 {/* Cuotas */}
                 <div>
-                  <h3 className="text-slate-300 font-semibold mb-2 flex items-center gap-2">
+                  <h3 className="text-textSecondary font-semibold mb-2 flex items-center gap-2">
                     <IoCashOutline className="w-4 h-4" /> Cuotas
                   </h3>
-                  <div className="overflow-x-auto rounded-xl border border-white/10">
+                  <div className="overflow-x-auto rounded-xl border border-borderBase">
                     <table className="w-full text-sm">
-                      <thead className="bg-white/5 text-slate-400 text-xs">
+                      <thead className="bg-brand-subtle/40 text-textMuted text-xs">
                         <tr>
                           <th className="px-3 py-2 text-left">#</th>
                           <th className="px-3 py-2 text-left">Vencimiento</th>
@@ -1086,17 +1072,17 @@ export default function PanelLoteos() {
                       </thead>
                       <tbody>
                         {(venta.cuotas || []).map(c => (
-                          <tr key={c.id} className={`border-t border-white/5 ${c.pagado ? 'opacity-60' : ''}`}>
-                            <td className="px-3 py-2 text-slate-300">{c.numeroCuota}</td>
-                            <td className="px-3 py-2 text-slate-300">
+                          <tr key={c.id} className={`border-t border-borderBase/50 ${c.pagado ? 'opacity-60' : ''}`}>
+                            <td className="px-3 py-2 text-textSecondary">{c.numeroCuota}</td>
+                            <td className="px-3 py-2 text-textSecondary">
                               {new Date(c.fechaVencimiento).toLocaleDateString('es-AR')}
                             </td>
-                            <td className="px-3 py-2 text-right text-white font-medium">
+                            <td className="px-3 py-2 text-right text-textPrimary font-medium">
                               {formatCurrency(c.monto, venta.currency)}
                             </td>
                             <td className="px-3 py-2 text-center">
                               {c.pagado ? (
-                                <span className="inline-flex items-center gap-1 text-emerald-400 text-xs">
+                                <span className="inline-flex items-center gap-1 text-brand-light text-xs">
                                   <IoCheckmarkCircleOutline className="w-4 h-4" /> Pagada
                                 </span>
                               ) : (
@@ -1111,7 +1097,7 @@ export default function PanelLoteos() {
                                 className={`px-2 py-1 rounded text-xs transition-colors ${
                                   c.pagado
                                     ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300'
-                                    : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300'
+                                    : 'bg-brand-muted hover:bg-brand-subtle text-brand-light'
                                 }`}
                               >
                                 {c.pagado ? 'Desmarcar' : 'Pagar'}
@@ -1125,18 +1111,18 @@ export default function PanelLoteos() {
                 </div>
 
                 {venta.notas && (
-                  <p className="text-slate-400 text-sm bg-white/5 rounded-lg p-3">{venta.notas}</p>
+                  <p className="text-textMuted text-sm bg-brand-subtle/40 rounded-lg p-3">{venta.notas}</p>
                 )}
 
                 {/* Anular venta */}
-                <div className="pt-2 border-t border-white/10 flex justify-between items-center">
+                <div className="pt-2 border-t border-borderBase flex justify-between items-center">
                   <LoteoVentaPdf
                     venta={venta}
                     lote={selectedLoteForVenta}
                     loteo={loteoDetail}
                   />
                   <div className="flex items-center gap-3">
-                    <p className="text-slate-500 text-xs">Anular devuelve el lote a DISPONIBLE</p>
+                    <p className="text-textMuted text-xs">Anular devuelve el lote a DISPONIBLE</p>
                     <button
                       onClick={handleDeleteVenta}
                       className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm transition-colors"
@@ -1157,12 +1143,12 @@ export default function PanelLoteos() {
 
                 {/* Sección: Datos del comprador */}
                 <div>
-                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Datos del comprador</h3>
+                  <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Datos del comprador</h3>
                   <div className="space-y-3">
                     <div>
-                      <label className="block text-slate-300 text-sm mb-1">Nombre completo *</label>
+                      <label className="block text-textSecondary text-sm mb-1">Nombre completo *</label>
                       <input
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                         value={ventaForm.clienteNombre}
                         onChange={e => setVentaForm(f => ({ ...f, clienteNombre: e.target.value }))}
                         placeholder="Apellido, Nombre"
@@ -1170,18 +1156,18 @@ export default function PanelLoteos() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">CUIL / DNI</label>
+                        <label className="block text-textSecondary text-sm mb-1">CUIL / DNI</label>
                         <input
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.clienteCuil}
                           onChange={e => setVentaForm(f => ({ ...f, clienteCuil: e.target.value }))}
                           placeholder="20-12345678-5"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Teléfono</label>
+                        <label className="block text-textSecondary text-sm mb-1">Teléfono</label>
                         <input
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.clienteTelefono}
                           onChange={e => setVentaForm(f => ({ ...f, clienteTelefono: e.target.value }))}
                           placeholder="+54 9 ..."
@@ -1193,24 +1179,24 @@ export default function PanelLoteos() {
 
                 {/* Sección: Condiciones de venta */}
                 <div>
-                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Condiciones de venta</h3>
+                  <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Condiciones de venta</h3>
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2">
-                        <label className="block text-slate-300 text-sm mb-1">Precio total *</label>
+                        <label className="block text-textSecondary text-sm mb-1">Precio total *</label>
                         <input
                           type="number"
                           min="0"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.precioTotal}
                           onChange={e => setVentaForm(f => ({ ...f, precioTotal: e.target.value }))}
                           placeholder="0"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Moneda</label>
+                        <label className="block text-textSecondary text-sm mb-1">Moneda</label>
                         <select
-                          className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgElevated border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.currency}
                           onChange={e => setVentaForm(f => ({ ...f, currency: e.target.value }))}
                         >
@@ -1221,33 +1207,33 @@ export default function PanelLoteos() {
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Anticipo / Seña</label>
+                        <label className="block text-textSecondary text-sm mb-1">Anticipo / Seña</label>
                         <input
                           type="number"
                           min="0"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.anticipo}
                           onChange={e => setVentaForm(f => ({ ...f, anticipo: e.target.value }))}
                           placeholder="0"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Comisión inmob. (%)</label>
+                        <label className="block text-textSecondary text-sm mb-1">Comisión inmob. (%)</label>
                         <input
                           type="number"
                           min="0"
                           step="0.1"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.comisionPercent}
                           onChange={e => setVentaForm(f => ({ ...f, comisionPercent: e.target.value }))}
                           placeholder="3"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Fecha de venta</label>
+                        <label className="block text-textSecondary text-sm mb-1">Fecha de venta</label>
                         <input
                           type="date"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.fechaVenta}
                           onChange={e => setVentaForm(f => ({ ...f, fechaVenta: e.target.value }))}
                         />
@@ -1258,35 +1244,35 @@ export default function PanelLoteos() {
 
                 {/* Sección: Plan de financiación */}
                 <div>
-                  <h3 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">Plan de financiación</h3>
+                  <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Plan de financiación</h3>
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Cant. cuotas *</label>
+                        <label className="block text-textSecondary text-sm mb-1">Cant. cuotas *</label>
                         <input
                           type="number"
                           min="1"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.cantidadCuotas}
                           onChange={e => setVentaForm(f => ({ ...f, cantidadCuotas: e.target.value }))}
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Interés (%)</label>
+                        <label className="block text-textSecondary text-sm mb-1">Interés (%)</label>
                         <input
                           type="number"
                           min="0"
                           step="0.1"
-                          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.interes}
                           onChange={e => setVentaForm(f => ({ ...f, interes: e.target.value }))}
                           placeholder="0"
                         />
                       </div>
                       <div>
-                        <label className="block text-slate-300 text-sm mb-1">Periodicidad</label>
+                        <label className="block text-textSecondary text-sm mb-1">Periodicidad</label>
                         <select
-                          className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-bgElevated border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
                           value={ventaForm.periodicidad}
                           onChange={e => setVentaForm(f => ({ ...f, periodicidad: e.target.value }))}
                         >
@@ -1307,23 +1293,23 @@ export default function PanelLoteos() {
                       const total     = saldo * (1 + interes / 100);
                       const cuotaMonto = total / cuotas;
                       return (
-                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg space-y-1 text-sm">
-                          <div className="flex justify-between text-slate-300">
+                        <div className="p-3 bg-brand-muted border border-borderStrong rounded-lg space-y-1 text-sm">
+                          <div className="flex justify-between text-textSecondary">
                             <span>Saldo a financiar:</span>
-                            <span className="text-white font-semibold">{formatCurrency(saldo, ventaForm.currency)}</span>
+                            <span className="text-textPrimary font-semibold">{formatCurrency(saldo, ventaForm.currency)}</span>
                           </div>
                           {interes > 0 && (
-                            <div className="flex justify-between text-slate-300">
+                            <div className="flex justify-between text-textSecondary">
                               <span>Total con interés ({interes}%):</span>
                               <span className="text-amber-300 font-semibold">{formatCurrency(total, ventaForm.currency)}</span>
                             </div>
                           )}
-                          <div className="flex justify-between text-slate-300 border-t border-emerald-500/20 pt-1 mt-1">
+                          <div className="flex justify-between text-textSecondary border-t border-borderStrong pt-1 mt-1">
                             <span>Valor de cada cuota:</span>
-                            <span className="text-emerald-300 font-bold text-base">{formatCurrency(cuotaMonto, ventaForm.currency)}</span>
+                            <span className="text-brand-light font-bold text-base">{formatCurrency(cuotaMonto, ventaForm.currency)}</span>
                           </div>
                           {ventaForm.comisionPercent && parseFloat(ventaForm.comisionPercent) > 0 && (
-                            <div className="flex justify-between text-slate-300 border-t border-emerald-500/20 pt-1 mt-1">
+                            <div className="flex justify-between text-textSecondary border-t border-borderStrong pt-1 mt-1">
                               <span className="flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob. ({ventaForm.comisionPercent}%):</span>
                               <span className="text-orange-300 font-semibold">{formatCurrency(precio * parseFloat(ventaForm.comisionPercent) / 100, ventaForm.currency)}</span>
                             </div>
@@ -1336,10 +1322,10 @@ export default function PanelLoteos() {
 
                 {/* Notas */}
                 <div>
-                  <label className="block text-slate-300 text-sm mb-1">Notas</label>
+                  <label className="block text-textSecondary text-sm mb-1">Notas</label>
                   <textarea
                     rows={2}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 resize-none"
+                    className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand resize-none"
                     value={ventaForm.notas}
                     onChange={e => setVentaForm(f => ({ ...f, notas: e.target.value }))}
                     placeholder="Condiciones especiales, observaciones..."
@@ -1347,17 +1333,17 @@ export default function PanelLoteos() {
                 </div>
 
                 {/* Botones */}
-                <div className="flex space-x-3 pt-2 border-t border-white/10">
+                <div className="flex space-x-3 pt-2 border-t border-borderBase">
                   <button
                     onClick={closeVentaModal}
-                    className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg transition-colors"
+                    className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={saveVenta}
                     disabled={savingVenta}
-                    className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                    className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-textWhite rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
                   >
                     <IoReceiptOutline className="w-5 h-5" />
                     <span>{savingVenta ? 'Guardando...' : 'Registrar venta'}</span>
@@ -1368,6 +1354,6 @@ export default function PanelLoteos() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

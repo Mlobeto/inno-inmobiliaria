@@ -29,6 +29,29 @@ import {
   IoLogOutOutline,
   IoChatbubblesOutline,
 } from 'react-icons/io5';
+import { AdminPanelLayout } from './AdminPanelLayout';
+import {
+  alertError,
+  alertSuccess,
+  btnGhost,
+  btnPrimary,
+  btnSecondary,
+  inputClass,
+  labelClass,
+  modalBox,
+  modalHeader,
+  modalOverlay,
+  selectClass,
+  spinner,
+  card,
+  statCard,
+  tabActive,
+  tabInactive,
+  tableHeadRow,
+  tableRow,
+  tableTh,
+  tableWrap,
+} from './adminPanelTheme';
 
 const TRANSACTION_TYPES = [
   { value: 'VENTA', label: 'Venta', color: 'emerald' },
@@ -45,17 +68,17 @@ const STATUS_LIST = [
 ];
 
 const STATUS_BADGE = {
-  PENDING: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
-  APPROVED: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  PAID: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  CANCELLED: 'bg-red-500/20 text-red-300 border border-red-500/30',
+  PENDING: 'bg-customYellowMuted text-customYellow border border-customYellow/30',
+  APPROVED: 'bg-customBlueMuted text-customBlue border border-customBlue/30',
+  PAID: 'bg-brand-muted text-brand-light border border-borderStrong',
+  CANCELLED: 'bg-customRedMuted text-customRed border border-customRed/30',
 };
 
 const TX_BADGE = {
-  VENTA: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  ALQUILER: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  ALQUILER_TEMPORAL: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-  VENTA_LOTE: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
+  VENTA: 'bg-brand-muted text-brand-light border border-borderStrong',
+  ALQUILER: 'bg-customBlueMuted text-customBlue border border-customBlue/30',
+  ALQUILER_TEMPORAL: 'bg-brand-subtle text-brand border border-borderStrong',
+  VENTA_LOTE: 'bg-customYellowMuted text-customYellow border border-customYellow/30',
 };
 
 const formatCurrency = (n) =>
@@ -256,87 +279,67 @@ export default function PanelComisiones() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-4 md:p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              to={isAgent ? '/panelLeads' : '/panel'}
-              className="flex items-center text-slate-300 hover:text-white transition-colors"
-            >
-              <IoArrowBack className="w-5 h-5 mr-2" />
-              <span className="hidden sm:inline">{isAgent ? 'Mis leads' : 'Panel'}</span>
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <IoCashOutline className="w-7 h-7 text-emerald-400" />
-                Comisiones
-              </h1>
-              <p className="text-slate-400 text-sm mt-1">
-                {isAgent
-                  ? 'Registrá tus operaciones; el administrador aprueba el pago'
-                  : 'Gestioná y liquidá las comisiones de tus agentes'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isAgent && (
-              <>
-                <Link
-                  to="/soporte"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-sm font-medium transition-colors border border-white/10"
-                  title="Soporte GestProp"
-                >
-                  <IoChatbubblesOutline className="w-5 h-5" />
-                  <span className="hidden sm:inline">Soporte</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    dispatch(logoutAction());
-                    navigate('/login');
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm border border-white/10 transition-colors"
-                  title="Cerrar sesión"
-                >
-                  <IoLogOutOutline className="w-5 h-5" />
-                  <span className="hidden sm:inline">Salir</span>
-                </button>
-              </>
-            )}
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors"
-            >
+    <AdminPanelLayout
+      wide
+      backTo={isAgent ? '/panelLeads' : '/panel'}
+      backLabel={isAgent ? 'Mis leads' : 'Panel'}
+      title="Comisiones"
+      subtitle={
+        isAgent
+          ? 'Registrá tus operaciones; el administrador aprueba el pago'
+          : 'Gestioná y liquidá las comisiones de tus agentes'
+      }
+      icon={IoCashOutline}
+      iconClassName="text-brand-light"
+      actions={
+        <>
+          {isAgent && (
+            <>
+              <Link to="/soporte" className={btnGhost} title="Soporte GestProp">
+                <IoChatbubblesOutline className="w-4 h-4 text-brand-light" />
+                <span className="hidden sm:inline">Soporte</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch(logoutAction());
+                  navigate('/login');
+                }}
+                className={btnGhost}
+                title="Cerrar sesión"
+              >
+                <IoLogOutOutline className="w-4 h-4 text-customRed" />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            </>
+          )}
+          <button type="button" onClick={openCreate} className={btnPrimary}>
             <IoAdd className="w-5 h-5" />
             <span className="hidden sm:inline">{isAgent ? 'Registrar mi comisión' : 'Nueva'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Alertas */}
+          </button>
+        </>
+      }
+    >
         {success && (
-          <div className="mb-4 flex items-center gap-2 p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-300">
-            <IoCheckmarkCircleOutline className="w-5 h-5" />
+          <div className={alertSuccess}>
+            <IoCheckmarkCircleOutline className="w-5 h-5 shrink-0" />
             {success}
           </div>
         )}
         {error && (
-          <div className="mb-4 flex items-center gap-2 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300">
-            <IoAlertCircleOutline className="w-5 h-5" />
+          <div className={alertError}>
+            <IoAlertCircleOutline className="w-5 h-5 shrink-0" />
             {error}
-            <button onClick={() => setError('')} className="ml-auto"><IoCloseOutline /></button>
+            <button type="button" onClick={() => setError('')} className="ml-auto"><IoCloseOutline /></button>
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-5">
           <button
             type="button"
             onClick={() => setActiveTab('lista')}
             className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              activeTab === 'lista' ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
+              activeTab === 'lista' ? tabActive : tabInactive
             }`}
           >
             <IoDocumentTextOutline className="inline w-4 h-4 mr-1" />
@@ -347,7 +350,7 @@ export default function PanelComisiones() {
               type="button"
               onClick={() => setActiveTab('liquidacion')}
               className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-                activeTab === 'liquidacion' ? 'bg-white/20 text-white' : 'text-slate-400 hover:text-white hover:bg-white/10'
+                activeTab === 'liquidacion' ? tabActive : tabInactive
               }`}
             >
               <IoStatsChartOutline className="inline w-4 h-4 mr-1" />
@@ -359,31 +362,30 @@ export default function PanelComisiones() {
         {activeTab === 'lista' && (
           <>
             {/* Totales */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <p className="text-slate-400 text-xs mb-1">Volumen de operaciones</p>
-                <p className="text-xl font-bold">{formatCurrency(totals.transactionAmount)}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+              <div className={statCard}>
+                <p className="text-textMuted text-xs mb-1">Volumen de operaciones</p>
+                <p className="text-xl font-bold text-textPrimary">{formatCurrency(totals.transactionAmount)}</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <p className="text-slate-400 text-xs mb-1">Comisión inmobiliaria</p>
-                <p className="text-xl font-bold text-blue-400">{formatCurrency(totals.inmobiliariaCommissionAmount)}</p>
+              <div className={statCard}>
+                <p className="text-textMuted text-xs mb-1">Comisión inmobiliaria</p>
+                <p className="text-xl font-bold text-customBlue">{formatCurrency(totals.inmobiliariaCommissionAmount)}</p>
               </div>
-              <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <p className="text-slate-400 text-xs mb-1">Comisión agentes</p>
-                <p className="text-xl font-bold text-emerald-400">{formatCurrency(totals.agentCommissionAmount)}</p>
+              <div className={statCard}>
+                <p className="text-textMuted text-xs mb-1">Comisión agentes</p>
+                <p className="text-xl font-bold text-brand-light">{formatCurrency(totals.agentCommissionAmount)}</p>
               </div>
             </div>
 
-            {/* Filtros */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-4 mb-4 flex flex-wrap gap-3 items-end">
-              <IoFilterOutline className="w-5 h-5 text-slate-400 self-center" />
+            <div className={`${statCard} mb-4 flex flex-wrap gap-3 items-end p-4`}>
+              <IoFilterOutline className="w-5 h-5 text-textMuted self-center" />
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Agente</label>
+                <label className={labelClass}>Agente</label>
                 <select
                   value={filters.agentId}
                   onChange={(e) => setFilters({ ...filters, agentId: e.target.value, page: 1 })}
                   disabled={isAgent}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none disabled:opacity-50"
+                  className={`${selectClass} disabled:opacity-50`}
                 >
                   <option value="">Todos</option>
                   {agents.map((a) => (
@@ -394,43 +396,43 @@ export default function PanelComisiones() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Estado</label>
+                <label className={labelClass}>Estado</label>
                 <select
                   value={filters.status}
                   onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
+                  className={selectClass}
                 >
                   <option value="">Todos</option>
                   {STATUS_LIST.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Tipo</label>
+                <label className={labelClass}>Tipo</label>
                 <select
                   value={filters.transactionType}
                   onChange={(e) => setFilters({ ...filters, transactionType: e.target.value, page: 1 })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
+                  className={selectClass}
                 >
                   <option value="">Todos</option>
                   {TRANSACTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Año</label>
+                <label className={labelClass}>Año</label>
                 <input
                   type="number"
                   value={filters.year}
                   onChange={(e) => setFilters({ ...filters, year: e.target.value, page: 1 })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm w-24 focus:outline-none"
+                  className={`${inputClass} w-24`}
                   min="2020" max="2099"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Mes</label>
+                <label className={labelClass}>Mes</label>
                 <select
                   value={filters.month}
                   onChange={(e) => setFilters({ ...filters, month: e.target.value, page: 1 })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
+                  className={selectClass}
                 >
                   <option value="">Todos</option>
                   {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m, i) => (
@@ -443,29 +445,29 @@ export default function PanelComisiones() {
             {/* Tabla */}
             {isLoading ? (
               <div className="flex justify-center py-16">
-                <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                <div className={`w-10 h-10 ${spinner}`} />
               </div>
             ) : commissions.length === 0 ? (
               <div className="text-center py-16">
-                <IoCashOutline className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400">No hay comisiones para los filtros seleccionados</p>
-                <button onClick={openCreate} className="mt-6 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors">
+                <IoCashOutline className="w-16 h-16 text-textMuted mx-auto mb-4" />
+                <p className="text-textMuted">No hay comisiones para los filtros seleccionados</p>
+                <button type="button" onClick={openCreate} className={`mt-6 ${btnPrimary}`}>
                   Registrar primera comisión
                 </button>
               </div>
             ) : (
-              <div className="bg-white/5 rounded-xl border border-white/10 overflow-x-auto">
+              <div className={tableWrap}>
                 <table className="w-full min-w-[700px]">
                   <thead>
-                    <tr className="bg-white/5 border-b border-white/10">
-                      <th className="text-left px-4 py-3 text-slate-300 font-medium text-xs">Agente</th>
-                      <th className="text-left px-4 py-3 text-slate-300 font-medium text-xs">Propiedad</th>
-                      <th className="text-left px-4 py-3 text-slate-300 font-medium text-xs">Tipo</th>
-                      <th className="text-right px-4 py-3 text-slate-300 font-medium text-xs">Importe op.</th>
-                      <th className="text-right px-4 py-3 text-slate-300 font-medium text-xs">Comisión agente</th>
-                      <th className="text-left px-4 py-3 text-slate-300 font-medium text-xs">Estado</th>
-                      <th className="text-left px-4 py-3 text-slate-300 font-medium text-xs">Fecha</th>
-                      <th className="text-right px-4 py-3 text-slate-300 font-medium text-xs">Acciones</th>
+                    <tr className={tableHeadRow}>
+                      <th className={tableTh}>Agente</th>
+                      <th className={tableTh}>Propiedad</th>
+                      <th className={tableTh}>Tipo</th>
+                      <th className={`${tableTh} text-right`}>Importe op.</th>
+                      <th className={`${tableTh} text-right`}>Comisión agente</th>
+                      <th className={tableTh}>Estado</th>
+                      <th className={tableTh}>Fecha</th>
+                      <th className={`${tableTh} text-right`}>Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -476,22 +478,22 @@ export default function PanelComisiones() {
                         ? (c.loteoNombre || `Lote #${c.transactionId}`)
                         : (c.Property?.address || `#${c.propertyId}`);
                       return (
-                        <tr key={c.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="px-4 py-3 text-sm font-medium">{agentName}</td>
-                          <td className="px-4 py-3 text-sm text-slate-300 max-w-[140px] truncate">{propAddr}</td>
+                        <tr key={c.id} className={tableRow}>
+                          <td className="px-4 py-3 text-sm font-medium text-textPrimary">{agentName}</td>
+                          <td className="px-4 py-3 text-sm text-textSecondary max-w-[140px] truncate">{propAddr}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs ${TX_BADGE[c.transactionType] || ''}`}>
                               {TRANSACTION_TYPES.find((t) => t.value === c.transactionType)?.label || c.transactionType}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right text-sm">{formatCurrency(c.transactionAmount)}</td>
-                          <td className="px-4 py-3 text-right text-sm font-medium text-emerald-400">
+                          <td className="px-4 py-3 text-right text-sm text-textPrimary">{formatCurrency(c.transactionAmount)}</td>
+                          <td className="px-4 py-3 text-right text-sm font-medium text-brand-light">
                             {c.agentCommissionAmount != null ? formatCurrency(c.agentCommissionAmount) : '—'}
                             {c.agentCommissionFixedAmount != null && (
-                              <span className="text-slate-500 text-xs ml-1">(fijo)</span>
+                              <span className="text-textMuted text-xs ml-1">(fijo)</span>
                             )}
                             {c.agentCommissionFixedAmount == null && c.agentCommissionPercent != null && (
-                              <span className="text-slate-500 text-xs ml-1">({c.agentCommissionPercent}%)</span>
+                              <span className="text-textMuted text-xs ml-1">({c.agentCommissionPercent}%)</span>
                             )}
                           </td>
                           <td className="px-4 py-3">
@@ -499,28 +501,28 @@ export default function PanelComisiones() {
                               {STATUS_LIST.find((s) => s.value === c.status)?.label || c.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">{formatDate(c.createdAt)}</td>
+                          <td className="px-4 py-3 text-xs text-textMuted">{formatDate(c.createdAt)}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
                               {isSuperAdmin && c.status === 'PENDING' && (
                                 <>
                                   <button
                                     onClick={() => openEdit(c)}
-                                    className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                                    className="p-1.5 rounded hover:bg-brand-subtle text-textMuted hover:text-textPrimary transition-colors"
                                     title="Editar"
                                   >
                                     <IoPencilOutline className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleApprove(c.id)}
-                                    className="p-1.5 rounded hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 transition-colors"
+                                    className="p-1.5 rounded hover:bg-customBlueMuted text-textMuted hover:text-customBlue transition-colors"
                                     title="Aprobar"
                                   >
                                     <IoCheckmarkDoneOutline className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleCancel(c.id)}
-                                    className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                    className="p-1.5 rounded hover:bg-customRedMuted text-textMuted hover:text-customRed transition-colors"
                                     title="Cancelar"
                                   >
                                     <IoCloseCircleOutline className="w-3.5 h-3.5" />
@@ -531,14 +533,14 @@ export default function PanelComisiones() {
                                 <>
                                   <button
                                     onClick={() => handlePay(c.id)}
-                                    className="p-1.5 rounded hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 transition-colors"
+                                    className="p-1.5 rounded hover:bg-brand-muted text-textMuted hover:text-brand-light transition-colors"
                                     title="Marcar como pagada"
                                   >
                                     <IoCashOutline className="w-3.5 h-3.5" />
                                   </button>
                                   <button
                                     onClick={() => handleCancel(c.id)}
-                                    className="p-1.5 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+                                    className="p-1.5 rounded hover:bg-customRedMuted text-textMuted hover:text-customRed transition-colors"
                                     title="Cancelar"
                                   >
                                     <IoCloseCircleOutline className="w-3.5 h-3.5" />
@@ -560,23 +562,23 @@ export default function PanelComisiones() {
         {activeTab === 'liquidacion' && (
           <>
             {/* Selector de período */}
-            <div className="bg-white/5 rounded-xl border border-white/10 p-4 mb-6 flex flex-wrap gap-3 items-end">
+            <div className={`${card} p-4 mb-6 flex flex-wrap gap-3 items-end`}>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Año</label>
+                <label className={labelClass}>Año</label>
                 <input
                   type="number"
                   value={settlementPeriod.year}
                   onChange={(e) => setSettlementPeriod({ ...settlementPeriod, year: e.target.value })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm w-24 focus:outline-none"
+                  className={`${inputClass} w-24`}
                   min="2020" max="2099"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Mes</label>
+                <label className={labelClass}>Mes</label>
                 <select
                   value={settlementPeriod.month}
                   onChange={(e) => setSettlementPeriod({ ...settlementPeriod, month: e.target.value })}
-                  className="bg-slate-700 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none"
+                  className={selectClass}
                 >
                   <option value="">Todo el año</option>
                   {['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((m, i) => (
@@ -588,34 +590,34 @@ export default function PanelComisiones() {
 
             {settlement.length === 0 ? (
               <div className="text-center py-16">
-                <IoStatsChartOutline className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-400">No hay datos para el período seleccionado</p>
+                <IoStatsChartOutline className="w-16 h-16 text-textMuted mx-auto mb-4" />
+                <p className="text-textMuted">No hay datos para el período seleccionado</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {settlement.map(({ agent, operationsCount, totalTransactionAmount, totalInmobiliariaCommission, totalAgentCommission, byStatus }) => (
-                  <div key={agent.adminId} className="bg-white/5 rounded-xl border border-white/10 p-5">
+                  <div key={agent.adminId} className={`${card} p-5`}>
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <h3 className="font-bold text-lg">{agent.fullName || agent.username}</h3>
-                        <p className="text-slate-400 text-sm">@{agent.username} · {operationsCount} operaciones</p>
+                        <p className="text-textMuted text-sm">@{agent.username} · {operationsCount} operaciones</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalAgentCommission)}</p>
-                        <p className="text-slate-400 text-xs">comisión total</p>
+                        <p className="text-2xl font-bold text-brand-light">{formatCurrency(totalAgentCommission)}</p>
+                        <p className="text-textMuted text-xs">comisión total</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-xs text-slate-400">Vol. operaciones</p>
+                      <div className="bg-bgElevated rounded-lg p-3">
+                        <p className="text-xs text-textMuted">Vol. operaciones</p>
                         <p className="font-semibold">{formatCurrency(totalTransactionAmount)}</p>
                       </div>
-                      <div className="bg-white/5 rounded-lg p-3">
-                        <p className="text-xs text-slate-400">Com. inmobiliaria</p>
-                        <p className="font-semibold text-blue-400">{formatCurrency(totalInmobiliariaCommission)}</p>
+                      <div className="bg-bgElevated rounded-lg p-3">
+                        <p className="text-xs text-textMuted">Com. inmobiliaria</p>
+                        <p className="font-semibold text-customBlue">{formatCurrency(totalInmobiliariaCommission)}</p>
                       </div>
                       {byStatus.map((s) => (
-                        <div key={s.status} className={`rounded-lg p-3 ${STATUS_BADGE[s.status] || 'bg-white/5'}`}>
+                        <div key={s.status} className={`rounded-lg p-3 ${STATUS_BADGE[s.status] || 'bg-bgElevated'}`}>
                           <p className="text-xs opacity-70">{STATUS_LIST.find((st) => st.value === s.status)?.label || s.status}</p>
                           <p className="font-semibold">{formatCurrency(s.amount)} <span className="text-xs opacity-70">({s.count})</span></p>
                         </div>
@@ -627,25 +629,23 @@ export default function PanelComisiones() {
             )}
           </>
         )}
-      </div>
-
       {/* Modal crear / editar comisión */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl border border-white/20 w-full max-w-lg shadow-2xl my-4">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <IoCashOutline className="w-5 h-5 text-emerald-400" />
+        <div className={modalOverlay}>
+          <div className={`${modalBox} max-w-lg my-4`}>
+            <div className={modalHeader}>
+              <h2 className="text-lg font-bold flex items-center gap-2 text-textPrimary">
+                <IoCashOutline className="w-5 h-5 text-brand-light" />
                 {editingId ? 'Editar comisión' : 'Nueva comisión'}
               </h2>
-              <button type="button" onClick={closeModal} className="text-slate-400 hover:text-white">
+              <button type="button" onClick={closeModal} className="text-textMuted hover:text-textPrimary">
                 <IoCloseOutline className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
               {error && (
-                <div className="flex items-center gap-2 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-300 text-sm">
+                <div className={alertError}>
                   <IoAlertCircleOutline className="w-5 h-5 flex-shrink-0" />
                   {error}
                 </div>
@@ -653,12 +653,12 @@ export default function PanelComisiones() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm text-slate-300 mb-1">Agente *</label>
+                  <label className={labelClass}>Agente *</label>
                   <select
                     value={form.agentId}
                     onChange={(e) => setForm({ ...form, agentId: e.target.value })}
                     disabled={isAgent}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 disabled:opacity-60"
+                    className={`${selectClass} w-full disabled:opacity-60`}
                     required
                   >
                     <option value="">Seleccionar agente</option>
@@ -669,18 +669,18 @@ export default function PanelComisiones() {
                     ))}
                   </select>
                   {isAgent && (
-                    <p className="text-slate-500 text-xs mt-1">
+                    <p className="text-textMuted text-xs mt-1">
                       Solo podés cargar comisiones a tu nombre para revisión del administrador.
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">Tipo de operación *</label>
+                  <label className={labelClass}>Tipo de operación *</label>
                   <select
                     value={form.transactionType}
                     onChange={(e) => setForm({ ...form, transactionType: e.target.value })}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className={inputClass}
                     required
                   >
                     {TRANSACTION_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -688,7 +688,7 @@ export default function PanelComisiones() {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">
+                  <label className={labelClass}>
                     ID Propiedad {propertyRequired ? '*' : '(opcional)'}
                   </label>
                   <input
@@ -696,49 +696,49 @@ export default function PanelComisiones() {
                     value={form.propertyId}
                     onChange={(e) => setForm({ ...form, propertyId: e.target.value })}
                     placeholder={propertyRequired ? 'ID propiedad' : 'Solo si aplica'}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className={inputClass}
                     required={propertyRequired}
                     min={0}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">Importe de la operación *</label>
+                  <label className={labelClass}>Importe de la operación *</label>
                   <input
                     type="number"
                     value={form.transactionAmount}
                     onChange={(e) => setForm({ ...form, transactionAmount: e.target.value })}
                     placeholder="0"
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className={inputClass}
                     required min="0" step="0.01"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">ID cliente (opcional)</label>
+                  <label className={labelClass}>ID cliente (opcional)</label>
                   <input
                     type="number"
                     value={form.clientId}
                     onChange={(e) => setForm({ ...form, clientId: e.target.value })}
                     placeholder="ID cliente"
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-300 mb-1">% com. inmobiliaria</label>
+                  <label className={labelClass}>% com. inmobiliaria</label>
                   <input
                     type="number"
                     value={form.inmobiliariaCommissionPercent}
                     onChange={(e) => setForm({ ...form, inmobiliariaCommissionPercent: e.target.value })}
                     placeholder="ej: 3"
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                    className={inputClass}
                     min="0" max="100" step="0.01"
                   />
                 </div>
 
                 <div className="col-span-2 space-y-2">
-                  <span className="block text-sm text-slate-300">Comisión del agente *</span>
+                  <span className={`block ${labelClass}`}>Comisión del agente *</span>
                   <div className="flex flex-wrap gap-4 text-sm">
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <input
@@ -746,9 +746,9 @@ export default function PanelComisiones() {
                         name="commissionBasis"
                         checked={form.commissionBasis === 'percent'}
                         onChange={() => setForm({ ...form, commissionBasis: 'percent' })}
-                        className="text-emerald-500"
+                        className="text-brand"
                       />
-                      <span className="text-slate-300">Porcentaje del importe</span>
+                      <span className="text-textSecondary">Porcentaje del importe</span>
                     </label>
                     <label className="inline-flex items-center gap-2 cursor-pointer">
                       <input
@@ -756,9 +756,9 @@ export default function PanelComisiones() {
                         name="commissionBasis"
                         checked={form.commissionBasis === 'fixed'}
                         onChange={() => setForm({ ...form, commissionBasis: 'fixed' })}
-                        className="text-emerald-500"
+                        className="text-brand"
                       />
-                      <span className="text-slate-300">Monto fijo ($)</span>
+                      <span className="text-textSecondary">Monto fijo ($)</span>
                     </label>
                   </div>
                   {form.commissionBasis === 'percent' ? (
@@ -767,7 +767,7 @@ export default function PanelComisiones() {
                       value={form.agentCommissionPercent}
                       onChange={(e) => setForm({ ...form, agentCommissionPercent: e.target.value })}
                       placeholder="ej: 50 (sobre la operación)"
-                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                      className={inputClass}
                       min="0" max="100" step="0.01"
                     />
                   ) : (
@@ -776,41 +776,41 @@ export default function PanelComisiones() {
                       value={form.agentCommissionFixedAmount}
                       onChange={(e) => setForm({ ...form, agentCommissionFixedAmount: e.target.value })}
                       placeholder="Monto fijo en $"
-                      className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                      className={inputClass}
                       min="0" step="0.01"
                     />
                   )}
                 </div>
 
                 <div className="col-span-2">
-                  <label className="block text-sm text-slate-300 mb-1">Notas</label>
+                  <label className={labelClass}>Notas</label>
                   <textarea
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     placeholder="Detalles adicionales..."
                     rows={3}
-                    className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 resize-none"
+                    className={`${inputClass} resize-none`}
                   />
                 </div>
               </div>
 
               {form.transactionAmount && (form.inmobiliariaCommissionPercent || (form.commissionBasis === 'percent' ? form.agentCommissionPercent : form.agentCommissionFixedAmount)) && (
-                <div className="bg-slate-700/50 rounded-lg p-3 text-sm space-y-1">
-                  <p className="text-slate-400 text-xs font-medium uppercase tracking-wide">Vista previa</p>
+                <div className="bg-bgElevated rounded-lg p-3 text-sm space-y-1">
+                  <p className="text-textMuted text-xs font-medium uppercase tracking-wide">Vista previa</p>
                   {form.inmobiliariaCommissionPercent && (
-                    <p className="text-blue-300">
+                    <p className="text-customBlue">
                       Com. inmobiliaria:{' '}
                       {formatCurrency((parseFloat(form.transactionAmount, 10) * parseFloat(form.inmobiliariaCommissionPercent, 10)) / 100)}
                     </p>
                   )}
                   {form.commissionBasis === 'percent' && form.agentCommissionPercent && (
-                    <p className="text-emerald-300 font-medium">
+                    <p className="text-brand-light font-medium">
                       Com. agente:{' '}
                       {formatCurrency((parseFloat(form.transactionAmount, 10) * parseFloat(form.agentCommissionPercent, 10)) / 100)}
                     </p>
                   )}
                   {form.commissionBasis === 'fixed' && form.agentCommissionFixedAmount && (
-                    <p className="text-emerald-300 font-medium">
+                    <p className="text-brand-light font-medium">
                       Com. agente (fijo): {formatCurrency(parseFloat(form.agentCommissionFixedAmount, 10))}
                     </p>
                   )}
@@ -821,14 +821,14 @@ export default function PanelComisiones() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-medium transition-colors"
+                  className={`flex-1 ${btnSecondary} justify-center`}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating || isUpdating}
-                  className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                  className={`flex-1 ${btnPrimary} justify-center`}
                 >
                   {(isCreating || isUpdating) ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -842,6 +842,6 @@ export default function PanelComisiones() {
           </div>
         </div>
       )}
-    </div>
+    </AdminPanelLayout>
   );
 }

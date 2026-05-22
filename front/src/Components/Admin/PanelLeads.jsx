@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -13,7 +14,6 @@ import {
   useDeleteLeadMutation,
 } from '@shared/redux';
 import {
-  IoArrowBack,
   IoAdd,
   IoTrashOutline,
   IoPencilOutline,
@@ -26,6 +26,8 @@ import {
   IoCheckmarkOutline,
   IoChatbubblesOutline,
 } from 'react-icons/io5';
+import { AdminPanelLayout } from './AdminPanelLayout';
+import { alertError, btnGhost, btnPrimary, btnSecondary, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass } from './adminPanelTheme';
 
 const COLUMNS = [
   { key: 'NUEVO', label: 'Nuevo', color: 'blue' },
@@ -36,19 +38,19 @@ const COLUMNS = [
 ];
 
 const COLUMN_STYLES = {
-  blue:    'border-blue-500/40 bg-blue-500/10',
-  yellow:  'border-yellow-500/40 bg-yellow-500/10',
-  purple:  'border-purple-500/40 bg-purple-500/10',
-  emerald: 'border-emerald-500/40 bg-emerald-500/10',
-  red:     'border-red-500/40 bg-red-500/10',
+  blue: 'border-customBlue/30 bg-customBlueMuted/40',
+  yellow: 'border-customYellow/30 bg-customYellowMuted/40',
+  purple: 'border-brand/30 bg-brand-subtle/60',
+  emerald: 'border-borderStrong bg-brand-muted/50',
+  red: 'border-customRed/30 bg-customRedMuted/40',
 };
 
 const BADGE_STYLES = {
-  blue:    'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  yellow:  'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-  purple:  'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-  emerald: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  red:     'bg-red-500/20 text-red-300 border border-red-500/30',
+  blue: 'bg-customBlueMuted text-customBlue border border-customBlue/30',
+  yellow: 'bg-customYellowMuted text-customYellow border border-customYellow/30',
+  purple: 'bg-brand-muted text-brand-light border border-borderStrong',
+  emerald: 'bg-brand-muted text-brand-light border border-borderStrong',
+  red: 'bg-customRedMuted text-customRed border border-customRed/30',
 };
 
 const EMPTY_FORM = {
@@ -211,61 +213,43 @@ export default function PanelLeads() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Link
-              to={isAgent ? '/panelComisiones' : '/panel'}
-              className="text-white flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-            >
-              <IoArrowBack className="w-5 h-5" />
-              <span className="hidden sm:inline">{isAgent ? 'Mis comisiones' : 'Panel'}</span>
-            </Link>
-            <h1 className="text-white text-xl font-bold">CRM / Leads</h1>
-            <span className="text-slate-400 text-sm hidden sm:inline">
-              {subtitle}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              <IoAdd className="w-5 h-5" />
-              Nuevo Lead
-            </button>
-            {isAgent && (
-              <>
-                <Link
-                  to="/soporte"
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-sm font-medium transition-colors"
-                  title="Soporte GestProp"
-                >
-                  <IoChatbubblesOutline className="w-5 h-5" />
-                  <span className="hidden sm:inline">Soporte</span>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    dispatch(logoutAction());
-                    navigate('/login');
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700/80 hover:bg-slate-600 text-slate-200 text-sm transition-colors border border-white/10"
-                >
-                  Salir
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Kanban board */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <AdminPanelLayout
+      wide
+      backTo={isAgent ? '/panelComisiones' : '/panel'}
+      backLabel={isAgent ? 'Mis comisiones' : 'Panel'}
+      title="CRM / Leads"
+      subtitle={subtitle}
+      icon={IoChatbubblesOutline}
+      actions={
+        <>
+          <button type="button" onClick={openCreate} className={btnPrimary}>
+            <IoAdd className="w-5 h-5" />
+            Nuevo Lead
+          </button>
+          {isAgent && (
+            <>
+              <Link to="/soporte" className={btnGhost}>
+                <IoChatbubblesOutline className="w-4 h-4 text-brand-light" />
+                <span className="hidden sm:inline">Soporte</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  dispatch(logoutAction());
+                  navigate('/login');
+                }}
+                className={btnGhost}
+              >
+                Salir
+              </button>
+            </>
+          )}
+        </>
+      }
+    >
+      <div>
         {isLoading ? (
-          <div className="text-center text-slate-400 py-20">Cargando leads...</div>
+          <div className="text-center text-textMuted py-16">Cargando leads...</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
             {COLUMNS.map((col) => {
@@ -280,12 +264,12 @@ export default function PanelLeads() {
                     <span className={`text-xs font-semibold px-2 py-1 rounded-full ${BADGE_STYLES[col.color]}`}>
                       {col.label}
                     </span>
-                    <span className="text-slate-400 text-xs font-bold">{colLeads.length}</span>
+                    <span className="text-textMuted text-xs font-bold">{colLeads.length}</span>
                   </div>
 
                   {/* Cards */}
                   {colLeads.length === 0 && (
-                    <p className="text-slate-500 text-xs text-center py-4">Sin leads</p>
+                    <p className="text-textMuted text-xs text-center py-4">Sin leads</p>
                   )}
                   {colLeads.map((lead) => (
                     <LeadCard
@@ -324,7 +308,7 @@ export default function PanelLeads() {
           onToggleAgent={toggleAgentId}
         />
       )}
-    </div>
+    </AdminPanelLayout>
   );
 }
 
@@ -348,10 +332,10 @@ function LeadCard({
   const availableToAdd = (agents || []).filter((a) => !assignedIds.has(a.adminId));
 
   return (
-    <div className="relative bg-slate-800/80 border border-white/10 rounded-lg p-3 flex flex-col gap-2 hover:border-white/20 transition-colors">
+    <div className="relative bg-bgSurface border border-borderBase rounded-lg p-3 flex flex-col gap-2 hover:border-borderStrong transition-colors">
         <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
-          <p className="text-white text-sm font-semibold leading-tight break-words">{lead.name}</p>
+          <p className="text-textPrimary text-sm font-semibold leading-tight break-words">{lead.name}</p>
           {lead.mercadolibreQuestionId && (
             <span
               className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/20 text-amber-200 border border-amber-500/35"
@@ -366,7 +350,7 @@ function LeadCard({
             <button
               type="button"
               onClick={() => setShowAddAgent((v) => !v)}
-              className={`text-slate-400 hover:text-indigo-300 transition-colors rounded p-0.5 ${showAddAgent ? 'text-indigo-300' : ''}`}
+              className={`text-textMuted hover:text-brand-light transition-colors rounded p-0.5 ${showAddAgent ? 'text-brand-light' : ''}`}
               title="Asignar agente"
               aria-expanded={showAddAgent}
               aria-haspopup="listbox"
@@ -374,11 +358,11 @@ function LeadCard({
               <IoPersonAddOutline className="w-4 h-4" />
             </button>
           )}
-          <button type="button" onClick={onEdit} className="text-slate-400 hover:text-white transition-colors" title="Editar">
+          <button type="button" onClick={onEdit} className="text-textMuted hover:text-textPrimary transition-colors" title="Editar">
             <IoPencilOutline className="w-4 h-4" />
           </button>
           {canDelete && (
-            <button type="button" onClick={onDelete} className="text-slate-400 hover:text-red-400 transition-colors" title="Eliminar">
+            <button type="button" onClick={onDelete} className="text-textMuted hover:text-customRed transition-colors" title="Eliminar">
               <IoTrashOutline className="w-4 h-4" />
             </button>
           )}
@@ -386,15 +370,15 @@ function LeadCard({
       </div>
 
       {showQuickAssign && showAddAgent && (
-        <div className="absolute right-2 top-9 z-[15] bg-slate-900 border border-indigo-500/30 rounded-lg shadow-xl py-1 min-w-[180px] max-h-40 overflow-y-auto">
+        <div className="absolute right-2 top-9 z-[15] bg-bgSurface border border-borderStrong rounded-lg shadow-xl py-1 min-w-[180px] max-h-40 overflow-y-auto">
           {availableToAdd.length === 0 ? (
-            <p className="px-3 py-2 text-[11px] text-slate-500">Todos ya asignados</p>
+            <p className="px-3 py-2 text-[11px] text-textMuted">Todos ya asignados</p>
           ) : (
             availableToAdd.map((a) => (
               <button
                 key={a.adminId}
                 type="button"
-                className="w-full text-left px-3 py-1.5 text-xs text-slate-200 hover:bg-indigo-500/20 truncate"
+                className="w-full text-left px-3 py-1.5 text-xs text-textSecondary hover:bg-brand-subtle truncate"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onQuickAssign(a.adminId);
@@ -414,7 +398,7 @@ function LeadCard({
             <span
               key={a.adminId}
               title={a.email || ''}
-              className="inline-flex items-center gap-1 text-[10px] pl-2 pr-1 py-0.5 rounded-full bg-indigo-500/25 text-indigo-200 border border-indigo-500/30 max-w-full"
+              className="inline-flex items-center gap-1 text-[10px] pl-2 pr-1 py-0.5 rounded-full bg-brand-muted text-brand-light border border-borderStrong max-w-full"
             >
               <span className="truncate">{a.fullName || a.username || `Agente #${a.adminId}`}</span>
               {showQuickAssign && (
@@ -424,7 +408,7 @@ function LeadCard({
                     e.stopPropagation();
                     onQuickUnassign(a.adminId);
                   }}
-                  className="flex-shrink-0 p-0.5 rounded-full hover:bg-red-500/30 text-indigo-200 hover:text-red-300"
+                  className="flex-shrink-0 p-0.5 rounded-full hover:bg-customRedMuted text-brand-light hover:text-customRed"
                   title="Quitar agente"
                   aria-label="Quitar agente"
                 >
@@ -437,19 +421,19 @@ function LeadCard({
       )}
 
       {lead.phone && (
-        <div className="flex items-center gap-1 text-xs text-slate-400">
+        <div className="flex items-center gap-1 text-xs text-textMuted">
           <IoCallOutline className="w-3 h-3 flex-shrink-0" />
           <span>{lead.phone}</span>
         </div>
       )}
       {lead.email && (
-        <div className="flex items-center gap-1 text-xs text-slate-400 truncate">
+        <div className="flex items-center gap-1 text-xs text-textMuted truncate">
           <IoMailOutline className="w-3 h-3 flex-shrink-0" />
           <span className="truncate">{lead.email}</span>
         </div>
       )}
       {lead.zone && (
-        <div className="flex items-center gap-1 text-xs text-slate-400">
+        <div className="flex items-center gap-1 text-xs text-textMuted">
           <IoLocationOutline className="w-3 h-3 flex-shrink-0" />
           <span>{lead.zone}</span>
         </div>
@@ -457,12 +441,12 @@ function LeadCard({
       {(lead.budget || lead.operationType) && (
         <div className="flex flex-wrap gap-1 mt-1">
           {lead.operationType && (
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-bgElevated text-textSecondary px-2 py-0.5 rounded-full">
               {lead.operationType}
             </span>
           )}
           {lead.budget && (
-            <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-bgElevated text-textSecondary px-2 py-0.5 rounded-full">
               {lead.currency} {Number(lead.budget).toLocaleString('es-AR')}
             </span>
           )}
@@ -474,12 +458,12 @@ function LeadCard({
         <button
           type="button"
           onClick={() => setShowMove((v) => !v)}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors w-full text-left"
+          className="text-xs text-textMuted hover:text-textSecondary transition-colors w-full text-left"
         >
           Mover →
         </button>
         {showMove && (
-          <div className="absolute bottom-full left-0 mb-1 bg-slate-700 border border-white/10 rounded-lg shadow-xl z-10 py-1 min-w-max">
+          <div className="absolute bottom-full left-0 mb-1 bg-bgElevated border border-borderBase rounded-lg shadow-xl z-10 py-1 min-w-max">
             {columns
               .filter((c) => c.key !== lead.status)
               .map((c) => (
@@ -487,7 +471,7 @@ function LeadCard({
                   type="button"
                   key={c.key}
                   onClick={() => { onStatusChange(c.key); setShowMove(false); }}
-                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-300 hover:bg-white/10 transition-colors"
+                  className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-textSecondary hover:bg-brand-subtle transition-colors"
                 >
                   <IoCheckmarkOutline className="w-3 h-3 opacity-0 invisible" />
                   {c.label}
@@ -499,6 +483,49 @@ function LeadCard({
     </div>
   );
 }
+
+LeadCard.propTypes = {
+  lead: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    name: PropTypes.string,
+    phone: PropTypes.string,
+    email: PropTypes.string,
+    zone: PropTypes.string,
+    budget: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    currency: PropTypes.string,
+    operationType: PropTypes.string,
+    status: PropTypes.string,
+    mercadolibreQuestionId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    assignedAgents: PropTypes.arrayOf(
+      PropTypes.shape({
+        adminId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        fullName: PropTypes.string,
+        username: PropTypes.string,
+      }),
+    ),
+  }).isRequired,
+  agents: PropTypes.arrayOf(
+    PropTypes.shape({
+      adminId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      fullName: PropTypes.string,
+      username: PropTypes.string,
+    }),
+  ),
+  columns: PropTypes.arrayOf(
+    PropTypes.shape({
+      key: PropTypes.string,
+      label: PropTypes.string,
+      color: PropTypes.string,
+    }),
+  ).isRequired,
+  canDelete: PropTypes.bool,
+  showQuickAssign: PropTypes.bool,
+  onQuickAssign: PropTypes.func,
+  onQuickUnassign: PropTypes.func,
+  onEdit: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
+  onStatusChange: PropTypes.func.isRequired,
+};
 
 function LeadModal({
   form,
@@ -513,67 +540,64 @@ function LeadModal({
   onToggleAgent,
 }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-800 border border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-white/10">
-          <h2 className="text-white font-bold text-lg flex items-center gap-2">
-            <IoPersonOutline className="w-5 h-5" />
+    <div className={modalOverlay}>
+      <div className={`${modalBox} max-w-lg max-h-[90vh] overflow-y-auto`}>
+        <div className={modalHeader}>
+          <h2 className="text-lg font-bold flex items-center gap-2 text-textPrimary">
+            <IoPersonOutline className="w-5 h-5 text-brand-light" />
             {editing ? 'Editar Lead' : 'Nuevo Lead'}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button type="button" onClick={onClose} className="text-textMuted hover:text-textPrimary">
             <IoCloseOutline className="w-6 h-6" />
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
-          {/* Nombre */}
+        <div className="p-4 flex flex-col gap-4">
           <div>
-            <label className="text-slate-300 text-sm font-medium mb-1 block">
-              Nombre <span className="text-red-400">*</span>
+            <label className={labelClass}>
+              Nombre <span className="text-customRed">*</span>
             </label>
             <input
               name="name"
               value={form.name}
               onChange={onChange}
               placeholder="Nombre del lead"
-              className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+              className={inputClass}
             />
           </div>
 
-          {/* Teléfono / Email */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Teléfono</label>
+              <label className={labelClass}>Teléfono</label>
               <input
                 name="phone"
                 value={form.phone}
                 onChange={onChange}
                 placeholder="+54 9 ..."
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Email</label>
+              <label className={labelClass}>Email</label>
               <input
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={onChange}
                 placeholder="email@ejemplo.com"
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                className={inputClass}
               />
             </div>
           </div>
 
-          {/* Operación / Zona */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Operación</label>
+              <label className={labelClass}>Operación</label>
               <select
                 name="operationType"
                 value={form.operationType}
                 onChange={onChange}
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+                className={selectClass + ' w-full'}
               >
                 <option value="">Sin especificar</option>
                 <option value="Alquiler">Alquiler</option>
@@ -582,37 +606,36 @@ function LeadModal({
               </select>
             </div>
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Zona / Barrio</label>
+              <label className={labelClass}>Zona / Barrio</label>
               <input
                 name="zone"
                 value={form.zone}
                 onChange={onChange}
                 placeholder="Ej: Centro, Palermo..."
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                className={inputClass}
               />
             </div>
           </div>
 
-          {/* Presupuesto */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2">
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Presupuesto</label>
+              <label className={labelClass}>Presupuesto</label>
               <input
                 name="budget"
                 type="number"
                 value={form.budget}
                 onChange={onChange}
                 placeholder="0"
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-1 block">Moneda</label>
+              <label className={labelClass}>Moneda</label>
               <select
                 name="currency"
                 value={form.currency}
                 onChange={onChange}
-                className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+                className={selectClass + ' w-full'}
               >
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
@@ -620,14 +643,13 @@ function LeadModal({
             </div>
           </div>
 
-          {/* Estado */}
           <div>
-            <label className="text-slate-300 text-sm font-medium mb-1 block">Estado</label>
+            <label className={labelClass}>Estado</label>
             <select
               name="status"
               value={form.status}
               onChange={onChange}
-              className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 text-sm"
+              className={selectClass + ' w-full'}
             >
               <option value="NUEVO">Nuevo</option>
               <option value="CONTACTADO">Contactado</option>
@@ -637,37 +659,35 @@ function LeadModal({
             </select>
           </div>
 
-          {/* Notas */}
           <div>
-            <label className="text-slate-300 text-sm font-medium mb-1 block">Notas</label>
+            <label className={labelClass}>Notas</label>
             <textarea
               name="notes"
               value={form.notes}
               onChange={onChange}
               rows={3}
               placeholder="Información adicional sobre el lead..."
-              className="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm resize-none"
+              className={`${inputClass} resize-none`}
             />
           </div>
 
-          {/* Asignación a agentes (solo admin principal) */}
           {showAssignments && (
             <div>
-              <label className="text-slate-300 text-sm font-medium mb-2 block">
-                Agentes asignados <span className="text-slate-500 font-normal">(opcional, varios)</span>
+              <label className={labelClass}>
+                Agentes asignados <span className="text-textMuted font-normal">(opcional, varios)</span>
               </label>
               {agents.length === 0 ? (
-                <p className="text-slate-500 text-xs">No hay agentes cargados.</p>
+                <p className="text-textMuted text-xs">No hay agentes cargados.</p>
               ) : (
-                <div className="max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-slate-900/40 p-2 space-y-1.5">
+                <div className="max-h-36 overflow-y-auto rounded-lg border border-borderBase bg-bgElevated p-2 space-y-1.5">
                   {agents.map((a) => (
                     <label
                       key={a.adminId}
-                      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-white/5 cursor-pointer text-sm text-slate-200"
+                      className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-brand-subtle cursor-pointer text-sm text-textSecondary"
                     >
                       <input
                         type="checkbox"
-                        className="rounded border-slate-500 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-borderStrong text-brand focus:ring-brand"
                         checked={form.agentIds?.includes?.(a.adminId) ?? false}
                         onChange={() => onToggleAgent(a.adminId)}
                       />
@@ -676,29 +696,22 @@ function LeadModal({
                   ))}
                 </div>
               )}
-              <p className="text-slate-500 text-xs mt-1">
+              <p className="text-textMuted text-xs mt-1">
                 Los nuevos leads creados por un agente se asignan siempre al agente automáticamente.
               </p>
             </div>
           )}
 
           {error && (
-            <p className="text-red-400 text-sm">{error}</p>
+            <div className={alertError}>{error}</div>
           )}
         </div>
 
-        <div className="flex justify-end gap-3 px-5 pb-5">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-sm"
-          >
+        <div className="flex justify-end gap-3 px-4 pb-4">
+          <button type="button" onClick={onClose} className={btnSecondary}>
             Cancelar
           </button>
-          <button
-            onClick={onSave}
-            disabled={saving}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium text-sm transition-colors flex items-center gap-2"
-          >
+          <button type="button" onClick={onSave} disabled={saving} className={btnPrimary}>
             {saving ? 'Guardando...' : editing ? 'Guardar cambios' : 'Crear lead'}
           </button>
         </div>
@@ -706,3 +719,35 @@ function LeadModal({
     </div>
   );
 }
+
+LeadModal.propTypes = {
+  form: PropTypes.shape({
+    name: PropTypes.string,
+    phone: PropTypes.string,
+    email: PropTypes.string,
+    operationType: PropTypes.string,
+    zone: PropTypes.string,
+    budget: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    currency: PropTypes.string,
+    status: PropTypes.string,
+    notes: PropTypes.string,
+    agentIds: PropTypes.arrayOf(
+      PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    ),
+  }).isRequired,
+  editing: PropTypes.bool,
+  saving: PropTypes.bool,
+  error: PropTypes.string,
+  onChange: PropTypes.func.isRequired,
+  onSave: PropTypes.func.isRequired,
+  onClose: PropTypes.func.isRequired,
+  agents: PropTypes.arrayOf(
+    PropTypes.shape({
+      adminId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      fullName: PropTypes.string,
+      username: PropTypes.string,
+    }),
+  ),
+  showAssignments: PropTypes.bool,
+  onToggleAgent: PropTypes.func,
+};
