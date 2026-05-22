@@ -77,52 +77,56 @@ const InstallPWA = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 animate-slide-up">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-2xl p-4 max-w-sm border border-blue-400/30 backdrop-blur-sm">
+    <div className="fixed bottom-4 right-4 z-50 animate-slide-up font-Montserrat">
+      <div className="bg-bgSurface text-textPrimary rounded-xl shadow-brandGlow p-4 max-w-sm border border-borderStrong">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <IoDownloadOutline className="w-6 h-6" />
+            <div className="p-2 bg-brand-muted rounded-lg">
+              <IoDownloadOutline className="w-6 h-6 text-brand-light" />
             </div>
             <div>
-              <h3 className="font-bold text-lg">Instalar Aplicación</h3>
-              <p className="text-sm text-blue-100">Acceso rápido desde tu escritorio</p>
+              <h3 className="font-bold text-lg text-textPrimary">Instalar Aplicación</h3>
+              <p className="text-sm text-textSecondary">Acceso rápido desde tu escritorio</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={handleDismiss}
-            className="text-white/80 hover:text-white transition-colors"
+            className="text-textMuted hover:text-textPrimary transition-colors"
+            aria-label="Cerrar"
           >
             <IoCloseOutline className="w-6 h-6" />
           </button>
         </div>
 
-        <ul className="space-y-2 mb-4 text-sm">
+        <ul className="space-y-2 mb-4 text-sm text-textSecondary">
           <li className="flex items-center space-x-2">
-            <IoCheckmarkCircleOutline className="w-4 h-4 text-green-300" />
+            <IoCheckmarkCircleOutline className="w-4 h-4 text-brand-light shrink-0" />
             <span>Funciona sin conexión</span>
           </li>
           <li className="flex items-center space-x-2">
-            <IoCheckmarkCircleOutline className="w-4 h-4 text-green-300" />
+            <IoCheckmarkCircleOutline className="w-4 h-4 text-brand-light shrink-0" />
             <span>Acceso directo en escritorio</span>
           </li>
           <li className="flex items-center space-x-2">
-            <IoCheckmarkCircleOutline className="w-4 h-4 text-green-300" />
+            <IoCheckmarkCircleOutline className="w-4 h-4 text-brand-light shrink-0" />
             <span>Experiencia como app nativa</span>
           </li>
         </ul>
 
         <div className="flex space-x-2">
           <button
+            type="button"
             onClick={handleInstallClick}
-            className="flex-1 bg-white text-blue-600 font-semibold py-2 px-4 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2"
+            className="flex-1 bg-brand hover:bg-brand-dark text-textWhite font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-brandGlow"
           >
             <IoDownloadOutline className="w-5 h-5" />
             <span>Instalar Ahora</span>
           </button>
           <button
+            type="button"
             onClick={handleDismiss}
-            className="px-4 py-2 text-white/90 hover:text-white transition-colors"
+            className="px-4 py-2 text-textSecondary hover:text-textPrimary border border-borderBase hover:border-borderStrong hover:bg-brand-subtle rounded-lg transition-colors text-sm"
           >
             Ahora no
           </button>
