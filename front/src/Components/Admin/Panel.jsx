@@ -1,9 +1,9 @@
 import  { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  selectCurrentUser, 
-  logout as logoutAction, 
+import {
+  selectCurrentUser,
+  logout as logoutAction,
   useGetCurrentSubscriptionQuery,
   useGetAllClientsQuery,
   useGetAllPropertiesQuery,
@@ -11,12 +11,12 @@ import {
   useGetAllPaymentsQuery,
   useGetCurrentTenantQuery,
 } from '@shared/redux';
-import { 
-  IoLogOutOutline, 
-  IoPeopleOutline, 
-  IoHomeOutline, 
-  IoDocumentTextOutline, 
-  IoReceiptOutline, 
+import {
+  IoLogOutOutline,
+  IoPeopleOutline,
+  IoHomeOutline,
+  IoDocumentTextOutline,
+  IoReceiptOutline,
   IoStatsChartOutline,
   IoSettingsOutline,
   IoRocketOutline,
@@ -30,7 +30,9 @@ import {
   IoMapOutline,
   IoPeopleOutline as IoPeopleSharpOutline,
   IoCashOutline,
+  IoChevronForwardOutline,
 } from 'react-icons/io5';
+import Logo from '../Logo';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
 
@@ -38,76 +40,56 @@ const Panel = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showTipsModal, setShowTipsModal] = useState(false);
-  
-  // Obtener usuario actual (incluye tenantId)
+
   const currentUser = useSelector(selectCurrentUser);
-  
-  // Obtener suscripción actual usando RTK Query
+
   const { data: subscriptionData, isLoading: loadingSubscription } = useGetCurrentSubscriptionQuery(
     undefined,
-    { skip: !currentUser?.tenantId } // Solo cargar si hay tenantId
+    { skip: !currentUser?.tenantId }
   );
-  
-  // Obtener información del tenant actual (incluye subdomain)
+
   const { data: tenantData } = useGetCurrentTenantQuery(
     undefined,
     { skip: !currentUser?.tenantId }
   );
-  
-  // Obtener subdomain y features
-  // Merge: plan features base + tenant-level feature overrides (el admin puede activar features individualmente)
+
   const tenantSubdomain = tenantData?.data?.subdomain || null;
   const planFeatures = subscriptionData?.subscription?.Plan?.features || {};
   const tenantFeatures = tenantData?.data?.features || {};
   const effectiveFeatures = { ...planFeatures, ...tenantFeatures };
-  const hasLandingFeature   = effectiveFeatures.landingPage === true;
-  const hasLeadsFeature     = effectiveFeatures.leads === true;
-  const hasLoteosFeature    = effectiveFeatures.loteos === true;
+  const hasLandingFeature = effectiveFeatures.landingPage === true;
+  const hasLeadsFeature = effectiveFeatures.leads === true;
+  const hasLoteosFeature = effectiveFeatures.loteos === true;
   const hasAgentRoleFeature = effectiveFeatures.agentRole === true;
 
-  // Debug: ver valores
-  useEffect(() => {
-    console.log('🔍 Landing Debug:', {
-      tenantSubdomain,
-      hasLandingFeature,
-      tenantData,
-      subscriptionData
-    });
-  }, [tenantSubdomain, hasLandingFeature, tenantData, subscriptionData]);
-
-  // Obtener datos usando RTK Query
   const { data: clients = [], isLoading: loadingClients } = useGetAllClientsQuery(
     undefined,
     { skip: !currentUser?.tenantId }
   );
-  
+
   const { data: properties = [], isLoading: loadingProperties } = useGetAllPropertiesQuery(
     undefined,
     { skip: !currentUser?.tenantId }
   );
-  
+
   const { data: leases = [], isLoading: loadingLeases } = useGetAllLeasesQuery(
     undefined,
     { skip: !currentUser?.tenantId }
   );
-  
+
   const { data: payments = [], isLoading: loadingPayments } = useGetAllPaymentsQuery(
     undefined,
     { skip: !currentUser?.tenantId }
   );
 
-  // Estado de carga general
   const loading = loadingClients || loadingProperties || loadingLeases || loadingPayments;
 
-  // Calcular estadísticas
-  const stats = useMemo(() => {
-    return {
-      clientesActivos: clients.length,
-      totalPropiedades: properties.length,
-      contratosActivos: leases.filter(lease => lease.status === 'active').length,
-      totalRecibos: payments.length
-    };
-  }, [clients, properties, leases, payments]);
+  const stats = useMemo(() => ({
+    clientesActivos: clients.length,
+    totalPropiedades: properties.length,
+    contratosActivos: leases.filter((lease) => lease.status === 'active').length,
+    totalRecibos: payments.length,
+  }), [clients, properties, leases, payments]);
 
   const handleLogout = () => {
     dispatch(logoutAction());
@@ -115,69 +97,53 @@ const Panel = () => {
     navigate('/login');
   };
 
-  // Mostrar tips modal automáticamente solo si nunca se ha visto antes
   useEffect(() => {
     const hideTips = localStorage.getItem('hideTipsModal');
     if (!hideTips && currentUser) {
-      // Marcar como visto de inmediato para que no vuelva a abrirse automáticamente
       localStorage.setItem('hideTipsModal', 'true');
-      // Mostrar después de 1 segundo para dar tiempo a que cargue el panel
-      const timer = setTimeout(() => {
-        setShowTipsModal(true);
-      }, 1000);
+      const timer = setTimeout(() => setShowTipsModal(true), 1000);
       return () => clearTimeout(timer);
     }
   }, [currentUser]);
-  
-  const handleOpenTips = () => {
-    setShowTipsModal(true);
-  };
-  
-  const handleCloseTips = () => {
-    setShowTipsModal(false);
-  };
-  
-  // Helpers para suscripción
+
   const subscription = subscriptionData?.subscription;
-  
+
   const getPlanName = (planId) => {
     const plans = {
       free: 'Gratis',
       basic: 'Básico',
       professional: 'Profesional',
       enterprise: 'Empresarial',
-      // Soporte para mayúsculas (como viene desde la DB)
       FREE: 'Gratis',
       BASIC: 'Básico',
       PROFESSIONAL: 'Profesional',
-      ENTERPRISE: 'Empresarial'
+      ENTERPRISE: 'Empresarial',
     };
     return plans[planId] || planId?.toUpperCase();
   };
-  
-  const getPlanColor = (planId) => {
+
+  const getPlanGradient = (planId) => {
     const colors = {
-      free: 'from-gray-500 to-gray-600',
-      basic: 'from-blue-500 to-blue-600',
-      professional: 'from-purple-500 to-purple-600',
-      enterprise: 'from-yellow-500 to-yellow-600',
-      // Soporte para mayúsculas
-      FREE: 'from-gray-500 to-gray-600',
-      BASIC: 'from-blue-500 to-blue-600',
-      PROFESSIONAL: 'from-purple-500 to-purple-600',
-      ENTERPRISE: 'from-yellow-500 to-yellow-600'
+      free: 'from-brand-muted to-brand-dark',
+      basic: 'from-brand-dark to-brand',
+      professional: 'from-brand to-brand-light',
+      enterprise: 'from-brand-light to-brand-dark',
+      FREE: 'from-brand-muted to-brand-dark',
+      BASIC: 'from-brand-dark to-brand',
+      PROFESSIONAL: 'from-brand to-brand-light',
+      ENTERPRISE: 'from-brand-light to-brand-dark',
     };
-    return colors[planId] || 'from-gray-500 to-gray-600';
+    return colors[planId] || 'from-brand-muted to-brand-dark';
   };
-  
+
   const getStatusBadge = (status) => {
     const badges = {
-      trialing: { text: 'Periodo de Prueba', color: 'bg-blue-500' },
-      active: { text: 'Activo', color: 'bg-green-500' },
-      past_due: { text: 'Vencido', color: 'bg-red-500' },
-      canceled: { text: 'Cancelado', color: 'bg-gray-500' }
+      trialing: { text: 'Periodo de prueba', color: 'bg-customBlue' },
+      active: { text: 'Activo', color: 'bg-brand-dark' },
+      past_due: { text: 'Vencido', color: 'bg-customRed' },
+      canceled: { text: 'Cancelado', color: 'bg-brand-muted' },
     };
-    return badges[status] || { text: status, color: 'bg-gray-500' };
+    return badges[status] || { text: status, color: 'bg-brand-muted' };
   };
 
   const menuItems = [
@@ -185,40 +151,40 @@ const Panel = () => {
       title: 'Clientes',
       path: '/panelClientes',
       icon: IoPeopleOutline,
-      gradient: 'from-blue-500 to-blue-600',
-      hoverGradient: 'from-blue-600 to-blue-700',
-      description: 'Gestionar clientes'
+      iconBg: 'bg-brand-muted',
+      iconColor: 'text-brand-light',
+      description: 'Gestionar clientes',
     },
     {
       title: 'Propiedades',
       path: '/panelPropiedades',
       icon: IoHomeOutline,
-      gradient: 'from-emerald-500 to-emerald-600',
-      hoverGradient: 'from-emerald-600 to-emerald-700',
-      description: 'Administrar propiedades'
+      iconBg: 'bg-brand-muted',
+      iconColor: 'text-brand-light',
+      description: 'Administrar propiedades',
     },
     {
       title: 'Contratos',
       path: '/panelContratos',
       icon: IoDocumentTextOutline,
-      gradient: 'from-amber-500 to-orange-500',
-      hoverGradient: 'from-amber-600 to-orange-600',
-      description: 'Gestionar contratos'
+      iconBg: 'bg-customYellowMuted',
+      iconColor: 'text-customYellow',
+      description: 'Gestionar contratos',
     },
     {
       title: 'Recibos',
       path: '/create-payment',
       icon: IoReceiptOutline,
-      gradient: 'from-purple-500 to-purple-600',
-      hoverGradient: 'from-purple-600 to-purple-700',
-      description: 'Generar recibos'
+      iconBg: 'bg-brand-subtle',
+      iconColor: 'text-brand',
+      description: 'Generar recibos',
     },
     {
       title: 'Leads / CRM',
       path: '/panelLeads',
       icon: IoFunnelOutline,
-      gradient: 'from-pink-500 to-rose-500',
-      hoverGradient: 'from-pink-600 to-rose-600',
+      iconBg: 'bg-customBlueMuted',
+      iconColor: 'text-customBlue',
       description: 'Seguimiento de prospectos',
       feature: 'leads',
     },
@@ -226,16 +192,16 @@ const Panel = () => {
       title: 'Soporte',
       path: '/soporte',
       icon: IoChatbubblesOutline,
-      gradient: 'from-teal-500 to-cyan-500',
-      hoverGradient: 'from-teal-600 to-cyan-600',
+      iconBg: 'bg-brand-muted',
+      iconColor: 'text-brand-light',
       description: 'Tickets de ayuda',
     },
     {
       title: 'Loteos',
       path: '/panelLoteos',
       icon: IoMapOutline,
-      gradient: 'from-lime-500 to-green-600',
-      hoverGradient: 'from-lime-600 to-green-700',
+      iconBg: 'bg-brand-muted',
+      iconColor: 'text-brand-light',
       description: 'Venta de lotes',
       feature: 'loteos',
     },
@@ -243,8 +209,8 @@ const Panel = () => {
       title: 'Agentes',
       path: '/panelAgentes',
       icon: IoPeopleSharpOutline,
-      gradient: 'from-indigo-500 to-indigo-600',
-      hoverGradient: 'from-indigo-600 to-indigo-700',
+      iconBg: 'bg-brand-subtle',
+      iconColor: 'text-brand',
       description: 'Gestionar equipo',
       feature: 'agentRole',
     },
@@ -252,8 +218,8 @@ const Panel = () => {
       title: 'Comisiones',
       path: '/panelComisiones',
       icon: IoCashOutline,
-      gradient: 'from-emerald-600 to-teal-600',
-      hoverGradient: 'from-emerald-700 to-teal-700',
+      iconBg: 'bg-customYellowMuted',
+      iconColor: 'text-customYellow',
       description: 'Liquidar comisiones',
       feature: 'agentRole',
     },
@@ -261,286 +227,233 @@ const Panel = () => {
       title: 'Liquidaciones',
       path: '/liquidaciones',
       icon: IoReceiptOutline,
-      gradient: 'from-sky-600 to-blue-700',
-      hoverGradient: 'from-sky-700 to-blue-800',
+      iconBg: 'bg-brand-muted',
+      iconColor: 'text-brand-light',
       description: 'Liquidar al propietario',
     },
   ];
 
-  // Filtrar items según features del plan
-  const visibleMenuItems = menuItems.filter(item => {
-    if (item.feature === 'leads')     return hasLeadsFeature;
-    if (item.feature === 'loteos')    return hasLoteosFeature;
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (item.feature === 'leads') return hasLeadsFeature;
+    if (item.feature === 'loteos') return hasLoteosFeature;
     if (item.feature === 'agentRole') return hasAgentRoleFeature;
     return true;
   });
 
+  const quickStats = [
+    { label: 'Clientes', value: loading ? '…' : stats.clientesActivos, icon: IoPeopleOutline, iconColor: 'text-brand-light' },
+    { label: 'Propiedades', value: loading ? '…' : stats.totalPropiedades, icon: IoHomeOutline, iconColor: 'text-brand-light' },
+    { label: 'Contratos', value: loading ? '…' : stats.contratosActivos, icon: IoDocumentTextOutline, iconColor: 'text-customYellow' },
+    { label: 'Recibos', value: loading ? '…' : stats.totalRecibos, icon: IoReceiptOutline, iconColor: 'text-brand' },
+  ];
+
+  const navBtn =
+    'inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs sm:text-sm text-textSecondary hover:text-textPrimary border border-borderBase hover:border-borderStrong hover:bg-brand-subtle transition-colors';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Mostrar el popup de vencimientos */}
+    <div className="min-h-screen bg-[#0B0E0C] font-Montserrat text-textPrimary">
       <UpcomingExpiryPopup />
 
-      {/* Header */}
-      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 px-3 py-3 sm:p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
-          {/* Logo + username */}
-          <Link
-            to="/"
-            className="text-white font-bold hover:text-blue-300 transition-colors duration-300 flex items-center space-x-2 flex-shrink-0 min-w-0"
-          >
-            {/* Logo: 3 barras + arco */}
-            <div className="flex flex-col items-center justify-end w-8 h-7 flex-shrink-0">
-              <div className="flex items-end gap-[3px] mb-0.5">
-                <div className="w-[6px] h-[10px] rounded-sm bg-indigo-300" />
-                <div className="w-[6px] h-[18px] rounded-sm bg-indigo-300" />
-                <div className="w-[6px] h-[6px] rounded-sm bg-indigo-300" />
-              </div>
-              <div
-                className="w-7 h-[7px] border-2 border-t-0 border-indigo-400"
-                style={{ borderBottomLeftRadius: 14, borderBottomRightRadius: 14 }}
-              />
+      {/* Header compacto */}
+      <header className="sticky top-0 z-20 border-b border-borderBase bg-[#0B0E0C]/95 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex justify-between items-center gap-2">
+          <Link to="/panel" className="flex items-center gap-2 min-w-0 shrink-0">
+            <Logo color="#5A8C72" size={28} />
+            <div className="min-w-0 hidden sm:block">
+              <p className="text-sm font-semibold text-textPrimary truncate leading-tight">
+                {currentUser?.username || 'Panel'}
+              </p>
+              {currentUser?.email && (
+                <p className="text-[10px] text-textMuted truncate max-w-[140px] lg:max-w-[200px]">
+                  {currentUser.email}
+                </p>
+              )}
             </div>
-            <span className="hidden sm:inline text-base truncate max-w-[160px]">{currentUser?.username || 'Panel'}</span>
           </Link>
 
-          {/* Botones derecha */}
-          <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-            <button
-              onClick={handleOpenTips}
-              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 transition-all duration-300"
-              title="Ver guía de uso"
-            >
-              <IoHelpCircleOutline className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">Ayuda</span>
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end">
+            <button type="button" onClick={() => setShowTipsModal(true)} className={navBtn} title="Ver guía de uso">
+              <IoHelpCircleOutline className="w-4 h-4 shrink-0 text-customYellow" />
+              <span className="hidden lg:inline">Ayuda</span>
             </button>
-            <Link
-              to="/subscription"
-              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/30 transition-all duration-300"
-              title="Mi Suscripción"
-            >
-              <IoCardOutline className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">Mi Plan</span>
+            <Link to="/subscription" className={navBtn} title="Mi suscripción">
+              <IoCardOutline className="w-4 h-4 shrink-0 text-brand-light" />
+              <span className="hidden lg:inline">Mi plan</span>
             </Link>
             {tenantSubdomain && hasLandingFeature && (
               <Link
                 to={`/${tenantSubdomain}`}
                 target="_blank"
-                className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/30 transition-all duration-300"
-                title="Ver mi Landing Page pública"
+                className={navBtn}
+                title="Ver mi landing pública"
               >
-                <IoGlobeOutline className="w-5 h-5 flex-shrink-0" />
-                <span className="hidden lg:inline text-sm">Mi Landing</span>
+                <IoGlobeOutline className="w-4 h-4 shrink-0 text-brand-light" />
+                <span className="hidden xl:inline">Mi landing</span>
               </Link>
             )}
-            <Link
-              to="/company-settings"
-              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 transition-all duration-300"
-              title="Configuración"
-            >
-              <IoSettingsOutline className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden lg:inline text-sm">Configuración</span>
+            <Link to="/company-settings" className={navBtn} title="Configuración">
+              <IoSettingsOutline className="w-4 h-4 shrink-0 text-brand-light" />
+              <span className="hidden lg:inline">Config</span>
             </Link>
-            <button
-              onClick={handleLogout}
-              className="text-white flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-400/30 transition-all duration-300 flex-shrink-0"
-              title="Cerrar sesión"
-            >
-              <IoLogOutOutline className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden sm:inline text-sm">Salir</span>
+            <button type="button" onClick={handleLogout} className={`${navBtn} hover:border-customRed/40 hover:bg-customRedMuted`} title="Cerrar sesión">
+              <IoLogOutOutline className="w-4 h-4 shrink-0 text-customRed" />
+              <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Welcome Section */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-5 sm:py-6">
+        {/* Bienvenida + stats en fila */}
+        <div className="mb-5 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-textPrimary">
             Bienvenido, {currentUser?.username || 'Usuario'}
           </h1>
-          <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-            Automatiza tu inmobiliaria desde un solo lugar
+          <p className="text-sm text-textSecondary mt-0.5">
+            Automatizá tu inmobiliaria desde un solo lugar
           </p>
-          {currentUser?.email && (
-            <p className="text-slate-400 text-sm mt-2">{currentUser.email}</p>
-          )}
         </div>
 
-        {/* Suscripción Card */}
-        {currentUser?.tenantId && (
-          <div className="mb-8">
-            {loadingSubscription ? (
-              <div className="bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10">
-                <div className="animate-pulse flex space-x-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="h-4 bg-white/20 rounded w-3/4"></div>
-                    <div className="h-4 bg-white/20 rounded w-1/2"></div>
-                  </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-5 sm:mb-6">
+          {quickStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="rounded-xl border border-borderBase bg-bgSurface px-3 py-2.5 sm:py-3 flex items-center gap-2.5"
+              >
+                <Icon className={`w-4 h-4 shrink-0 ${stat.iconColor}`} />
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-xl font-bold text-textPrimary leading-none">{stat.value}</p>
+                  <p className="text-[10px] sm:text-xs text-textMuted truncate">{stat.label}</p>
                 </div>
               </div>
+            );
+          })}
+        </div>
+
+        {/* Suscripción — barra compacta */}
+        {currentUser?.tenantId && (
+          <div className="mb-5 sm:mb-6">
+            {loadingSubscription ? (
+              <div className="rounded-xl border border-borderBase bg-bgSurface p-4 animate-pulse h-16" />
             ) : subscription ? (
-              <div className={`bg-gradient-to-br ${getPlanColor(subscription.planId)} p-6 rounded-2xl shadow-lg border border-white/20`}>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <IoRocketOutline className="w-8 h-8 text-white" />
-                      <div>
-                        <h3 className="text-2xl font-bold text-white">Plan {getPlanName(subscription.planId)}</h3>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusBadge(subscription.status).color}`}>
-                            {getStatusBadge(subscription.status).text}
+              <div className={`rounded-xl border border-borderStrong bg-gradient-to-r ${getPlanGradient(subscription.planId)} p-4 shadow-brandGlow`}>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <IoRocketOutline className="w-6 h-6 text-textWhite shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-bold text-textWhite">
+                          Plan {getPlanName(subscription.planId)}
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold text-textWhite ${getStatusBadge(subscription.status).color}`}>
+                          {getStatusBadge(subscription.status).text}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-textWhite/85">
+                        <span className="inline-flex items-center gap-1">
+                          <IoCalendarOutline className="w-3.5 h-3.5" />
+                          Vence:{' '}
+                          {subscription.currentPeriodEnd
+                            ? new Date(subscription.currentPeriodEnd).toLocaleDateString('es-AR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : 'Sin fecha'}
+                        </span>
+                        {subscription.Plan && (
+                          <span className="inline-flex items-center gap-1">
+                            <IoCheckmarkCircleOutline className="w-3.5 h-3.5" />
+                            {subscription.Plan.name || 'Plan activo'}
                           </span>
-                        </div>
+                        )}
                       </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-white/90">
-                      <div className="flex items-center space-x-2">
-                        <IoCalendarOutline className="w-5 h-5" />
-                        <div>
-                          <p className="text-xs text-white/70">Vencimiento</p>
-                          <p className="font-semibold">
-                            {subscription.currentPeriodEnd 
-                              ? new Date(subscription.currentPeriodEnd).toLocaleDateString('es-AR', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })
-                              : 'Sin fecha'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                      
-                      {subscription.Plan && (
-                        <div className="flex items-center space-x-2">
-                          <IoCheckmarkCircleOutline className="w-5 h-5" />
-                          <div>
-                            <p className="text-xs text-white/70">Características</p>
-                            <p className="font-semibold">{subscription.Plan.name || 'Plan Activo'}</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
-                  
                   <button
+                    type="button"
                     onClick={() => navigate('/subscription')}
-                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-semibold transition-colors border border-white/30"
+                    className="shrink-0 self-start sm:self-center px-3 py-1.5 text-xs font-semibold bg-textWhite/15 hover:bg-textWhite/25 text-textWhite rounded-lg border border-textWhite/25 transition-colors"
                   >
                     Gestionar
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="bg-gradient-to-br from-gray-500 to-gray-600 p-6 rounded-2xl shadow-lg border border-white/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <IoRocketOutline className="w-8 h-8 text-white" />
-                    <div>
-                      <h3 className="text-2xl font-bold text-white">Sin Suscripción Activa</h3>
-                      <p className="text-white/80 mt-1">Activa una suscripción para acceder a todas las funcionalidades</p>
-                    </div>
+              <div className="rounded-xl border border-borderBase bg-bgSurface p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <IoRocketOutline className="w-6 h-6 text-textMuted shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-bold text-textPrimary">Sin suscripción activa</h3>
+                    <p className="text-xs text-textSecondary mt-0.5">
+                      Activá un plan para acceder a todas las funcionalidades
+                    </p>
                   </div>
-                  <button
-                    onClick={() => navigate('/subscriptions/plans')}
-                    className="px-6 py-3 bg-white text-gray-800 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
-                  >
-                    Ver Planes
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/subscriptions/plans')}
+                  className="shrink-0 px-4 py-2 text-xs font-semibold bg-brand hover:bg-brand-dark text-textWhite rounded-lg transition-colors"
+                >
+                  Ver planes
+                </button>
               </div>
             )}
           </div>
         )}
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {visibleMenuItems.map((item) => {
-            const IconComponent = item.icon;
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`group relative bg-gradient-to-br ${item.gradient} hover:${item.hoverGradient} p-6 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border border-white/10`}
-              >
-                <div className="flex flex-col items-center space-y-4 text-white">
-                  <div className="p-4 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors duration-300">
-                    <IconComponent className="w-8 h-8 sm:w-10 sm:h-10" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-lg sm:text-xl font-bold">{item.title}</h3>
-                    <p className="text-sm text-white/80 mt-1">{item.description}</p>
-                  </div>
-                </div>
-                
-                {/* Hover effect overlay */}
-                <div className="absolute inset-0 bg-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Informes Section - Full Width */}
-        <div className="w-full">
-          <Link
-            to="/PanelInformes"
-            className="group block w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 p-6 sm:p-8 rounded-2xl shadow-lg hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-300 border border-white/10"
-          >
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 text-white">
-              <div className="p-4 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors duration-300">
-                <IoStatsChartOutline className="w-10 h-10 sm:w-12 sm:h-12" />
-              </div>
-              <div className="text-center sm:text-left">
-                <h3 className="text-2xl sm:text-3xl font-bold">Informes y Estadísticas</h3>
-                <p className="text-white/80 mt-2">Analiza el rendimiento de tu negocio con reportes detallados</p>
-              </div>
-            </div>
-            
-            {/* Hover effect overlay */}
-            <div className="absolute inset-0 bg-white/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-          </Link>
-        </div>
-
-        {/* Quick Stats */}
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center">
-            <IoStatsChartOutline className="w-6 h-6 mr-2" />
-            Vista Rápida
+        {/* Módulos */}
+        <section>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-textMuted mb-3">
+            Módulos
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: 'Clientes Activos', value: loading ? '...' : stats.clientesActivos, icon: IoPeopleOutline, color: 'blue' },
-              { label: 'Propiedades', value: loading ? '...' : stats.totalPropiedades, icon: IoHomeOutline, color: 'emerald' },
-              { label: 'Contratos Activos', value: loading ? '...' : stats.contratosActivos, icon: IoDocumentTextOutline, color: 'amber' },
-              { label: 'Recibos', value: loading ? '...' : stats.totalRecibos, icon: IoReceiptOutline, color: 'purple' }
-            ].map((stat, index) => {
-              const IconComponent = stat.icon;
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+            {visibleMenuItems.map((item) => {
+              const Icon = item.icon;
               return (
-                <div 
-                  key={index} 
-                  className="bg-white/5 backdrop-blur-sm p-4 rounded-xl border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105"
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className="group flex flex-col items-center text-center rounded-xl border border-borderBase bg-bgSurface hover:border-borderStrong hover:bg-brand-subtle/60 p-3 sm:p-4 transition-all"
                 >
-                  <div className="flex items-center space-x-3">
-                    <IconComponent className={`w-5 h-5 text-${stat.color}-400`} />
-                    <div>
-                      <p className="text-2xl font-bold text-white">{stat.value}</p>
-                      <p className="text-xs text-slate-300">{stat.label}</p>
-                    </div>
+                  <div className={`rounded-xl p-2.5 mb-2 ${item.iconBg} group-hover:scale-105 transition-transform`}>
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 ${item.iconColor}`} />
                   </div>
-                </div>
+                  <h3 className="text-xs sm:text-sm font-semibold text-textPrimary leading-tight">{item.title}</h3>
+                  <p className="text-[10px] sm:text-xs text-textMuted mt-0.5 line-clamp-2 hidden sm:block">
+                    {item.description}
+                  </p>
+                </Link>
               );
             })}
           </div>
-        </div>
-      </div>
+        </section>
 
-      {/* Tips Modal */}
-      <TipsModal 
-        isOpen={showTipsModal} 
-        onClose={handleCloseTips} 
-      />
+        {/* Informes */}
+        <section className="mt-5 sm:mt-6">
+          <Link
+            to="/PanelInformes"
+            className="group flex items-center justify-between gap-4 rounded-xl border border-borderStrong bg-gradient-to-r from-brand-dark to-brand p-4 sm:p-5 shadow-brandGlow hover:from-brand hover:to-brand-light transition-all"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="rounded-xl bg-textWhite/15 p-2.5 shrink-0">
+                <IoStatsChartOutline className="w-6 h-6 text-textWhite" />
+              </div>
+              <div className="min-w-0 text-left">
+                <h3 className="text-base sm:text-lg font-bold text-textWhite">Informes y estadísticas</h3>
+                <p className="text-xs sm:text-sm text-textWhite/80 mt-0.5 truncate sm:whitespace-normal">
+                  Analizá el rendimiento de tu negocio con reportes detallados
+                </p>
+              </div>
+            </div>
+            <IoChevronForwardOutline className="w-5 h-5 text-textWhite/70 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </section>
+      </main>
+
+      <TipsModal isOpen={showTipsModal} onClose={() => setShowTipsModal(false)} />
     </div>
   );
 };
