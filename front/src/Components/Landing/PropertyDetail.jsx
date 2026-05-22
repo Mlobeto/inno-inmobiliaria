@@ -15,6 +15,16 @@ import {
   IoChevronBackOutline,
   IoChevronForwardOutline
 } from 'react-icons/io5';
+import {
+  landingShell,
+  landingHeader,
+  landingCardGlass,
+  landingSpinner,
+  landingBtnPrimary,
+  landingBtnWa,
+  landingErrorBox,
+  propertyTypeBadge,
+} from './landingTheme';
 
 const PropertyDetail = () => {
   const { subdomain, propertyId } = useParams();
@@ -85,10 +95,10 @@ Me gustaría tener más información.`;
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className={`${landingShell} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-slate-300 text-lg">Cargando propiedad...</p>
+          <div className={`w-16 h-16 mx-auto mb-4 ${landingSpinner}`} />
+          <p className="text-textSecondary text-lg">Cargando propiedad...</p>
         </div>
       </div>
     );
@@ -96,17 +106,14 @@ Me gustaría tener más información.`;
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
-          <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <IoHomeOutline className="w-8 h-8 text-red-400" />
+      <div className={`${landingShell} flex items-center justify-center p-4`}>
+        <div className={landingErrorBox}>
+          <div className="w-16 h-16 bg-customRedMuted rounded-full flex items-center justify-center mx-auto mb-4">
+            <IoHomeOutline className="w-8 h-8 text-customRed" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Propiedad no encontrada</h2>
-          <p className="text-slate-300 mb-4">{error}</p>
-          <Link
-            to={`/${subdomain}`}
-            className="inline-block px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
-          >
+          <h2 className="text-2xl font-bold text-textPrimary mb-2">Propiedad no encontrada</h2>
+          <p className="text-textSecondary mb-4">{error}</p>
+          <Link to={`/${subdomain}`} className={landingBtnPrimary}>
             Volver al listado
           </Link>
         </div>
@@ -118,24 +125,23 @@ Me gustaría tener más información.`;
   const hasImages = property.images && property.images.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+    <div className={landingShell}>
+      <header className={landingHeader}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link
               to={`/${subdomain}`}
-              className="flex items-center gap-2 text-slate-300 hover:text-white transition"
+              className="flex items-center gap-2 text-textSecondary hover:text-brand-light transition"
             >
               <IoArrowBackOutline className="w-5 h-5" />
               <span>Volver al listado</span>
             </Link>
 
             {tenant.logo && (
-              <img 
-                src={tenant.logo} 
-                alt={tenant.name} 
-                className="h-10 w-10 rounded-full object-cover border-2 border-blue-500/30"
+              <img
+                src={tenant.logo}
+                alt={tenant.name}
+                className="h-10 w-10 rounded-full object-cover border-2 border-borderStrong"
               />
             )}
           </div>
@@ -148,9 +154,9 @@ Me gustaría tener más información.`;
           {/* Columna Principal */}
           <div className="lg:col-span-2 space-y-6">
             {/* Image Gallery */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl overflow-hidden border border-white/10">
+            <div className={`${landingCardGlass} overflow-hidden`}>
               {hasImages ? (
-                <div className="relative aspect-video bg-slate-800">
+                <div className="relative aspect-video bg-bgElevated">
                   <img
                     src={property.images[currentImageIndex]}
                     alt={`${property.title} - Imagen ${currentImageIndex + 1}`}
@@ -181,13 +187,7 @@ Me gustaría tener más información.`;
                   </div>
 
                   {/* Type Badge */}
-                  <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-sm font-bold text-white ${
-                    property.type === 'venta'
-                      ? 'bg-purple-500'
-                      : property.rentalType === 'TEMPORAL'
-                        ? 'bg-amber-500'
-                        : 'bg-green-500'
-                  }`}>
+                  <div className={`absolute top-4 left-4 px-4 py-2 rounded-full text-sm font-bold ${propertyTypeBadge(property.type, property.rentalType)}`}>
                     {property.type === 'venta'
                       ? 'EN VENTA'
                       : property.rentalType === 'TEMPORAL'
@@ -196,8 +196,8 @@ Me gustaría tener más información.`;
                   </div>
                 </div>
               ) : (
-                <div className="aspect-video bg-slate-800 flex items-center justify-center">
-                  <IoHomeOutline className="w-24 h-24 text-slate-600" />
+                <div className="aspect-video bg-bgElevated flex items-center justify-center">
+                  <IoHomeOutline className="w-24 h-24 text-textMuted" />
                 </div>
               )}
 
@@ -209,9 +209,9 @@ Me gustaría tener más información.`;
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
                       className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition ${
-                        idx === currentImageIndex 
-                          ? 'border-blue-500' 
-                          : 'border-white/20 hover:border-white/40'
+                        idx === currentImageIndex
+                          ? 'border-brand'
+                          : 'border-borderBase hover:border-borderStrong'
                       }`}
                     >
                       <img src={img} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
@@ -222,76 +222,71 @@ Me gustaría tener más información.`;
             </div>
 
             {/* Property Info */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-              <h1 className="text-3xl font-bold text-white mb-4">{property.title}</h1>
-              
-              {/* Location */}
-              <div className="flex items-start gap-3 mb-6 text-slate-300">
-                <IoLocationOutline className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+            <div className={`${landingCardGlass} p-6`}>
+              <h1 className="text-3xl font-bold text-textPrimary mb-4">{property.title}</h1>
+
+              <div className="flex items-start gap-3 mb-6 text-textSecondary">
+                <IoLocationOutline className="w-6 h-6 text-brand-light flex-shrink-0 mt-1" />
                 <div>
-                  <p className="text-lg">{property.location.address}</p>
+                  <p className="text-lg text-textPrimary">{property.location.address}</p>
                   {property.location.neighborhood && (
-                    <p className="text-slate-400">{property.location.neighborhood}, {property.location.city}</p>
+                    <p className="text-textMuted">{property.location.neighborhood}, {property.location.city}</p>
                   )}
                 </div>
               </div>
 
-              {/* Features Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 {property.features.rooms > 0 && (
-                  <div className="bg-white/5 rounded-lg p-4 text-center">
-                    <IoBedOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{property.features.rooms}</p>
-                    <p className="text-sm text-slate-400">Ambientes</p>
+                  <div className="bg-bgElevated rounded-lg p-4 text-center">
+                    <IoBedOutline className="w-8 h-8 text-brand-light mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-textPrimary">{property.features.rooms}</p>
+                    <p className="text-sm text-textMuted">Ambientes</p>
                   </div>
                 )}
                 {property.features.bathrooms > 0 && (
-                  <div className="bg-white/5 rounded-lg p-4 text-center">
-                    <IoWaterOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{property.features.bathrooms}</p>
-                    <p className="text-sm text-slate-400">Baños</p>
+                  <div className="bg-bgElevated rounded-lg p-4 text-center">
+                    <IoWaterOutline className="w-8 h-8 text-brand-light mx-auto mb-2" />
+                    <p className="text-2xl font-bold text-textPrimary">{property.features.bathrooms}</p>
+                    <p className="text-sm text-textMuted">Baños</p>
                   </div>
                 )}
                 {property.features.superficieCubierta && (
-                  <div className="bg-white/5 rounded-lg p-4 text-center">
-                    <IoExpandOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-xl font-bold text-white">{property.features.superficieCubierta}</p>
-                    <p className="text-sm text-slate-400">Sup. Cubierta</p>
+                  <div className="bg-bgElevated rounded-lg p-4 text-center">
+                    <IoExpandOutline className="w-8 h-8 text-brand-light mx-auto mb-2" />
+                    <p className="text-xl font-bold text-textPrimary">{property.features.superficieCubierta}</p>
+                    <p className="text-sm text-textMuted">Sup. Cubierta</p>
                   </div>
                 )}
                 {property.features.superficieTotal && (
-                  <div className="bg-white/5 rounded-lg p-4 text-center">
-                    <IoExpandOutline className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                    <p className="text-xl font-bold text-white">{property.features.superficieTotal}</p>
-                    <p className="text-sm text-slate-400">Sup. Total</p>
+                  <div className="bg-bgElevated rounded-lg p-4 text-center">
+                    <IoExpandOutline className="w-8 h-8 text-brand-light mx-auto mb-2" />
+                    <p className="text-xl font-bold text-textPrimary">{property.features.superficieTotal}</p>
+                    <p className="text-sm text-textMuted">Sup. Total</p>
                   </div>
                 )}
               </div>
 
-              {/* Info extra para alquiler temporal */}
               {property.rentalType === 'TEMPORAL' && property.minStayDays && (
-                <div className="mb-6 p-4 bg-amber-500/10 border border-amber-400/20 rounded-lg">
-                  <p className="text-amber-300 text-sm font-medium">
+                <div className="mb-6 p-4 bg-customYellowMuted border border-customYellow/30 rounded-lg">
+                  <p className="text-customYellow text-sm font-medium">
                     ⏱ Estadía mínima: {property.minStayDays} {property.minStayDays === 1 ? 'día' : 'días'}
                   </p>
                 </div>
               )}
 
-              {/* Description */}
               {property.description && (
-                <div className="pt-6 border-t border-white/10">
-                  <h2 className="text-xl font-bold text-white mb-3">Descripción</h2>
-                  <p className="text-slate-300 leading-relaxed whitespace-pre-line">
+                <div className="pt-6 border-t border-borderBase">
+                  <h2 className="text-xl font-bold text-textPrimary mb-3">Descripción</h2>
+                  <p className="text-textSecondary leading-relaxed whitespace-pre-line">
                     {property.description}
                   </p>
                 </div>
               )}
 
-              {/* Destacados */}
               {property.highlights && (
-                <div className="pt-6 border-t border-white/10">
-                  <h2 className="text-xl font-bold text-white mb-3">Puntos Destacados</h2>
-                  <p className="text-slate-300 leading-relaxed">{property.highlights}</p>
+                <div className="pt-6 border-t border-borderBase">
+                  <h2 className="text-xl font-bold text-textPrimary mb-3">Puntos Destacados</h2>
+                  <p className="text-textSecondary leading-relaxed">{property.highlights}</p>
                 </div>
               )}
             </div>
@@ -301,31 +296,30 @@ Me gustaría tener más información.`;
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
               {/* Price Card */}
-              <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 backdrop-blur-sm rounded-2xl p-6 border border-emerald-500/30">
-                <div className="flex items-center gap-2 text-emerald-400 mb-2">
+              <div className={`${landingCardGlass} p-6 border-brand/30 bg-brand-subtle/20`}>
+                <div className="flex items-center gap-2 text-brand-light mb-2">
                   <IoPricetagOutline className="w-5 h-5" />
                   <span className="text-sm font-medium">Precio</span>
                 </div>
-                <p className="text-4xl font-bold text-white mb-1">
+                <p className="text-4xl font-bold text-textPrimary mb-1">
                   {formatPrice(property.price)}
                 </p>
                 {property.type === 'alquiler' && (
-                  <p className="text-sm text-emerald-300">
+                  <p className="text-sm text-textSecondary">
                     {property.rentalType === 'TEMPORAL' ? 'por noche/estadía' : 'por mes'}
                   </p>
                 )}
               </div>
 
-              {/* Contact Card */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                <h3 className="text-lg font-bold text-white mb-4">Contacto</h3>
-                
+              <div className={`${landingCardGlass} p-6`}>
+                <h3 className="text-lg font-bold text-textPrimary mb-4">Contacto</h3>
+
                 {tenant.contact.whatsapp && (
                   <a
                     href={`https://wa.me/${tenant.contact.whatsapp.replace(/\D/g, '')}?text=${generateWhatsAppMessage(property, tenant)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium mb-3"
+                    className={`${landingBtnWa} justify-center w-full mb-3`}
                   >
                     <IoLogoWhatsapp className="w-5 h-5" />
                     Consultar por WhatsApp
@@ -334,17 +328,17 @@ Me gustaría tener más información.`;
 
                 <div className="space-y-3">
                   {tenant.contact.phone && (
-                    <div className="flex items-center gap-3 text-slate-300">
-                      <IoCallOutline className="w-5 h-5 text-blue-400" />
-                      <a href={`tel:${tenant.contact.phone}`} className="hover:text-white transition">
+                    <div className="flex items-center gap-3 text-textSecondary">
+                      <IoCallOutline className="w-5 h-5 text-brand-light" />
+                      <a href={`tel:${tenant.contact.phone}`} className="hover:text-textPrimary transition">
                         {tenant.contact.phone}
                       </a>
                     </div>
                   )}
                   {tenant.contact.email && (
-                    <div className="flex items-center gap-3 text-slate-300">
-                      <IoMailOutline className="w-5 h-5 text-blue-400" />
-                      <a href={`mailto:${tenant.contact.email}`} className="hover:text-white transition">
+                    <div className="flex items-center gap-3 text-textSecondary">
+                      <IoMailOutline className="w-5 h-5 text-brand-light" />
+                      <a href={`mailto:${tenant.contact.email}`} className="hover:text-textPrimary transition">
                         {tenant.contact.email}
                       </a>
                     </div>
@@ -352,19 +346,18 @@ Me gustaría tener más información.`;
                 </div>
               </div>
 
-              {/* Tenant Info */}
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
+              <div className={`${landingCardGlass} p-6`}>
                 <div className="flex items-center gap-3 mb-3">
                   {tenant.logo && (
-                    <img 
-                      src={tenant.logo} 
-                      alt={tenant.name} 
-                      className="h-12 w-12 rounded-full object-cover"
+                    <img
+                      src={tenant.logo}
+                      alt={tenant.name}
+                      className="h-12 w-12 rounded-full object-cover border border-borderBase"
                     />
                   )}
                   <div>
-                    <h4 className="font-bold text-white">{tenant.name}</h4>
-                    <p className="text-sm text-slate-400">Inmobiliaria</p>
+                    <h4 className="font-bold text-textPrimary">{tenant.name}</h4>
+                    <p className="text-sm text-textMuted">Inmobiliaria</p>
                   </div>
                 </div>
               </div>

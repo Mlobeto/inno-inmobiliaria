@@ -12,12 +12,17 @@ import {
   IoChevronBackOutline,
   IoChevronForwardOutline,
 } from 'react-icons/io5';
-
-const LOTE_STATUS_STYLES = {
-  DISPONIBLE: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
-  RESERVADO:  'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-  VENDIDO:    'bg-red-500/20 text-red-300 border border-red-500/30',
-};
+import {
+  landingShell,
+  landingHeader,
+  landingCard,
+  landingCardHover,
+  landingSpinner,
+  landingBtnPrimary,
+  landingBtnWa,
+  landingErrorBox,
+  LOTE_STATUS_STYLES,
+} from './landingTheme';
 
 const LOTE_STATUS_LABELS = {
   DISPONIBLE: 'Disponible',
@@ -70,10 +75,10 @@ const LoteoDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+      <div className={`${landingShell} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-lime-500 mx-auto mb-4"></div>
-          <p className="text-slate-300 text-lg">Cargando loteo...</p>
+          <div className={`w-16 h-16 mx-auto mb-4 ${landingSpinner}`} />
+          <p className="text-textSecondary text-lg">Cargando loteo...</p>
         </div>
       </div>
     );
@@ -81,15 +86,12 @@ const LoteoDetail = () => {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
-          <IoMapOutline className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Loteo no encontrado</h2>
-          <p className="text-slate-300 mb-4">{error}</p>
-          <button
-            onClick={() => navigate(`/${subdomain}`)}
-            className="px-6 py-2 bg-lime-500 hover:bg-lime-600 text-white rounded-lg transition"
-          >
+      <div className={`${landingShell} flex items-center justify-center p-4`}>
+        <div className={landingErrorBox}>
+          <IoMapOutline className="w-16 h-16 text-customRed mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-textPrimary mb-2">Loteo no encontrado</h2>
+          <p className="text-textSecondary mb-4">{error}</p>
+          <button type="button" onClick={() => navigate(`/${subdomain}`)} className={landingBtnPrimary}>
             Volver a la inmobiliaria
           </button>
         </div>
@@ -103,22 +105,21 @@ const LoteoDetail = () => {
   const nextImage = () => setCurrentImageIndex(i => (i + 1) % photos.length);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <header className="bg-white/5 backdrop-blur-md border-b border-white/10 sticky top-0 z-50">
+    <div className={landingShell}>
+      <header className={landingHeader}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link
               to={`/${subdomain}`}
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition"
+              className="p-2 text-textMuted hover:text-brand-light hover:bg-brand-subtle rounded-lg transition"
             >
               <IoArrowBackOutline className="w-5 h-5" />
             </Link>
             <div className="flex items-center gap-3">
               {tenant.logo && (
-                <img src={tenant.logo} alt={tenant.name} className="h-9 w-9 rounded-full object-cover border border-white/10" />
+                <img src={tenant.logo} alt={tenant.name} className="h-9 w-9 rounded-full object-cover border border-borderBase" />
               )}
-              <span className="text-white font-semibold">{tenant.name}</span>
+              <span className="text-textPrimary font-semibold">{tenant.name}</span>
             </div>
           </div>
           {tenant.contact?.whatsapp && (
@@ -126,7 +127,7 @@ const LoteoDetail = () => {
               href={`https://wa.me/${tenant.contact.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola! Vi el loteo "${loteo.name}" y me gustaría consultar.`)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition font-medium text-sm"
+              className={`${landingBtnWa} text-sm`}
             >
               <IoLogoWhatsapp className="w-5 h-5" />
               <span className="hidden sm:inline">Contactar</span>
@@ -138,7 +139,7 @@ const LoteoDetail = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Galería de fotos generales */}
         {photos.length > 0 && (
-          <div className="relative h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden mb-8 bg-slate-800">
+          <div className="relative h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden mb-8 bg-bgElevated">
             <img
               src={photos[currentImageIndex]}
               alt={loteo.name}
@@ -163,7 +164,7 @@ const LoteoDetail = () => {
                     <button
                       key={i}
                       onClick={() => setCurrentImageIndex(i)}
-                      className={`w-2 h-2 rounded-full transition ${i === currentImageIndex ? 'bg-white' : 'bg-white/40'}`}
+                      className={`w-2 h-2 rounded-full transition ${i === currentImageIndex ? 'bg-brand-light' : 'bg-textMuted/40'}`}
                     />
                   ))}
                 </div>
@@ -177,39 +178,39 @@ const LoteoDetail = () => {
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <IoMapOutline className="w-6 h-6 text-lime-400" />
-                <h1 className="text-3xl font-bold text-white">{loteo.name}</h1>
+                <IoMapOutline className="w-6 h-6 text-brand-light" />
+                <h1 className="text-3xl font-bold text-textPrimary">{loteo.name}</h1>
               </div>
               {(loteo.city || loteo.province) && (
-                <p className="text-slate-400 flex items-center gap-1 mt-1">
+                <p className="text-textMuted flex items-center gap-1 mt-1">
                   <IoLocationOutline className="w-4 h-4" />
                   {[loteo.address, loteo.city, loteo.province].filter(Boolean).join(', ')}
                 </p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-slate-400 text-sm">
+              <span className="flex items-center gap-1 text-textMuted text-sm">
                 <IoGridOutline className="w-4 h-4" />
                 {loteo.totalLotes || 0} lotes en total
               </span>
             </div>
           </div>
           {loteo.description && (
-            <p className="text-slate-300 mt-4 leading-relaxed">{loteo.description}</p>
+            <p className="text-textSecondary mt-4 leading-relaxed">{loteo.description}</p>
           )}
         </div>
 
         {/* Grid de lotes */}
         <div className="mb-4">
-          <h2 className="text-xl font-bold text-white mb-1">Lotes disponibles</h2>
-          <p className="text-slate-400 text-sm mb-5">
+          <h2 className="text-xl font-bold text-textPrimary mb-1">Lotes disponibles</h2>
+          <p className="text-textMuted text-sm mb-5">
             {loteo.lotes?.filter(l => l.status === 'DISPONIBLE').length || 0} disponibles ·{' '}
             {loteo.lotes?.filter(l => l.status === 'RESERVADO').length || 0} reservados ·{' '}
             {loteo.lotes?.filter(l => l.status === 'VENDIDO').length || 0} vendidos
           </p>
 
           {loteo.lotes?.length === 0 ? (
-            <p className="text-slate-500 text-center py-8">No hay lotes cargados aún.</p>
+            <p className="text-textMuted text-center py-8">No hay lotes cargados aún.</p>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {loteo.lotes.map((lote) => (
@@ -217,30 +218,30 @@ const LoteoDetail = () => {
                   key={lote.id}
                   onClick={() => setSelectedLote(lote.id === selectedLote?.id ? null : lote)}
                   disabled={lote.status === 'VENDIDO'}
-                  className={`text-left bg-white/5 border rounded-xl p-3 transition-all duration-200 ${
+                  className={`text-left ${landingCardHover} p-3 ${
                     lote.status === 'VENDIDO'
-                      ? 'opacity-50 cursor-not-allowed border-white/5'
+                      ? 'opacity-50 cursor-not-allowed'
                       : selectedLote?.id === lote.id
-                        ? 'border-lime-500 bg-lime-500/10 scale-[1.02]'
-                        : 'border-white/10 hover:border-white/30 hover:bg-white/8'
+                        ? 'border-brand bg-brand-subtle/50 scale-[1.02]'
+                        : ''
                   }`}
                 >
                   {lote.photos?.[0] && (
                     <img src={lote.photos[0]} alt={`Lote ${lote.number}`} className="w-full h-20 object-cover rounded-lg mb-2" />
                   )}
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-white font-bold text-sm">Lote {lote.number}</span>
+                    <span className="text-textPrimary font-bold text-sm">Lote {lote.number}</span>
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${LOTE_STATUS_STYLES[lote.status]}`}>
                       {LOTE_STATUS_LABELS[lote.status]}
                     </span>
                   </div>
                   {lote.surface && (
-                    <p className="text-slate-400 text-xs flex items-center gap-0.5">
+                    <p className="text-textMuted text-xs flex items-center gap-0.5">
                       <IoExpandOutline className="w-3 h-3" /> {lote.surface} m²
                     </p>
                   )}
                   {lote.price && (
-                    <p className="text-emerald-400 text-xs font-semibold mt-0.5">
+                    <p className="text-brand-light text-xs font-semibold mt-0.5">
                       {formatPrice(lote.price, lote.currency)}
                     </p>
                   )}
@@ -252,7 +253,7 @@ const LoteoDetail = () => {
 
         {/* Panel detalle del lote seleccionado */}
         {selectedLote && (
-          <div className="mt-6 bg-white/5 border border-lime-500/30 rounded-2xl p-5">
+          <div className={`mt-6 ${landingCard} border-brand/40 p-5`}>
             <div className="flex flex-col sm:flex-row gap-5">
               {/* Fotos del lote */}
               {selectedLote.photos?.length > 0 && (
@@ -274,30 +275,30 @@ const LoteoDetail = () => {
 
               {/* Info */}
               <div className="flex-1">
-                <h3 className="text-white text-xl font-bold mb-2">Lote {selectedLote.number}</h3>
+                <h3 className="text-textPrimary text-xl font-bold mb-2">Lote {selectedLote.number}</h3>
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   {selectedLote.surface && (
-                    <div className="bg-white/5 rounded-lg p-2 text-center">
-                      <p className="text-slate-400 text-xs">Superficie</p>
-                      <p className="text-white font-semibold">{selectedLote.surface} m²</p>
+                    <div className="bg-bgElevated rounded-lg p-2 text-center">
+                      <p className="text-textMuted text-xs">Superficie</p>
+                      <p className="text-textPrimary font-semibold">{selectedLote.surface} m²</p>
                     </div>
                   )}
                   {selectedLote.price && (
-                    <div className="bg-white/5 rounded-lg p-2 text-center">
-                      <p className="text-slate-400 text-xs">Precio</p>
-                      <p className="text-emerald-400 font-bold">{formatPrice(selectedLote.price, selectedLote.currency)}</p>
+                    <div className="bg-bgElevated rounded-lg p-2 text-center">
+                      <p className="text-textMuted text-xs">Precio</p>
+                      <p className="text-brand-light font-bold">{formatPrice(selectedLote.price, selectedLote.currency)}</p>
                     </div>
                   )}
                 </div>
                 {selectedLote.description && (
-                  <p className="text-slate-300 text-sm mb-4">{selectedLote.description}</p>
+                  <p className="text-textSecondary text-sm mb-4">{selectedLote.description}</p>
                 )}
                 {tenant.contact?.whatsapp && selectedLote.status === 'DISPONIBLE' && (
                   <a
                     href={generateWhatsApp(selectedLote)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition"
+                    className={`${landingBtnWa} px-5 py-2.5 rounded-xl font-semibold`}
                   >
                     <IoLogoWhatsapp className="w-5 h-5" />
                     Consultar por este lote
@@ -310,8 +311,8 @@ const LoteoDetail = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white/5 border-t border-white/10 mt-16 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-400 text-sm">
+      <footer className="bg-bgSurface border-t border-borderBase mt-16 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-textMuted text-sm">
           <p>© {new Date().getFullYear()} Innoweb. Todos los derechos reservados.</p>
           {tenant.contact?.address && (
             <p className="flex items-center gap-2">
