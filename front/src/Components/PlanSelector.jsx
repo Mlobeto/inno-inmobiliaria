@@ -17,10 +17,10 @@ import {
 } from 'react-icons/io5';
 
 const PLAN_COLORS = {
-  basic:        { from: 'from-slate-500',   to: 'to-slate-700',   accent: 'text-slate-600',   btn: 'bg-slate-700 hover:bg-slate-800' },
-  professional: { from: 'from-indigo-500',  to: 'to-purple-600',  accent: 'text-indigo-600',  btn: 'bg-indigo-600 hover:bg-indigo-700' },
-  enterprise:   { from: 'from-emerald-500', to: 'to-teal-600',    accent: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700' },
-  agencia:      { from: 'from-orange-500',  to: 'to-pink-600',    accent: 'text-orange-600',  btn: 'bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700' },
+  basic:        { from: 'from-[#3D4A42]',   to: 'to-[#2A3530]',   accent: 'text-textSecondary', btn: 'bg-brand-muted hover:bg-brand-dark' },
+  professional: { from: 'from-brand-dark',  to: 'to-brand',       accent: 'text-brand-light',   btn: 'bg-brand hover:bg-brand-dark' },
+  enterprise:   { from: 'from-brand',       to: 'to-brand-light', accent: 'text-brand-light',   btn: 'bg-brand hover:bg-brand-dark' },
+  agencia:      { from: 'from-customYellow', to: 'to-brand-dark', accent: 'text-customYellow',  btn: 'bg-brand hover:bg-brand-dark' },
 };
 
 // Filas de la tabla comparativa
@@ -70,38 +70,38 @@ const PlanSelector = () => {
 
   if (loadingPlans) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-900 to-indigo-950">
-        <div className="animate-spin rounded-full h-14 w-14 border-4 border-indigo-400 border-t-transparent"></div>
+      <div className="flex justify-center items-center min-h-screen bg-[#0B0E0C]">
+        <div className="animate-spin rounded-full h-14 w-14 border-4 border-brand border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+    <div className="min-h-screen bg-[#0B0E0C] font-Montserrat text-textPrimary">
       {/* Hero header */}
-      <div className="text-center pt-16 pb-10 px-4">
-        <div className="flex justify-center mb-6">
-          <Logo color="#a5b4fc" size={80} />
+      <div className="text-center pt-12 pb-8 px-4">
+        <div className="flex justify-center mb-5">
+          <Logo color="#7FB99A" size={64} />
         </div>
-        <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-          <IoSparkles className="text-indigo-400" />
+        <div className="inline-flex items-center gap-2 bg-brand-subtle border border-borderBase text-brand-light text-sm font-medium px-4 py-1.5 rounded-full mb-5">
+          <IoSparkles className="text-brand-light" />
           Planes para tu inmobiliaria
         </div>
-        <h1 className="text-5xl font-extrabold text-white mb-4 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-textPrimary mb-3 tracking-tight">
           Elegí tu plan
         </h1>
-        <p className="text-lg text-slate-400 max-w-xl mx-auto">
+        <p className="text-base text-textSecondary max-w-xl mx-auto">
           Desde pequeñas inmobiliarias hasta grandes agencias — tenemos el plan ideal para vos.
         </p>
 
         {/* Toggle cards / tabla */}
-        <div className="mt-8 inline-flex items-center bg-slate-800 border border-slate-700 rounded-xl p-1 gap-1">
+        <div className="mt-6 inline-flex items-center bg-bgSurface border border-borderBase rounded-xl p-1 gap-1">
           <button
             onClick={() => setShowTable(false)}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
               !showTable
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-brand text-textWhite shadow-brandGlow'
+                : 'text-textSecondary hover:text-textPrimary'
             }`}
           >
             Tarjetas
@@ -110,8 +110,8 @@ const PlanSelector = () => {
             onClick={() => setShowTable(true)}
             className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
               showTable
-                ? 'bg-indigo-600 text-white shadow'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-brand text-textWhite shadow-brandGlow'
+                : 'text-textSecondary hover:text-textPrimary'
             }`}
           >
             Comparar
@@ -135,12 +135,12 @@ const PlanSelector = () => {
               return (
                 <div
                   key={plan.planId}
-                  className={`relative flex flex-col bg-slate-800/70 backdrop-blur border rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${
+                  className={`relative flex flex-col bg-bgSurface backdrop-blur border rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-brandGlow ${
                     isPopular
-                      ? 'border-indigo-500 ring-2 ring-indigo-500/40'
+                      ? 'border-brand ring-2 ring-brand/30'
                       : isNew
-                      ? 'border-orange-500/60 ring-2 ring-orange-500/30'
-                      : 'border-slate-700'
+                      ? 'border-customYellow/60 ring-2 ring-customYellow/20'
+                      : 'border-borderBase'
                   }`}
                 >
                   {/* Cabecera con gradiente */}
@@ -340,7 +340,7 @@ const PlanSelector = () => {
         <p className="mb-1">✓ Cancelás cuando querés &nbsp;•&nbsp; ✓ Sin compromisos &nbsp;•&nbsp; ✓ Soporte incluido</p>
         <p>
           ¿Tenés dudas?{' '}
-          <a href="/contact" className="text-indigo-400 hover:text-indigo-300 hover:underline">Contactanos</a>
+          <a href="/contacto" className="text-brand-light hover:text-brand hover:underline">Contactanos</a>
         </p>
       </div>
 
@@ -376,7 +376,7 @@ const PlanSelector = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleConfirmPlan}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl transition font-bold"
+                className="flex-1 bg-brand hover:bg-brand-dark text-textWhite px-6 py-3 rounded-xl transition font-bold"
               >
                 Crear Cuenta
               </button>

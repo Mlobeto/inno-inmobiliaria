@@ -1,5 +1,6 @@
 import { IoLogoWhatsapp, IoLocationSharp, IoPhonePortraitOutline, IoMailOutline } from 'react-icons/io5';
 import { Link } from 'react-router-dom';
+import Logo from './Logo';
 
 function LandingFooter() {
   return (
@@ -8,7 +9,8 @@ function LandingFooter() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <img src="/LOGO.png" alt="GestProp" className="h-7 object-contain brightness-0 invert" />
+              <Logo color="#5A8C72" size={32} />
+              <span className="text-textPrimary font-bold">GestProp</span>
             </div>
             <p className="text-sm mb-4 leading-relaxed">
               La plataforma completa para gestionar tu inmobiliaria de forma profesional y eficiente.
