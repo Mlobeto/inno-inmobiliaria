@@ -48,16 +48,16 @@ const LoginAdmin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-bgBase via-bgSurface to-brand-muted flex flex-col font-Montserrat">
 
       {/* Navbar */}
-      <nav className="w-full px-6 py-4 flex items-center justify-between border-b border-white/10">
+      <nav className="w-full px-6 py-4 flex items-center justify-between border-b border-borderBase">
         <Link to="/" className="flex items-center gap-2">
           <img src="/LOGO.png" alt="GestProp" className="h-7 object-contain brightness-0 invert" />
         </Link>
-        <Link to="/registro" className="text-sm text-slate-300 hover:text-white transition-colors">
+        <Link to="/registro" className="text-sm text-textSecondary hover:text-textPrimary transition-colors">
           ¿No tenés cuenta?{' '}
-          <span className="text-blue-400 font-medium">Empezá gratis</span>
+          <span className="text-brand-light font-medium">Empezá gratis</span>
         </Link>
       </nav>
 
@@ -68,34 +68,34 @@ const LoginAdmin = () => {
           {/* Panel izquierdo — marketing (solo desktop) */}
           <div className="hidden lg:flex flex-col gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-3 leading-tight">
+              <h1 className="text-4xl font-bold text-textPrimary mb-3 leading-tight">
                 La plataforma completa para tu inmobiliaria
               </h1>
-              <p className="text-slate-400 text-lg">
+              <p className="text-textSecondary text-lg">
                 Gestioná propiedades, contratos y cobros desde un solo lugar. Empezá gratis, sin tarjeta de crédito.
               </p>
             </div>
 
             <ul className="flex flex-col gap-3">
               {FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-3 text-slate-300">
-                  <IoCheckmarkCircleOutline className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <li key={f} className="flex items-start gap-3 text-textSecondary">
+                  <IoCheckmarkCircleOutline className="w-5 h-5 text-brand-light flex-shrink-0 mt-0.5" />
                   <span>{f}</span>
                 </li>
               ))}
             </ul>
 
             <div className="flex flex-col gap-3 pt-2">
-              <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
-                <IoStarOutline className="w-6 h-6 text-blue-400 flex-shrink-0" />
+              <div className="flex items-center gap-3 bg-bgSurface border border-borderBase rounded-xl px-4 py-3 shadow-brand">
+                <IoStarOutline className="w-6 h-6 text-brand-light flex-shrink-0" />
                 <div>
-                  <p className="text-white font-semibold text-sm">Prueba gratuita 7 días</p>
-                  <p className="text-slate-400 text-xs">Sin tarjeta · Cancelá cuando quieras</p>
+                  <p className="text-textPrimary font-semibold text-sm">Prueba gratuita 7 días</p>
+                  <p className="text-textMuted text-xs">Sin tarjeta · Cancelá cuando quieras</p>
                 </div>
               </div>
               <Link
                 to="/registro"
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-colors"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-brand hover:bg-brand-dark text-textWhite font-semibold rounded-xl transition-colors shadow-brandGlow"
               >
                 Crear cuenta gratis
                 <IoArrowForwardOutline className="w-4 h-4" />
@@ -105,22 +105,22 @@ const LoginAdmin = () => {
 
           {/* Panel derecho — formulario */}
           <div className="w-full">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 shadow-2xl">
+            <div className="bg-bgSurface backdrop-blur-sm border border-borderBase rounded-2xl p-8 shadow-brandGlow">
 
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-1">Iniciá sesión</h2>
-                <p className="text-slate-400 text-sm">Ingresá con tu email y contraseña</p>
+                <h2 className="text-2xl font-bold text-textPrimary mb-1">Iniciá sesión</h2>
+                <p className="text-textSecondary text-sm">Ingresá con tu email y contraseña</p>
               </div>
 
               {error && (
-                <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                <div className="mb-4 px-4 py-3 bg-customRedMuted border border-customRed/30 rounded-lg text-customRed text-sm">
                   {error?.data?.message || 'Error al iniciar sesión. Verificá tus credenciales.'}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 <div>
-                  <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider mb-2">
+                  <label className="block text-textSecondary text-xs font-semibold uppercase tracking-wider mb-2">
                     Usuario
                   </label>
                   <input
@@ -132,18 +132,18 @@ const LoginAdmin = () => {
                     autoComplete="username"
                     required
                     disabled={isLoading}
-                    className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50"
+                    className="w-full bg-bgElevated border border-borderStrong rounded-xl px-4 py-3 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition disabled:opacity-50"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-slate-300 text-xs font-semibold uppercase tracking-wider">
+                    <label className="block text-textSecondary text-xs font-semibold uppercase tracking-wider">
                       Contraseña
                     </label>
                     <Link
                       to="/forgot-password"
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="text-xs text-brand-light hover:text-brand transition-colors"
                     >
                       ¿Olvidaste tu contraseña?
                     </Link>
@@ -158,13 +158,13 @@ const LoginAdmin = () => {
                       autoComplete="current-password"
                       required
                       disabled={isLoading}
-                      className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 pr-11 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50"
+                      className="w-full bg-bgElevated border border-borderStrong rounded-xl px-4 py-3 pr-11 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition disabled:opacity-50"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isLoading}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white transition-colors focus:outline-none disabled:opacity-50"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-textMuted hover:text-textPrimary transition-colors focus:outline-none disabled:opacity-50"
                       aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                       {showPassword
@@ -178,8 +178,8 @@ const LoginAdmin = () => {
                   type="submit"
                   disabled={isLoading || !username.trim() || !password.trim()}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-200
-                    bg-blue-600 hover:bg-blue-500 text-white
-                    disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                    bg-brand hover:bg-brand-dark text-textWhite shadow-brandGlow
+                    disabled:bg-brand-muted disabled:text-textMuted disabled:cursor-not-allowed disabled:shadow-none"
                 >
                   {isLoading ? (
                     <>
@@ -196,10 +196,10 @@ const LoginAdmin = () => {
               </form>
 
               {/* Link mobile */}
-              <div className="lg:hidden mt-6 pt-6 border-t border-white/10 text-center">
-                <p className="text-slate-400 text-sm">
+              <div className="lg:hidden mt-6 pt-6 border-t border-borderBase text-center">
+                <p className="text-textSecondary text-sm">
                   ¿No tenés cuenta?{' '}
-                  <Link to="/registro" className="text-blue-400 font-medium hover:text-blue-300 transition-colors">
+                  <Link to="/registro" className="text-brand-light font-medium hover:text-brand transition-colors">
                     Empezá gratis →
                   </Link>
                 </p>
@@ -211,9 +211,9 @@ const LoginAdmin = () => {
       </div>
 
       {/* Footer */}
-      <div className="py-4 text-center text-xs text-slate-600">
+      <div className="py-4 text-center text-xs text-textMuted">
         © {new Date().getFullYear()} GestProp ·{' '}
-        <a href="https://innoweb.com.ar" target="_blank" rel="noopener noreferrer" className="hover:text-slate-400 transition-colors">
+        <a href="https://innoweb.com.ar" target="_blank" rel="noopener noreferrer" className="hover:text-textSecondary transition-colors">
           innoweb.com.ar
         </a>
       </div>

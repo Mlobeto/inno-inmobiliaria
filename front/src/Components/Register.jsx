@@ -1,5 +1,5 @@
 import  { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useRegisterTenantMutation } from '@shared/redux';
 import {  IoPersonSharp, IoMailSharp, IoLockClosedSharp, IoCheckmarkCircle } from 'react-icons/io5';
 
@@ -61,19 +61,16 @@ const Register = () => {
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
-        planId: planId || 'basic' // Enviar el planId seleccionado o 'basic' por defecto
+        planId: planId || 'basic'
       }).unwrap();
 
       console.log('Resultado del registro:', result);
 
-      // Guardar token y usuario
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify(result.user));
 
-      // Mostrar mensaje de éxito
       alert(`¡Cuenta creada exitosamente! Bienvenido ${formData.fullName}`);
 
-      // Redirigir a completar perfil de empresa
       navigate('/admin/company-settings?welcome=true');
     } catch (error) {
       console.error('Error en registro:', error);
@@ -84,154 +81,153 @@ const Register = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Limpiar error del campo cuando el usuario empieza a escribir
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
+  const inputClass = (field) =>
+    `w-full pl-10 pr-4 py-3 bg-bgElevated border rounded-xl text-textPrimary placeholder-textMuted focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition ${
+      errors[field] ? 'border-customRed' : 'border-borderStrong'
+    }`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            Crear Cuenta
-          </h1>
-          <p className="text-gray-600">
-            Completa tus datos para comenzar
-          </p>
-          {planId && (
-            <div className="mt-4 inline-flex items-center gap-2 bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm">
-              <IoCheckmarkCircle className="text-lg" />
-              Plan seleccionado: <strong>{planId}</strong>
-            </div>
-          )}
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-bgBase via-bgSurface to-brand-muted flex flex-col font-Montserrat">
+      <nav className="w-full px-6 py-4 flex items-center justify-between border-b border-borderBase">
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/LOGO.png" alt="GestProp" className="h-7 object-contain brightness-0 invert" />
+        </Link>
+        <Link to="/login" className="text-sm text-textSecondary hover:text-textPrimary transition-colors">
+          ¿Ya tenés cuenta?{' '}
+          <span className="text-brand-light font-medium">Iniciá sesión</span>
+        </Link>
+      </nav>
 
-        {/* Formulario */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          
-          {/* Nombre completo */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Tu Nombre Completo *
-            </label>
-            <div className="relative">
-              <IoPersonSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Ej: Juan Pérez"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${
-                  errors.fullName ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-            </div>
-            {errors.fullName && (
-              <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+      <div className="flex flex-1 items-center justify-center p-4 py-12">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-textPrimary mb-2">
+              Crear cuenta
+            </h1>
+            <p className="text-textSecondary">
+              Completá tus datos para empezar la prueba gratuita
+            </p>
+            {planId && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-brand-muted text-brand-light px-4 py-2 rounded-full text-sm border border-borderBase">
+                <IoCheckmarkCircle className="text-lg" />
+                Plan seleccionado: <strong>{planId}</strong>
+              </div>
             )}
           </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Email *
-            </label>
-            <div className="relative">
-              <IoMailSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="tu@email.com"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
+          <form onSubmit={handleSubmit} className="bg-bgSurface border border-borderBase rounded-2xl shadow-brandGlow p-8 space-y-6">
+
+            <div>
+              <label className="block text-sm font-semibold text-textSecondary mb-2">
+                Tu nombre completo *
+              </label>
+              <div className="relative">
+                <IoPersonSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  placeholder="Ej: Juan Pérez"
+                  className={inputClass('fullName')}
+                />
+              </div>
+              {errors.fullName && (
+                <p className="text-customRed text-sm mt-1">{errors.fullName}</p>
+              )}
             </div>
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
-          </div>
 
-          {/* Contraseña */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Contraseña *
-            </label>
-            <div className="relative">
-              <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Mínimo 6 caracteres"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
+            <div>
+              <label className="block text-sm font-semibold text-textSecondary mb-2">
+                Email *
+              </label>
+              <div className="relative">
+                <IoMailSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="tu@email.com"
+                  className={inputClass('email')}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-customRed text-sm mt-1">{errors.email}</p>
+              )}
             </div>
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-            )}
-          </div>
 
-          {/* Confirmar contraseña */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Confirmar Contraseña *
-            </label>
-            <div className="relative">
-              <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Repite tu contraseña"
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none ${
-                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
+            <div>
+              <label className="block text-sm font-semibold text-textSecondary mb-2">
+                Contraseña *
+              </label>
+              <div className="relative">
+                <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Mínimo 6 caracteres"
+                  className={inputClass('password')}
+                />
+              </div>
+              {errors.password && (
+                <p className="text-customRed text-sm mt-1">{errors.password}</p>
+              )}
             </div>
-            {errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
-            )}
-          </div>
 
-          {/* Botón de registro */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Creando cuenta...' : 'Crear Cuenta y Continuar'}
-          </button>
+            <div>
+              <label className="block text-sm font-semibold text-textSecondary mb-2">
+                Confirmar contraseña *
+              </label>
+              <div className="relative">
+                <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Repetí tu contraseña"
+                  className={inputClass('confirmPassword')}
+                />
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-customRed text-sm mt-1">{errors.confirmPassword}</p>
+              )}
+            </div>
 
-          {/* Link a login */}
-          <div className="text-center text-sm text-gray-600">
-            ¿Ya tienes cuenta?{' '}
             <button
-              type="button"
-              onClick={() => navigate('/login')}
-              className="text-indigo-600 hover:underline font-semibold"
+              type="submit"
+              disabled={isLoading}
+              className="w-full bg-brand hover:bg-brand-dark text-textWhite py-3 rounded-xl font-semibold transition shadow-brandGlow disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Iniciar Sesión
+              {isLoading ? 'Creando cuenta...' : 'Crear cuenta y continuar'}
             </button>
-          </div>
-        </form>
 
-        {/* Footer */}
-        <div className="text-center mt-6 text-sm text-gray-500">
-          Al crear una cuenta aceptas nuestros{' '}
-          <a href="/terms" className="text-indigo-600 hover:underline">
-            Términos y Condiciones
-          </a>
+            <div className="text-center text-sm text-textSecondary">
+              ¿Ya tenés cuenta?{' '}
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-brand-light hover:text-brand font-semibold transition-colors"
+              >
+                Iniciar sesión
+              </button>
+            </div>
+          </form>
+
+          <div className="text-center mt-6 text-sm text-textMuted">
+            Al crear una cuenta aceptás nuestros{' '}
+            <a href="/terms" className="text-brand-light hover:text-brand transition-colors">
+              Términos y Condiciones
+            </a>
+          </div>
         </div>
       </div>
     </div>
