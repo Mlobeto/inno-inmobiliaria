@@ -235,8 +235,17 @@ class MercadoLibreController {
       // Redirigir al frontend con éxito
       res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_success=true`);
     } catch (error) {
-      logger.error('Error en callback ML', { error: error.message });
-      res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=callback_failed`);
+      logger.error('Error en callback ML', {
+        error: error.message,
+        mlError: error.mlError,
+        mlStatus: error.mlStatus,
+        mlDescription: error.mlDescription,
+      });
+      const knownErrors = ['invalid_client', 'invalid_grant', 'unauthorized_client', 'forbidden'];
+      const errCode = knownErrors.includes(error.mlError) ? error.mlError : 'callback_failed';
+      res.redirect(
+        `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${encodeURIComponent(errCode)}`
+      );
     }
   }
   

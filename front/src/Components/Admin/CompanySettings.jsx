@@ -168,9 +168,14 @@ const CompanySettings = () => {
         invalid_state: 'La conexión expiró. Volvé a pulsar Conectar cuenta.',
         no_code: 'No se completó la autorización en Mercado Libre.',
         callback_failed:
-          'No pudimos guardar la conexión. Verificá la URL de callback en developers.mercadolibre.com.ar (debe incluir /api/mercadolibre/callback).',
+          'No pudimos guardar la conexión. Revisá que ML_CLIENT_SECRET en GitHub/Azure sea el de la app InnoInmobiliaria - Publicaciones (6081765459956502).',
+        invalid_client:
+          'Client ID o Secret incorrectos en el servidor. Actualizá ML_CLIENT_SECRET en GitHub Secrets (app InnoInmobiliaria - Publicaciones) y redeploy del backend.',
+        invalid_grant:
+          'El código de autorización expiró o la redirect URI no coincide. Verificá en developers que la URL de callback sea exactamente la de Azure con /api/mercadolibre/callback e intentá de nuevo.',
+        unauthorized_client: 'La app de Mercado Libre no está autorizada para este flujo. Revisá permisos y VIS en developers.',
+        forbidden: 'Mercado Libre rechazó la conexión para esta cuenta. Usá un usuario de prueba si la app no está certificada.',
         access_denied: 'No autorizaste el acceso o cancelaste en Mercado Libre.',
-        invalid_grant: 'El código expiró. Intentá conectar de nuevo.',
       };
       toast.error(
         mlErrorMessages[mlErr] ||

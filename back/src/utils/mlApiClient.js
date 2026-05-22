@@ -22,13 +22,23 @@ function buildMlAuthUrl(redirectUri, state) {
 
 async function postTokenForm(bodyParams) {
   const body = new URLSearchParams(bodyParams);
-  const { data } = await axios.post(ML_TOKEN_URL, body.toString(), {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-  });
-  return data;
+  try {
+    const { data } = await axios.post(ML_TOKEN_URL, body.toString(), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+    });
+    return data;
+  } catch (err) {
+    const mlPayload = err.response?.data;
+    const mlError = mlPayload?.error || mlPayload?.message;
+    const detail = new Error(mlError || err.message || 'Error al obtener token de Mercado Libre');
+    detail.mlError = mlError;
+    detail.mlStatus = err.response?.status;
+    detail.mlDescription = mlPayload?.error_description;
+    throw detail;
+  }
 }
 
 async function exchangeMlAuthorizationCode(code, redirectUri) {
