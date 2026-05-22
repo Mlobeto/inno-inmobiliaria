@@ -665,7 +665,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
                   {tenantHasMl && !mlConnection.loading && !mlConnection.connected && (
                     <Link
-                      to="/admin/company-settings?tab=integrations"
+                      to="/admin/company-settings?tab=mercadolibre"
                       className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-500/20"
                     >
                       Conectar Mercado Libre

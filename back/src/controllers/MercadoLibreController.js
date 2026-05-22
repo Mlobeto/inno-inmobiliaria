@@ -156,7 +156,7 @@ class MercadoLibreController {
         logger.warn('Usuario canceló o error OAuth', { oauthError });
         const errCode = encodeURIComponent(oauthError || 'no_code');
         return res.redirect(
-          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${errCode}`
+          `${process.env.FRONTEND_URL}/admin/company-settings?tab=mercadolibre&ml_error=${errCode}`
         );
       }
       
@@ -165,7 +165,7 @@ class MercadoLibreController {
       if (!tenantId) {
         logger.error('State OAuth ML inválido o alterado', { state: state?.slice?.(0, 40) });
         return res.redirect(
-          `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=invalid_state`
+          `${process.env.FRONTEND_URL}/admin/company-settings?tab=mercadolibre&ml_error=invalid_state`
         );
       }
       
@@ -233,7 +233,7 @@ class MercadoLibreController {
       logger.info('Configuración ML guardada en DB', { tenantId, mlUserId: user_id, created });
       
       // Redirigir al frontend con éxito
-      res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_success=true`);
+      res.redirect(`${process.env.FRONTEND_URL}/admin/company-settings?tab=mercadolibre&ml_success=true`);
     } catch (error) {
       logger.error('Error en callback ML', {
         error: error.message,
@@ -244,7 +244,7 @@ class MercadoLibreController {
       const knownErrors = ['invalid_client', 'invalid_grant', 'unauthorized_client', 'forbidden'];
       const errCode = knownErrors.includes(error.mlError) ? error.mlError : 'callback_failed';
       res.redirect(
-        `${process.env.FRONTEND_URL}/admin/company-settings?tab=integrations&ml_error=${encodeURIComponent(errCode)}`
+        `${process.env.FRONTEND_URL}/admin/company-settings?tab=mercadolibre&ml_error=${encodeURIComponent(errCode)}`
       );
     }
   }

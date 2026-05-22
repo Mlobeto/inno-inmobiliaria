@@ -6,7 +6,6 @@ import { toast } from 'react-toastify';
 import {
   IoLogoBuffer,
   IoCheckmarkCircleOutline,
-  IoCloseCircleOutline,
   IoSyncOutline,
   IoLinkOutline,
   IoInformationCircleOutline,
@@ -147,7 +146,7 @@ TenantMlGuide.propTypes = {
   connected: PropTypes.bool,
 };
 
-const MercadoLibreIntegration = () => {
+const MercadoLibreIntegration = ({ direct = false }) => {
   const [searchParams] = useSearchParams();
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -182,7 +181,8 @@ const MercadoLibreIntegration = () => {
 
   useEffect(() => {
     checkConnectionStatus();
-    if (searchParams.get('tab') === 'integrations') {
+    const tab = searchParams.get('tab');
+    if (tab === 'mercadolibre' || tab === 'integrations') {
       setTimeout(() => checkConnectionStatus(), 500);
     }
   }, [searchParams, checkConnectionStatus]);
@@ -228,26 +228,31 @@ const MercadoLibreIntegration = () => {
   };
 
   if (isLoading) {
-    return <MlLoadingScreen />;
+    return <MlLoadingScreen direct={direct} />;
   }
 
   const featureBlocked = connectionStatus?.featureBlocked;
   const connected = connectionStatus?.connected;
   const listingsCount = connectionStatus?.listingsCount ?? 0;
+  const shellClass = direct
+    ? 'space-y-6'
+    : 'bg-white rounded-lg shadow-lg p-8 space-y-6';
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-8 space-y-6">
-      <header className="flex items-start gap-4">
-        <div className="w-14 h-14 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
-          <IoLogoBuffer className="w-9 h-9 text-white" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mercado Libre Inmuebles</h2>
-          <p className="text-gray-600 mt-1 text-sm">
-            Vinculá la cuenta de vendedor de tu inmobiliaria, publicá inmuebles y recibí consultas en el CRM.
-          </p>
-        </div>
-      </header>
+    <div className={shellClass}>
+      {!direct && (
+        <header className="flex items-start gap-4">
+          <div className="w-14 h-14 bg-yellow-400 rounded-lg flex items-center justify-center shrink-0">
+            <IoLogoBuffer className="w-9 h-9 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Mercado Libre Inmuebles</h2>
+            <p className="text-gray-600 mt-1 text-sm">
+              Vinculá la cuenta de vendedor de tu inmobiliaria, publicá inmuebles y recibí consultas en el CRM.
+            </p>
+          </div>
+        </header>
+      )}
 
       {featureBlocked && (
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 text-sm text-amber-900">
@@ -255,6 +260,80 @@ const MercadoLibreIntegration = () => {
           <p className="mt-1 text-amber-800">
             {connectionStatus?.error || 'Actualizá el plan para habilitar esta función.'}
           </p>
+        </div>
+      )}
+
+      {/* Estado y acción principal — lo primero que ve el usuario */}
+      {!featureBlocked && (
+        <div
+          className={`rounded-xl p-6 ${
+            connected
+              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200'
+              : 'bg-gradient-to-br from-yellow-50 to-amber-50 border-2 border-yellow-300'
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div
+                className={`rounded-full p-3 shrink-0 ${
+                  connected ? 'bg-green-100' : 'bg-yellow-100'
+                }`}
+              >
+                {connected ? (
+                  <IoCheckmarkCircleOutline className="w-8 h-8 text-green-600" />
+                ) : (
+                  <IoLinkOutline className="w-8 h-8 text-yellow-700" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  {connected ? 'Cuenta conectada' : 'Conectá tu cuenta de Mercado Libre'}
+                </h3>
+                <p className="text-sm text-gray-700 mt-1 max-w-xl">
+                  {connected
+                    ? 'Ya podés publicar inmuebles desde Propiedades y responder consultas en CRM → Leads.'
+                    : 'Usá el usuario vendedor de tu inmobiliaria en mercadolibre.com.ar. Necesitás paquetes de avisos en ML para publicar.'}
+                </p>
+                {connected && listingsCount > 0 && (
+                  <p className="text-sm font-medium text-green-800 mt-2">
+                    {listingsCount} aviso{listingsCount === 1 ? '' : 's'} activo{listingsCount === 1 ? '' : 's'} en Mercado Libre
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="shrink-0">
+              {connected ? (
+                <button
+                  type="button"
+                  onClick={handleDisconnect}
+                  className="px-4 py-2 text-sm text-red-600 bg-white border border-red-200 hover:bg-red-50 rounded-lg font-medium"
+                >
+                  Desconectar
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                  className={`w-full sm:w-auto px-8 py-4 bg-yellow-400 hover:bg-yellow-500 text-gray-900 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-md ${
+                    isConnecting ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isConnecting ? (
+                    <>
+                      <IoSyncOutline className="w-5 h-5 animate-spin" />
+                      Conectando...
+                    </>
+                  ) : (
+                    <>
+                      <IoLinkOutline className="w-5 h-5" />
+                      Conectar cuenta
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -298,6 +377,32 @@ const MercadoLibreIntegration = () => {
         </>
       )}
 
+      {!featureBlocked && !connected && (
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-white text-sm font-bold">
+              1
+            </span>
+            <p className="font-semibold text-gray-900 mt-2 text-sm">Cuenta ML</p>
+            <p className="text-xs text-gray-600 mt-1">Usuario vendedor en mercadolibre.com.ar</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-white text-sm font-bold">
+              2
+            </span>
+            <p className="font-semibold text-gray-900 mt-2 text-sm">Conectar acá</p>
+            <p className="text-xs text-gray-600 mt-1">Pulsá «Conectar cuenta» e iniciá sesión en ML</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 text-center">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-white text-sm font-bold">
+              3
+            </span>
+            <p className="font-semibold text-gray-900 mt-2 text-sm">Publicar</p>
+            <p className="text-xs text-gray-600 mt-1">Desde Propiedades → Publicar en ML</p>
+          </div>
+        </div>
+      )}
+
       {!featureBlocked && (
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <button
@@ -307,7 +412,7 @@ const MercadoLibreIntegration = () => {
           >
             <span className="font-medium text-gray-900 flex items-center gap-2 text-sm">
               <IoInformationCircleOutline className="w-5 h-5 text-blue-500" />
-              {connected ? 'Guía rápida' : 'Qué necesitás en Mercado Libre'}
+              {connected ? 'Guía rápida' : 'Más detalle: qué necesitás en Mercado Libre'}
             </span>
             {guideOpen ? (
               <IoChevronUpOutline className="w-5 h-5 text-gray-500" />
@@ -329,73 +434,20 @@ const MercadoLibreIntegration = () => {
           )}
         </div>
       )}
-
-      <div
-        className={`rounded-lg p-5 ${
-          connected ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'
-        }`}
-      >
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div className="flex items-start gap-3">
-            {connected ? (
-              <IoCheckmarkCircleOutline className="w-6 h-6 text-green-600 mt-0.5" />
-            ) : (
-              <IoCloseCircleOutline className="w-6 h-6 text-gray-400 mt-0.5" />
-            )}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                {connected ? 'Cuenta conectada' : 'Sin conectar'}
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {connected
-                  ? 'Podés publicar y gestionar avisos desde Propiedades.'
-                  : 'Primero prepará tu cuenta en Mercado Libre (vendedor + paquetes). Después conectala acá.'}
-              </p>
-            </div>
-          </div>
-          {!featureBlocked && (
-            <div>
-              {connected ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnect}
-                  className="px-4 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-medium"
-                >
-                  Desconectar
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleConnect}
-                  disabled={isConnecting}
-                  className={`px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg font-semibold flex items-center gap-2 ${
-                    isConnecting ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isConnecting ? (
-                    <>
-                      <IoSyncOutline className="w-5 h-5 animate-spin" />
-                      Conectando...
-                    </>
-                  ) : (
-                    <>
-                      <IoLinkOutline className="w-5 h-5" />
-                      Conectar cuenta
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
 
-function MlLoadingScreen() {
+MercadoLibreIntegration.propTypes = {
+  direct: PropTypes.bool,
+};
+
+function MlLoadingScreen({ direct = false }) {
+  const shellClass = direct
+    ? 'py-12'
+    : 'bg-white rounded-lg shadow-lg p-8';
   return (
-    <div className="bg-white rounded-lg shadow-lg p-8">
+    <div className={shellClass}>
       <div className="flex items-center justify-center py-12">
         <IoSyncOutline className="w-8 h-8 text-blue-500 animate-spin mr-3" />
         <span className="text-gray-600">Verificando conexión...</span>
@@ -403,5 +455,9 @@ function MlLoadingScreen() {
     </div>
   );
 }
+
+MlLoadingScreen.propTypes = {
+  direct: PropTypes.bool,
+};
 
 export default MercadoLibreIntegration;

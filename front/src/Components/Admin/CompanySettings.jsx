@@ -22,7 +22,9 @@ import {
   IoCardOutline,
   IoLogOutOutline,
   IoLogoWhatsapp,
-  IoExtensionPuzzleOutline
+  IoExtensionPuzzleOutline,
+  IoLogoBuffer,
+  IoChevronForwardOutline,
 } from 'react-icons/io5';
 import { uploadFile } from '../../utils/azureUpload';
 import { validateCUIT, formatCUIT } from '../../utils/cuitValidator';
@@ -32,6 +34,86 @@ import ElectronicInvoicingIntegration from './ElectronicInvoicingIntegration';
 import PaymentMethodsManager from './PaymentMethodsManager';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+const VALID_TABS = ['general', 'messages', 'templates', 'mercadolibre', 'integrations', 'payments'];
+
+const CONFIG_SECTIONS = [
+  {
+    id: 'general',
+    label: 'Datos Generales',
+    description: 'Nombre, CUIT, logo y contacto de la inmobiliaria',
+    icon: IoBusinessOutline,
+    accent: 'blue',
+  },
+  {
+    id: 'messages',
+    label: 'Mensajes',
+    description: 'Plantillas de WhatsApp y textos para clientes',
+    icon: IoMailOutline,
+    accent: 'indigo',
+  },
+  {
+    id: 'templates',
+    label: 'Plantillas PDF',
+    description: 'Contratos, recibos y documentos personalizados',
+    icon: IoDocumentTextOutline,
+    accent: 'purple',
+  },
+  {
+    id: 'mercadolibre',
+    label: 'Mercado Libre',
+    description: 'Conectar cuenta, publicar inmuebles y consultas',
+    icon: IoLogoBuffer,
+    accent: 'yellow',
+  },
+  {
+    id: 'integrations',
+    label: 'Facturación electrónica',
+    description: 'Integración con AFIP y comprobantes fiscales',
+    icon: IoExtensionPuzzleOutline,
+    accent: 'emerald',
+  },
+  {
+    id: 'payments',
+    label: 'Métodos de Pago',
+    description: 'Cuentas bancarias y formas de cobro',
+    icon: IoCardOutline,
+    accent: 'rose',
+  },
+];
+
+const SECTION_ACCENT = {
+  blue: {
+    icon: 'bg-blue-100 text-blue-600',
+    active: 'border-blue-500 bg-blue-50 ring-1 ring-blue-200',
+    title: 'text-blue-900',
+  },
+  indigo: {
+    icon: 'bg-indigo-100 text-indigo-600',
+    active: 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-200',
+    title: 'text-indigo-900',
+  },
+  purple: {
+    icon: 'bg-purple-100 text-purple-600',
+    active: 'border-purple-500 bg-purple-50 ring-1 ring-purple-200',
+    title: 'text-purple-900',
+  },
+  yellow: {
+    icon: 'bg-yellow-100 text-yellow-700',
+    active: 'border-yellow-500 bg-yellow-50 ring-1 ring-yellow-200',
+    title: 'text-yellow-900',
+  },
+  emerald: {
+    icon: 'bg-emerald-100 text-emerald-600',
+    active: 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-200',
+    title: 'text-emerald-900',
+  },
+  rose: {
+    icon: 'bg-rose-100 text-rose-600',
+    active: 'border-rose-500 bg-rose-50 ring-1 ring-rose-200',
+    title: 'text-rose-900',
+  },
+};
 
 const DEFAULT_WHATSAPP_TEMPLATE = `Hola! 👋 Gracias por tu consulta.
 
@@ -49,7 +131,7 @@ const DEFAULT_WHATSAPP_TEMPLATE = `Hola! 👋 Gracias por tu consulta.
 const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('general'); // 'general', 'messages', 'templates', 'integrations', 'payments'
+  const [activeTab, setActiveTab] = useState('general');
   const isIncomplete = searchParams.get('incomplete') === 'true';
   const [settings, setSettings] = useState({
     company_name: '',
@@ -147,9 +229,12 @@ const CompanySettings = () => {
       setShowWelcome(true);
     }
     
-    // Verificar tab en URL
+    // Verificar tab en URL (integrations + ml_* → pestaña Mercado Libre)
     const tabParam = searchParams.get('tab');
-    if (tabParam && ['general', 'messages', 'templates', 'integrations', 'payments'].includes(tabParam)) {
+    const hasMlCallback = searchParams.get('ml_success') || searchParams.get('ml_error');
+    if (hasMlCallback) {
+      setActiveTab('mercadolibre');
+    } else if (tabParam && VALID_TABS.includes(tabParam)) {
       setActiveTab(tabParam);
     }
     
@@ -159,6 +244,7 @@ const CompanySettings = () => {
       // Limpiar parámetros de la URL
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('ml_success');
+      newParams.set('tab', 'mercadolibre');
       navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });
     }
     
@@ -184,6 +270,7 @@ const CompanySettings = () => {
       );
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('ml_error');
+      newParams.set('tab', 'mercadolibre');
       navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });
     }
   }, [searchParams, navigate]);
@@ -243,6 +330,17 @@ const CompanySettings = () => {
       setSettings(prev => ({ ...prev, [name]: value }));
     }
   };
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('tab', tabId);
+    navigate(`/admin/company-settings?${newParams.toString()}`, { replace: true });
+  };
+
+  const activeSection = CONFIG_SECTIONS.find((section) => section.id === activeTab) || CONFIG_SECTIONS[0];
+  const ActiveSectionIcon = activeSection.icon;
+  const activeAccent = SECTION_ACCENT[activeSection.accent];
 
   const checkSubdomainAvailability = async (subdomain) => {
     if (!subdomain || subdomain.length < 3) {
@@ -450,7 +548,7 @@ const CompanySettings = () => {
         </div>
       </nav>
 
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-6">
         
         {/* Aviso de configuración pendiente */}
         {isIncomplete && (
@@ -618,83 +716,69 @@ const CompanySettings = () => {
             <IoBusinessOutline className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-3xl font-bold text-gray-800">Configuración de la Inmobiliaria</h1>
-              <p className="text-gray-600 mt-1">Completa los datos de tu empresa</p>
+              <p className="text-gray-600 mt-1">
+                Elegí una sección del menú para configurar datos, mensajes, Mercado Libre y más
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="border-b border-gray-200 overflow-x-auto">
-            <nav className="flex -mb-px min-w-max sm:min-w-0">
-              <button
-                onClick={() => setActiveTab('general')}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'general'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
-                  <IoBusinessOutline className="w-5 h-5" />
-                  <span>Datos Generales</span>
+        {/* Navegación por secciones */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-6">
+          <aside className="lg:w-80 shrink-0">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-3">
+              <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                ¿Qué querés configurar?
+              </p>
+              <nav className="space-y-2" aria-label="Secciones de configuración">
+                {CONFIG_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const accent = SECTION_ACCENT[section.accent];
+                  const isActive = activeTab === section.id;
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => handleTabChange(section.id)}
+                      className={`w-full text-left rounded-xl border-2 p-3 transition-all ${
+                        isActive
+                          ? accent.active
+                          : 'border-transparent bg-gray-50 hover:bg-gray-100 hover:border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`rounded-lg p-2.5 shrink-0 ${accent.icon}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`font-semibold text-sm ${isActive ? accent.title : 'text-gray-900'}`}>
+                              {section.label}
+                            </span>
+                            {isActive && <IoChevronForwardOutline className="w-4 h-4 text-gray-400 shrink-0" />}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 leading-snug">{section.description}</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </aside>
+
+          <div className="flex-1 min-w-0">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-5 mb-6">
+              <div className="flex items-start gap-3">
+                <div className={`rounded-xl p-3 shrink-0 ${activeAccent.icon}`}>
+                  <ActiveSectionIcon className="w-6 h-6" />
                 </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('messages')}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'messages'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
-                  <IoMailOutline className="w-5 h-5" />
-                  <span>Mensajes</span>
+                <div>
+                  <h2 className={`text-xl font-bold ${activeAccent.title}`}>{activeSection.label}</h2>
+                  <p className="text-sm text-gray-600 mt-1">{activeSection.description}</p>
                 </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('templates')}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'templates'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
-                  <IoDocumentTextOutline className="w-5 h-5" />
-                  <span>Plantillas PDF</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('integrations')}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'integrations'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
-                  <IoExtensionPuzzleOutline className="w-5 h-5" />
-                  <span>Integraciones</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('payments')}
-                className={`flex-1 sm:flex-none px-4 sm:px-6 py-4 text-xs sm:text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'payments'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-2 gap-1 sm:gap-0">
-                  <IoCardOutline className="w-5 h-5" />
-                  <span>Métodos de Pago</span>
-                </div>
-              </button>
-            </nav>
-          </div>
-        </div>
+              </div>
+            </div>
 
         {/* Contenido según tab activo */}
         {activeTab === 'general' ? (
@@ -1329,10 +1413,10 @@ const CompanySettings = () => {
           <div>
             <PdfTemplateManager embedded={true} />
           </div>
+        ) : activeTab === 'mercadolibre' ? (
+          <MercadoLibreIntegration direct />
         ) : activeTab === 'integrations' ? (
-          // Pestaña de Integraciones
           <div className="space-y-6">
-            <MercadoLibreIntegration />
             <ElectronicInvoicingIntegration />
           </div>
         ) : activeTab === 'payments' ? (
@@ -1359,6 +1443,8 @@ const CompanySettings = () => {
             </div>
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );
