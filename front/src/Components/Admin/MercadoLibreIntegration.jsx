@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import {
@@ -15,9 +16,136 @@ import {
   IoChevronDownOutline,
   IoChevronUpOutline,
   IoArrowForwardOutline,
+  IoPersonOutline,
+  IoCartOutline,
+  IoOpenOutline,
 } from 'react-icons/io5';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+function TenantMlGuide({ connected }) {
+  if (connected) {
+    return (
+      <div className="space-y-4">
+        <p className="text-gray-700">
+          Tu cuenta ya está vinculada. Seguí estos pasos para publicar y atender consultas:
+        </p>
+        <ol className="list-decimal list-inside space-y-2 text-gray-700">
+          <li>
+            Andá a <strong>Propiedades</strong> y usá <strong>Publicar en ML</strong> en cada inmueble (fotos, precio
+            y dirección obligatorios).
+          </li>
+          <li>
+            Si Mercado Libre te pide avisos disponibles, contratá un <strong>paquete de publicación</strong> en tu
+            cuenta ML (Clásico o Destacado).
+          </li>
+          <li>
+            Las consultas de interesados llegan a <strong>CRM → Leads</strong>; respondelas desde ahí.
+          </li>
+          <li>
+            Al editar una propiedad ya publicada, los cambios se sincronizan solos con Mercado Libre.
+          </li>
+        </ol>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <p className="text-gray-700">
+        Cada inmobiliaria usa <strong>su propia cuenta</strong> de Mercado Libre. GestProp no crea esa cuenta por vos:
+        tenés que tenerla (o crearla) antes de conectar.
+      </p>
+
+      <section className="rounded-lg border border-yellow-200 bg-yellow-50/60 p-4 space-y-3">
+        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-white text-xs font-bold">
+            1
+          </span>
+          En Mercado Libre (tu inmobiliaria)
+        </h4>
+        <ul className="space-y-2 text-sm text-gray-700 ml-8 list-disc">
+          <li>
+            Creá o usá una cuenta en{' '}
+            <a
+              href="https://www.mercadolibre.com.ar"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-yellow-800 underline inline-flex items-center gap-1"
+            >
+              mercadolibre.com.ar
+              <IoOpenOutline className="w-3.5 h-3.5" />
+            </a>{' '}
+            (Argentina).
+          </li>
+          <li>
+            Completá el perfil como <strong>vendedor</strong>: teléfono verificado y datos de la inmobiliaria. No
+            alcanza una cuenta que solo compra.
+          </li>
+          <li>
+            Cuando quieras publicar, contratá <strong>paquetes de avisos de inmuebles</strong> en ML (como si
+            publicaras a mano). Sin avisos disponibles, la publicación desde GestProp puede fallar.
+          </li>
+          <li>
+            Opcional: publicá un inmueble de prueba directo en ML para confirmar que tu cuenta puede vender
+            inmuebles.
+          </li>
+        </ul>
+      </section>
+
+      <section className="rounded-lg border border-blue-200 bg-blue-50/60 p-4 space-y-3">
+        <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-white text-xs font-bold">
+            2
+          </span>
+          En GestProp
+        </h4>
+        <ul className="space-y-2 text-sm text-gray-700 ml-8 list-disc">
+          <li>
+            Pulsá <strong>Conectar cuenta</strong> abajo e iniciá sesión con el <strong>usuario de tu inmobiliaria</strong>{' '}
+            en Mercado Libre (el que publica los avisos).
+          </li>
+          <li>
+            Andá a <strong>Propiedades</strong> y usá <strong>Publicar en ML</strong> en cada propiedad.
+          </li>
+          <li>
+            Respondé consultas en <strong>CRM → Leads</strong>.
+          </li>
+        </ul>
+      </section>
+
+      <div className="grid sm:grid-cols-2 gap-3 text-xs">
+        <div className="flex gap-2 rounded-lg border border-gray-200 bg-white p-3">
+          <IoPersonOutline className="w-5 h-5 text-green-600 shrink-0" />
+          <div>
+            <p className="font-medium text-gray-900">Cuenta correcta</p>
+            <p className="text-gray-600 mt-0.5">Usuario vendedor de la inmobiliaria en ML Argentina.</p>
+          </div>
+        </div>
+        <div className="flex gap-2 rounded-lg border border-gray-200 bg-white p-3">
+          <IoCartOutline className="w-5 h-5 text-amber-600 shrink-0" />
+          <div>
+            <p className="font-medium text-gray-900">Paquetes en ML</p>
+            <p className="text-gray-600 mt-0.5">Los contratás en Mercado Libre; GestProp no incluye avisos gratis.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
+        <p className="font-medium text-gray-800 mb-1">¿Problemas al conectar?</p>
+        <ul className="list-disc ml-4 space-y-1">
+          <li>Usá la cuenta de la inmobiliaria, no una cuenta personal sin permiso de vendedor.</li>
+          <li>Si ves un error en Mercado Libre al autorizar, contactá a soporte de GestProp.</li>
+          <li>No hace falta crear aplicaciones en developers: eso lo gestiona GestProp.</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+TenantMlGuide.propTypes = {
+  connected: PropTypes.bool,
+};
 
 const MercadoLibreIntegration = () => {
   const [searchParams] = useSearchParams();
@@ -116,7 +244,7 @@ const MercadoLibreIntegration = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Mercado Libre Inmuebles</h2>
           <p className="text-gray-600 mt-1 text-sm">
-            Vinculá tu cuenta, publicá desde Propiedades y respondé consultas en el CRM.
+            Vinculá la cuenta de vendedor de tu inmobiliaria, publicá inmuebles y recibí consultas en el CRM.
           </p>
         </div>
       </header>
@@ -179,7 +307,7 @@ const MercadoLibreIntegration = () => {
           >
             <span className="font-medium text-gray-900 flex items-center gap-2 text-sm">
               <IoInformationCircleOutline className="w-5 h-5 text-blue-500" />
-              {connected ? '¿Cómo funciona?' : 'Primeros pasos'}
+              {connected ? 'Guía rápida' : 'Qué necesitás en Mercado Libre'}
             </span>
             {guideOpen ? (
               <IoChevronUpOutline className="w-5 h-5 text-gray-500" />
@@ -188,58 +316,13 @@ const MercadoLibreIntegration = () => {
             )}
           </button>
           {guideOpen && (
-            <div className="px-4 py-4 border-t border-gray-200 text-sm text-gray-700 space-y-3">
-              {connected ? (
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    Andá a <strong>Propiedades</strong> y usá <strong>Publicar en ML</strong> (necesitás fotos,
-                    precio y dirección).
-                  </li>
-                  <li>
-                    Las consultas llegan a <strong>CRM → Leads</strong>; respondelas desde ahí.
-                  </li>
-                  <li>
-                    Necesitás avisos disponibles en tu cuenta de Mercado Libre (paquetes Clásico o Destacado).
-                  </li>
-                </ol>
-              ) : (
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    Tené una cuenta de <strong>vendedor</strong> en Mercado Libre Argentina.
-                  </li>
-                  <li>
-                    Pulsá <strong>Conectar cuenta</strong> y autorizá con el usuario de tu inmobiliaria (
-                    <strong>no</strong> la misma cuenta con la que creaste la app en developers).
-                  </li>
-                  <li>
-                    Publicá desde <strong>Propiedades</strong> con el botón <strong>Publicar en ML</strong>.
-                  </li>
-                </ol>
-              )}
-              {!connected && (
-                <p className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-2">
-                  Si Mercado Libre muestra &quot;la aplicación no puede conectarse a tu cuenta&quot;, suele ser la URL
-                  de callback mal configurada en{' '}
-                  <a
-                    href="https://applications.mercadolibre.com.ar"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-yellow-700 underline"
-                  >
-                    applications.mercadolibre.com.ar
-                  </a>
-                  : debe ser exactamente{' '}
-                  <code className="text-[11px] bg-white px-1 rounded break-all">
-                    https://inno-prod-api.../api/mercadolibre/callback
-                  </code>{' '}
-                  (con <strong>/api</strong>).
-                </p>
-              )}
-              <div className="flex items-start gap-2 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="px-4 py-4 border-t border-gray-200 text-sm">
+              <TenantMlGuide connected={connected} />
+              <div className="flex items-start gap-2 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
                 <IoWarningOutline className="w-5 h-5 shrink-0 mt-0.5" />
                 <p className="text-xs">
-                  Los avisos en ML pueden tener costo según el tipo de publicación. Si Mercado Libre rechaza un
-                  cambio, puede ser necesario pausar y volver a publicar desde Propiedades.
+                  Los avisos en Mercado Libre pueden tener costo (Clásico / Destacado). Si ML rechaza un cambio, podés
+                  tener que pausar el aviso y volver a publicar desde Propiedades.
                 </p>
               </div>
             </div>
@@ -266,7 +349,7 @@ const MercadoLibreIntegration = () => {
               <p className="text-sm text-gray-600 mt-1">
                 {connected
                   ? 'Podés publicar y gestionar avisos desde Propiedades.'
-                  : 'Conectá la cuenta de Mercado Libre de tu inmobiliaria para empezar.'}
+                  : 'Primero prepará tu cuenta en Mercado Libre (vendedor + paquetes). Después conectala acá.'}
               </p>
             </div>
           </div>
