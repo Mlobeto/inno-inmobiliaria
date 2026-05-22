@@ -1,15 +1,16 @@
-import { IoLogoWhatsapp, IoLocationSharp, IoPhonePortraitOutline } from 'react-icons/io5';
+import { IoLogoWhatsapp, IoLocationSharp, IoPhonePortraitOutline, IoMailOutline } from 'react-icons/io5';
 import { Link } from 'react-router-dom';
 
 function LandingFooter() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <footer className="bg-bgSurface border-t border-borderBase text-textSecondary font-Montserrat">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Company info */}
           <div>
-            <h3 className="text-white text-2xl font-bold mb-4">GestProp</h3>
-            <p className="text-sm mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <img src="/LOGO.png" alt="GestProp" className="h-7 object-contain brightness-0 invert" />
+            </div>
+            <p className="text-sm mb-4 leading-relaxed">
               La plataforma completa para gestionar tu inmobiliaria de forma profesional y eficiente.
             </p>
             <div className="flex gap-3">
@@ -17,57 +18,80 @@ function LandingFooter() {
                 href="https://wa.me/5492355517802"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white/10 hover:bg-green-600/60 p-2 rounded-lg transition"
+                className="bg-brand-muted hover:bg-brand border border-borderBase p-2.5 rounded-lg transition text-brand-light"
                 aria-label="WhatsApp"
               >
                 <IoLogoWhatsapp className="text-xl" />
               </a>
               <Link
                 to="/contacto"
-                className="bg-white/10 hover:bg-indigo-600/60 p-2 rounded-lg transition"
+                className="bg-brand-muted hover:bg-brand border border-borderBase p-2.5 rounded-lg transition text-brand-light"
                 aria-label="Formulario de contacto"
               >
-                ✉
+                <IoMailOutline className="text-xl" />
               </Link>
             </div>
           </div>
 
-          {/* Quick links */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Enlaces Rápidos</h4>
+            <h4 className="text-textPrimary font-semibold mb-4">Enlaces rápidos</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/plans" className="hover:text-white transition">Planes y Precios</Link></li>
-              <li><Link to="/login" className="hover:text-white transition">Iniciar Sesión</Link></li>
-              <li><Link to="/contacto" className="hover:text-white transition">Contacto</Link></li>
+              <li>
+                <Link to="/plans" className="hover:text-brand-light transition-colors">
+                  Planes y precios
+                </Link>
+              </li>
+              <li>
+                <Link to="/registro" className="hover:text-brand-light transition-colors">
+                  Crear cuenta
+                </Link>
+              </li>
+              <li>
+                <Link to="/login" className="hover:text-brand-light transition-colors">
+                  Iniciar sesión
+                </Link>
+              </li>
+              <li>
+                <Link to="/contacto" className="hover:text-brand-light transition-colors">
+                  Contacto
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Contact */}
           <div>
-            <h4 className="text-white font-semibold mb-4">Contacto</h4>
+            <h4 className="text-textPrimary font-semibold mb-4">Contacto</h4>
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2">
-                <IoPhonePortraitOutline className="flex-shrink-0" />
-                <a href="https://wa.me/5492355517802" target="_blank" rel="noopener noreferrer" className="hover:text-white transition">
+                <IoPhonePortraitOutline className="flex-shrink-0 text-brand-light" />
+                <a
+                  href="https://wa.me/5492355517802"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-brand-light transition-colors"
+                >
                   2355517802
                 </a>
               </li>
               <li className="flex items-center gap-2">
-                <IoLocationSharp className="flex-shrink-0" />
+                <IoLocationSharp className="flex-shrink-0 text-brand-light" />
                 <span>Buenos Aires, Argentina</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm">
+        <div className="border-t border-borderBase mt-10 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs sm:text-sm text-textMuted">
             © {new Date().getFullYear()} Innoweb. Todos los derechos reservados.
           </p>
-          <div className="flex gap-6 text-sm">
-            <Link to="/terminos" className="hover:text-white transition">Términos de Servicio</Link>
-            <Link to="/privacidad" className="hover:text-white transition">Política de Privacidad</Link>
+          <div className="flex gap-6 text-xs sm:text-sm">
+            <Link to="/terminos" className="hover:text-brand-light transition-colors">
+              Términos de servicio
+            </Link>
+            <Link to="/privacidad" className="hover:text-brand-light transition-colors">
+              Política de privacidad
+            </Link>
           </div>
         </div>
       </div>
