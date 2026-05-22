@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@shared/redux';
+import { panelShell, spinner } from '../Admin/adminPanelTheme';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -15,6 +17,21 @@ function parseStoredUserRole() {
     return null;
   }
 }
+
+function LoadingScreen({ message }) {
+  return (
+    <div className={`${panelShell} flex items-center justify-center`}>
+      <div className="text-center">
+        <div className={`w-12 h-12 mx-auto mb-4 ${spinner}`} />
+        <p className="text-textSecondary">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+LoadingScreen.propTypes = {
+  message: PropTypes.string.isRequired,
+};
 
 /**
  * Guard que verifica si el perfil de la empresa está completo
@@ -38,7 +55,6 @@ const ProfileCompletionGuard = ({ children }) => {
         storeUser?.role === 'AGENT' ||
         lsRole === 'AGENT';
 
-      // Los agentes no cargan configuración de la inmobiliaria (403 en GET /admin/settings).
       if (isAgent) {
         setIsComplete(true);
         setIsChecking(false);
@@ -48,7 +64,6 @@ const ProfileCompletionGuard = ({ children }) => {
         return;
       }
 
-      // Si ya está en company-settings o subscription, permitir acceso
       if (location.pathname.includes('company-settings') || location.pathname.includes('subscription')) {
         setIsComplete(true);
         setIsChecking(false);
@@ -62,40 +77,35 @@ const ProfileCompletionGuard = ({ children }) => {
         return;
       }
 
-      // Verificar configuración de la empresa
       const response = await axios.get(`${API_URL}/admin/settings`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      // La respuesta puede venir en response.data.data o response.data
       const settings = response.data?.data || response.data || {};
 
-      // Si no hay settings, considerarlo incompleto
       if (!settings || Object.keys(settings).length === 0) {
         setIsComplete(false);
         navigate('/admin/company-settings?incomplete=true', { replace: true });
         return;
       }
 
-      // Validar campos obligatorios
       const requiredFields = [
         'company_name',
         'company_cuit',
         'company_address',
         'company_phone',
-        'company_email'
+        'company_email',
       ];
 
-      const isProfileComplete = requiredFields.every(field => 
-        settings[field] && settings[field].trim() !== ''
+      const isProfileComplete = requiredFields.every(
+        (field) => settings[field] && settings[field].trim() !== '',
       );
 
       setIsComplete(isProfileComplete);
 
-      // Si el perfil no está completo, redirigir y NO permitir renderizar
       if (!isProfileComplete) {
         navigate('/admin/company-settings?incomplete=true', { replace: true });
-        return; // IMPORTANTE: No continuar
+        return;
       }
 
       setIsChecking(false);
@@ -117,35 +127,23 @@ const ProfileCompletionGuard = ({ children }) => {
       }
 
       setIsChecking(false);
-      // En otros errores, redirigir a settings sólo usuarios tenant admin (no agentes)
       navigate('/admin/company-settings?incomplete=true', { replace: true });
     }
   };
 
   if (isChecking) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando configuración...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Verificando configuración..." />;
   }
 
-  // Solo renderizar children si el perfil está completo
   if (!isComplete) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Redirigiendo...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Redirigiendo..." />;
   }
 
   return children;
+};
+
+ProfileCompletionGuard.propTypes = {
+  children: PropTypes.node,
 };
 
 export default ProfileCompletionGuard;
