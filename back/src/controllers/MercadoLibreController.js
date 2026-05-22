@@ -1,4 +1,3 @@
-const mercadolibre = require('mercadolibre');
 const prisma = require('../utils/prismaClient');
 const { getMercadoLibreCategory, getListingType } = require('../utils/mercadoLibreCategoryMapper');
 const logger = require('../utils/logger');
@@ -9,15 +8,14 @@ const {
   formatMlPublishError,
 } = require('../utils/mlPublishHelpers');
 const { getMlRedirectUri } = require('../utils/mlOAuthConfig');
-
-const mlRedirectUri = getMlRedirectUri();
-
-// Configuración del cliente ML (redirect_uri debe coincidir con developers.mercadolibre.com.ar)
-const meli = new mercadolibre.Meli(
-  process.env.ML_CLIENT_ID,
-  process.env.ML_CLIENT_SECRET,
-  mlRedirectUri
-);
+const {
+  buildMlAuthUrl,
+  exchangeMlAuthorizationCode,
+  refreshMlAccessToken,
+  mlGet,
+  mlPost,
+  mlPut,
+} = require('../utils/mlApiClient');
 
 /** URL pública del API (webhooks). En prod debe coincidir con ML_REDIRECT_URI / Azure. */
 function getPublicBackendUrl() {
@@ -126,7 +124,7 @@ class MercadoLibreController {
       // Generar URL de autorización
       const oauthState = signMlOAuthState(tenantId);
       const redirectUri = getMlRedirectUri();
-      const authUrl = meli.getAuthURL(redirectUri, 'AR', oauthState);
+      const authUrl = buildMlAuthUrl(redirectUri, oauthState);
 
       logger.info('URL OAuth ML generada', { tenantId, redirectUri });
 
@@ -174,7 +172,7 @@ class MercadoLibreController {
       logger.info('Intercambiando código OAuth por tokens ML', { tenantId });
       
       // Intercambiar código por access token
-      const response = await meli.authorize(code, getMlRedirectUri());
+      const response = await exchangeMlAuthorizationCode(code, getMlRedirectUri());
       
       const {
         access_token,
@@ -321,7 +319,7 @@ class MercadoLibreController {
         throw new Error('No se encontró refresh token para MercadoLibre');
       }
       
-      const response = await meli.refreshAccessToken(refreshToken);
+      const response = await refreshMlAccessToken(refreshToken);
       
       const {
         access_token,
@@ -490,9 +488,7 @@ class MercadoLibreController {
       });
       
       // 7. Publicar en ML
-      meli.setAccessToken(accessToken);
-      
-      const response = await meli.post('/items', mlData);
+      const response = await mlPost('/items', accessToken, mlData);
       
       const { id: mlListingId, permalink, status } = response;
       
@@ -776,20 +772,19 @@ class MercadoLibreController {
     }
 
     const accessToken = await this.getAccessTokenForConfig(mlConfig);
-    meli.setAccessToken(accessToken);
 
     const itemBody = this.buildItemUpdatePayload(property);
-    await meli.put(`/items/${listing.mlListingId}`, itemBody);
+    await mlPut(`/items/${listing.mlListingId}`, accessToken, itemBody);
 
     const plainDescription = this.buildDescription(property);
     try {
-      await meli.put(`/items/${listing.mlListingId}/description?api_version=2`, {
+      await mlPut(`/items/${listing.mlListingId}/description?api_version=2`, accessToken, {
         plain_text: plainDescription,
       });
     } catch (descErr) {
       // Si no existía descripción, crear con POST
       if (/404|not found|bad request/i.test(descErr.message || '')) {
-        await meli.post(`/items/${listing.mlListingId}/description`, {
+        await mlPost(`/items/${listing.mlListingId}/description`, accessToken, {
           plain_text: plainDescription,
         });
       } else {
@@ -906,9 +901,8 @@ class MercadoLibreController {
       
       // Actualizar en ML
       const accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
-      meli.setAccessToken(accessToken);
       
-      await meli.put(`/items/${listing.mlListingId}`, {
+      await mlPut(`/items/${listing.mlListingId}`, accessToken, {
         status
       });
       
@@ -967,9 +961,8 @@ class MercadoLibreController {
       
       // Cerrar en ML
       const accessToken = this.decryptStoredToken(mlConfig, 'accessToken');
-      meli.setAccessToken(accessToken);
       
-      await meli.put(`/items/${listing.mlListingId}`, {
+      await mlPut(`/items/${listing.mlListingId}`, accessToken, {
         status: 'closed',
         deleted: true
       });
@@ -1097,8 +1090,7 @@ class MercadoLibreController {
         accessToken = this.decryptStoredToken(refreshed, 'accessToken');
       }
 
-      meli.setAccessToken(accessToken);
-      await meli.post('/answers', { question_id: parseInt(questionId), text: text.trim() });
+      await mlPost('/answers', accessToken, { question_id: parseInt(questionId), text: text.trim() });
 
       logger.info('Pregunta ML respondida', { tenantId, questionId });
       res.json({ success: true, message: 'Respuesta enviada correctamente' });
@@ -1152,12 +1144,12 @@ class MercadoLibreController {
     if (listings.length === 0) return [];
 
     const accessToken = await this.getAccessTokenForConfig(mlConfig);
-    meli.setAccessToken(accessToken);
 
     const questionsPerListing = await Promise.allSettled(
       listings.map(async (listing) => {
-        const data = await meli.get(
-          `/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`
+        const data = await mlGet(
+          `/questions/search?item_id=${listing.mlListingId}&status=UNANSWERED&sort_fields=date_created&sort_types=DESC`,
+          accessToken
         );
         return (data.questions || []).map((q) => this.mapMlQuestionToPayload(q, listing));
       })
@@ -1197,14 +1189,13 @@ class MercadoLibreController {
     }
 
     const accessToken = await this.getAccessTokenForConfig(config);
-    meli.setAccessToken(accessToken);
 
     if (topic === 'questions' && resource) {
       const match = String(resource).match(/questions\/(\d+)/i);
       const questionId = match?.[1];
       if (!questionId) return;
 
-      const q = await meli.get(`/questions/${questionId}`);
+      const q = await mlGet(`/questions/${questionId}`, accessToken);
       if (!q || q.status !== 'UNANSWERED') return;
 
       const listing = await prisma.PropertyMLListings.findFirst({
@@ -1237,7 +1228,7 @@ class MercadoLibreController {
       const itemId = match?.[1];
       if (!itemId) return;
 
-      const item = await meli.get(`/items/${itemId}`);
+      const item = await mlGet(`/items/${itemId}`, accessToken);
       const listingUpdate = {
         mlStatus: item.status,
         lastSync: new Date(),
