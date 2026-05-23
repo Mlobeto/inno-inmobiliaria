@@ -100,6 +100,13 @@ const MP_SUBSCRIPTION_PAYMENT_METHODS = {
   payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }],
 };
 
+/** Mercado Pago rechaza `start_date` si la interpreta como pasada (desfase de relojes/red). */
+function mpSubscriptionStartDateISO() {
+  const leewayMs = Number(process.env.MP_SUBSCRIPTION_START_DATE_LEEWAY_MS);
+  const buffer = Number.isFinite(leewayMs) && leewayMs >= 0 ? leewayMs : 5 * 60 * 1000;
+  return new Date(Date.now() + buffer).toISOString();
+}
+
 function buildAutoRecurring(plan, currencyId, includeTrial) {
   const recurring = {
     frequency: 1,
@@ -116,7 +123,7 @@ function buildAutoRecurring(plan, currencyId, includeTrial) {
       : {}),
   };
   if (!includeTrial) {
-    recurring.start_date = new Date().toISOString();
+    recurring.start_date = mpSubscriptionStartDateISO();
   }
   return recurring;
 }
@@ -432,9 +439,22 @@ class SubscriptionController {
         response = await preApprovalClient.create({ body: preapprovalData });
       } catch (firstError) {
         const firstMsg = extractMercadoPagoError(firstError).message;
+        const startDateBroken = /cannot be a past date|past date/i.test(firstMsg);
         if (mpPlanId && /different countries/i.test(firstMsg)) {
           console.warn(
             `[subscriptions] Reintentando sin preapproval_plan_id (plan sandbox vs token prod)`
+          );
+          await prisma.plans
+            .update({ where: { planId }, data: { mpPlanId: null } })
+            .catch(() => {});
+          preapprovalData = {
+            ...preapprovalBase,
+            ...buildMpCheckoutRecurring(plan, currencyId, false),
+          };
+          response = await preApprovalClient.create({ body: preapprovalData });
+        } else if (mpPlanId && startDateBroken) {
+          console.warn(
+            `[subscriptions] MP rechazó start_date con preapproval_plan_id; reintentando con auto_recurring inline (start_date con margen)`
           );
           await prisma.plans
             .update({ where: { planId }, data: { mpPlanId: null } })
