@@ -16,11 +16,37 @@ function request(options, body) {
   });
 }
 
+const GESTPRO_FEATURES = {
+  maxProperties: -1,
+  maxClients: -1,
+  maxUsers: 20,
+  maxStorageGB: 100,
+  pdfTemplates: true,
+  customTemplates: true,
+  whatsappIntegration: true,
+  estadisticas: true,
+  exportData: true,
+  apiAccess: true,
+  customDomain: true,
+  prioritySupport: true,
+  landingPage: true,
+  portalInquilino: true,
+  mercadoLibreIntegration: true,
+  leads: true,
+  agentRole: true,
+  electronicInvoicing: true,
+  electronic_invoicing: true,
+  loteos: true,
+};
+
 async function main() {
   const HOST = 'inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io';
 
   console.log('1️⃣  Login...');
-  const loginBody = JSON.stringify({ username: 'platform_admin', password: process.env.PLATFORM_ADMIN_PASSWORD || 'ChangeMe123!' });
+  const loginBody = JSON.stringify({
+    username: 'platform_admin',
+    password: process.env.PLATFORM_ADMIN_PASSWORD || 'ChangeMe123!',
+  });
   const loginRes = await request({
     hostname: HOST,
     path: '/api/auth/login',
@@ -28,69 +54,107 @@ async function main() {
     headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(loginBody) },
   }, loginBody);
 
-  console.log('Login response:', JSON.stringify(loginRes, null, 2));
   if (!loginRes.token) {
-    console.error('❌ Login fallido');
+    console.error('❌ Login fallido', loginRes);
     process.exit(1);
   }
-  console.log('✅ Login OK, role:', loginRes.admin?.role);
+  console.log('✅ Login OK');
 
-  console.log('\n2️⃣  Consultando /platform-admin/plans...');
-  const plansRes = await request({
-    hostname: HOST,
-    path: '/api/platform-admin/plans',
-    method: 'GET',
-    headers: { Authorization: `Bearer ${loginRes.token}` },
-  });
+  const auth = { Authorization: `Bearer ${loginRes.token}` };
+  const post = (path, payload) => {
+    const body = JSON.stringify(payload);
+    return request({
+      hostname: HOST,
+      path,
+      method: 'POST',
+      headers: { ...auth, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, body);
+  };
+  const put = (path, payload) => {
+    const body = JSON.stringify(payload);
+    return request({
+      hostname: HOST,
+      path,
+      method: 'PUT',
+      headers: { ...auth, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    }, body);
+  };
 
-  console.log('\n3️⃣  Creando/actualizando Plan Agencia...');
-  const agenciaBody = JSON.stringify({
-    planId: 'agencia',
-    name: 'Plan Agencia',
-    description: 'Todo ilimitado + CRM Leads + Gestión de Loteos',
-    priceMonthly: 129900,
-    priceYearly: 1299000,
+  console.log('\n2️⃣  Plan Básico...');
+  console.log(await post('/api/platform-admin/plans', {
+    planId: 'basic',
+    name: 'Plan Básico',
+    description: 'Gestión completa de propiedades, clientes, contratos y cobros — 1 usuario',
+    priceMonthly: 9900,
+    priceYearly: 99000,
     currency: 'ARS',
     features: {
-      maxProperties: -1, maxClients: -1, maxUsers: 50, maxStorageGB: 200,
-      pdfTemplates: true, customTemplates: true, whatsappIntegration: true,
-      estadisticas: true, exportData: true, apiAccess: true, customDomain: true,
-      prioritySupport: true, landingPage: true, mercadoLibreIntegration: true,
-      agentRole: true, electronicInvoicing: true, leads: true, loteos: true,
+      maxProperties: 50, maxClients: 100, maxUsers: 1, maxStorageGB: 5,
+      pdfTemplates: true, customTemplates: false, whatsappIntegration: false,
+      estadisticas: true, exportData: true, apiAccess: false,
+      landingPage: false, portalInquilino: false, mercadoLibreIntegration: false,
+      agentRole: false, electronicInvoicing: false, electronic_invoicing: false,
+      leads: false, loteos: false,
     },
-    trialDays: 7,
-    isActive: true,
-    isPopular: false,
+    trialDays: 7, isActive: true, isPopular: false, sortOrder: 1,
+  }).then((r) => (r.success || r.planId ? '✅ OK' : JSON.stringify(r))));
+
+  console.log('\n3️⃣  Plan Profesional...');
+  console.log(await post('/api/platform-admin/plans', {
+    planId: 'professional',
+    name: 'Plan Profesional',
+    description: 'Básico + Mercado Libre, CRM Leads, landing pública y portal de inquilinos',
+    priceMonthly: 29900,
+    priceYearly: 299000,
+    currency: 'ARS',
+    features: {
+      maxProperties: 200, maxClients: 500, maxUsers: 5, maxStorageGB: 20,
+      pdfTemplates: true, customTemplates: true, whatsappIntegration: true,
+      estadisticas: true, exportData: true, apiAccess: true, prioritySupport: true,
+      landingPage: true, portalInquilino: true, mercadoLibreIntegration: true, leads: true,
+      agentRole: false, electronicInvoicing: false, electronic_invoicing: false, loteos: false,
+    },
+    trialDays: 7, isActive: true, isPopular: true, sortOrder: 2,
+  }).then((r) => (r.success || r.planId ? '✅ OK' : JSON.stringify(r))));
+
+  console.log('\n4️⃣  Plan GestPRO...');
+  console.log(await post('/api/platform-admin/plans', {
+    planId: 'gestpro',
+    name: 'Plan GestPRO',
+    description: 'Todo Profesional + agentes y comisiones, facturación ARCA/AFIP y loteos',
+    priceMonthly: 99900,
+    priceYearly: 999000,
+    currency: 'ARS',
+    features: GESTPRO_FEATURES,
+    trialDays: 7, isActive: true, isPopular: false, sortOrder: 3,
+  }).then((r) => (r.success || r.planId ? '✅ OK' : JSON.stringify(r))));
+
+  console.log('\n5️⃣  Plan Lifetime...');
+  console.log(await put('/api/platform-admin/plans/lifetime', {
+    name: 'Plan Lifetime',
+    description: 'Acceso permanente GestPRO — solo asignación manual por Platform Admin',
+    features: GESTPRO_FEATURES,
     sortOrder: 4,
-  });
-  const createRes = await request({
-    hostname: HOST,
-    path: '/api/platform-admin/plans',
-    method: 'POST',
-    headers: { Authorization: `Bearer ${loginRes.token}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(agenciaBody) },
-  }, agenciaBody);
-  console.log('Resultado:', JSON.stringify(createRes, null, 2));
+    isActive: true,
+  }).then((r) => (r.success ? '✅ OK' : JSON.stringify(r))));
 
-  console.log('\n5️⃣  Corrigiendo sortOrder de Lifetime a 5...');
-  const lifetimeBody = JSON.stringify({ sortOrder: 5 });
-  const updateRes = await request({
-    hostname: HOST,
-    path: '/api/platform-admin/plans/lifetime',
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${loginRes.token}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(lifetimeBody) },
-  }, lifetimeBody);
-  console.log('Resultado:', updateRes.success ? '✅ OK' : JSON.stringify(updateRes));
+  console.log('\n6️⃣  Desactivar legacy enterprise/agencia...');
+  for (const id of ['enterprise', 'agencia']) {
+    const r = await put(`/api/platform-admin/plans/${id}`, { isActive: false });
+    console.log(`  ${id}:`, r.success ? '✅ desactivado' : JSON.stringify(r));
+  }
 
-  console.log('\n6️⃣  Planes finales:');
+  console.log('\n7️⃣  Planes finales:');
   const finalPlans = await request({
     hostname: HOST,
     path: '/api/platform-admin/plans',
     method: 'GET',
-    headers: { Authorization: `Bearer ${loginRes.token}` },
+    headers: auth,
   });
-  console.log('Total planes:', finalPlans.count);
   if (finalPlans.plans) {
-    finalPlans.plans.forEach(p => console.log(`  - ${p.planId}: ${p.name} (sortOrder: ${p.sortOrder})`));
+    finalPlans.plans.forEach((p) => {
+      console.log(`  - ${p.planId}: ${p.name} (activo: ${p.isActive}, sort: ${p.sortOrder})`);
+    });
   }
 }
 

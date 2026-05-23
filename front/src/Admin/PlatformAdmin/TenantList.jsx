@@ -86,14 +86,19 @@ const TenantList = () => {
       free: 'bg-gray-100 text-gray-700',
       basic: 'bg-blue-100 text-blue-700',
       professional: 'bg-purple-100 text-purple-700',
+      gestpro: 'bg-emerald-100 text-emerald-800',
       enterprise: 'bg-yellow-100 text-yellow-700',
+      lifetime: 'bg-gray-200 text-gray-700',
     };
     
     const labels = {
       free: 'Gratis',
       basic: 'Básico',
       professional: 'Profesional',
+      gestpro: 'GestPRO',
       enterprise: 'Empresarial',
+      agencia: 'Agencia',
+      lifetime: 'Lifetime',
     };
     
     return (
@@ -173,7 +178,8 @@ const TenantList = () => {
                 <option value="free">Gratis</option>
                 <option value="basic">Básico</option>
                 <option value="professional">Profesional</option>
-                <option value="enterprise">Empresarial</option>
+                <option value="gestpro">GestPRO</option>
+                <option value="lifetime">Lifetime</option>
               </select>
             </div>
             

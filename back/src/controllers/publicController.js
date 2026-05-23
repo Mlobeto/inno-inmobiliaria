@@ -126,6 +126,7 @@ exports.getTenantLanding = async (req, res) => {
         name: tenant.businessName,
         subdomain: tenant.subdomain,
         logo: companySettings?.company_logo_url || null,
+        portalInquilino: tenant.features?.portalInquilino === true,
         contact: {
           phone: companySettings?.company_phone || null,
           email: companySettings?.company_email || null,

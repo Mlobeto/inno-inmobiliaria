@@ -206,6 +206,36 @@ function LandingPlans() {
                       <span>Integración Mercado Libre</span>
                     </li>
                   )}
+                  {plan.features.leads && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>CRM Leads</span>
+                    </li>
+                  )}
+                  {plan.features.landingPage && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>Landing pública</span>
+                    </li>
+                  )}
+                  {plan.features.portalInquilino && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>Portal inquilinos (informar transferencias)</span>
+                    </li>
+                  )}
+                  {plan.features.agentRole && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>Agentes y comisiones</span>
+                    </li>
+                  )}
+                  {plan.features.loteos && (
+                    <li className="flex items-center gap-2 text-sm">
+                      <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
+                      <span>Gestión de loteos</span>
+                    </li>
+                  )}
                   {plan.features.electronicInvoicing && (
                     <li className="flex items-center gap-2 text-sm">
                       <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />

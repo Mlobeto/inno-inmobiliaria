@@ -113,10 +113,14 @@ const Panel = () => {
       free: 'Gratis',
       basic: 'Básico',
       professional: 'Profesional',
+      gestpro: 'GestPRO',
       enterprise: 'Empresarial',
+      agencia: 'Agencia',
+      lifetime: 'Lifetime',
       FREE: 'Gratis',
       BASIC: 'Básico',
       PROFESSIONAL: 'Profesional',
+      GESTPRO: 'GestPRO',
       ENTERPRISE: 'Empresarial',
     };
     return plans[planId] || planId?.toUpperCase();
@@ -127,10 +131,14 @@ const Panel = () => {
       free: 'from-brand-muted to-brand-dark',
       basic: 'from-brand-dark to-brand',
       professional: 'from-brand to-brand-light',
+      gestpro: 'from-brand-light to-brand-dark',
       enterprise: 'from-brand-light to-brand-dark',
+      agencia: 'from-customYellow to-brand-dark',
+      lifetime: 'from-brand-light to-brand-dark',
       FREE: 'from-brand-muted to-brand-dark',
       BASIC: 'from-brand-dark to-brand',
       PROFESSIONAL: 'from-brand to-brand-light',
+      GESTPRO: 'from-brand-light to-brand-dark',
       ENTERPRISE: 'from-brand-light to-brand-dark',
     };
     return colors[planId] || 'from-brand-muted to-brand-dark';

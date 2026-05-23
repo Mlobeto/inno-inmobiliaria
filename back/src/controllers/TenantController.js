@@ -211,6 +211,7 @@ const getTenantInfo = async (req, res) => {
       ...tenantData.features,
       hasLanding: tenantData.features?.landingPage || false,
       mercadoLibreIntegration: tenantData.features?.mercadoLibreIntegration === true,
+      portalInquilino: tenantData.features?.portalInquilino === true,
     };
 
     res.status(200).json({

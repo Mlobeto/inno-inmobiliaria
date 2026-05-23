@@ -5,6 +5,16 @@ const logger = require('../utils/logger');
 const pushNotifications = require('../utils/pushNotifications');
 const { buildLeaseInstallmentSchedule } = require('../utils/leaseInstallments');
 
+const tenantHasPortalInquilino = (features) =>
+  features?.portalInquilino === true;
+
+async function loadTenantWithPortal(tenantId) {
+  return prisma.tenants.findFirst({
+    where: { tenantId, deletedAt: null },
+    select: { tenantId: true, businessName: true, logo: true, subdomain: true, features: true },
+  });
+}
+
 // ─── Lookup tenant por código/subdomain ──────────────────────────────────────
 
 /**
@@ -21,11 +31,15 @@ exports.lookupTenant = async (req, res) => {
 
     const tenant = await prisma.tenants.findFirst({
       where: { subdomain: code, deletedAt: null },
-      select: { tenantId: true, businessName: true, logo: true, subdomain: true },
+      select: { tenantId: true, businessName: true, logo: true, subdomain: true, features: true },
     });
 
     if (!tenant) {
       return res.status(404).json({ message: 'No se encontró una inmobiliaria con ese código' });
+    }
+
+    if (!tenantHasPortalInquilino(tenant.features)) {
+      return res.status(403).json({ message: 'El portal de inquilinos no está disponible en este plan' });
     }
 
     return res.json({
@@ -60,6 +74,14 @@ exports.login = async (req, res) => {
 
     if (!tenantId) {
       return res.status(400).json({ message: 'No se pudo identificar la inmobiliaria' });
+    }
+
+    const tenant = await loadTenantWithPortal(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: 'Inmobiliaria no encontrada' });
+    }
+    if (!tenantHasPortalInquilino(tenant.features)) {
+      return res.status(403).json({ message: 'El portal de inquilinos no está disponible en este plan' });
     }
 
     const client = await prisma.Clients.findFirst({

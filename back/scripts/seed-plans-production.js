@@ -1,16 +1,39 @@
 const path = require('path');
 
-// .env tiene prioridad; .env.production completa vars faltantes (p. ej. solo producción tiene DATABASE_URL).
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
 
 const prisma = require('../src/utils/prismaClient');
 
+/** Features base compartidas por todos los planes (módulo operativo core). */
+const CORE_ON = {
+  pdfTemplates: true,
+  customTemplates: true,
+  whatsappIntegration: true,
+  estadisticas: true,
+  exportData: true,
+};
+
+/** Features premium desactivadas en Básico. */
+const PREMIUM_OFF = {
+  landingPage: false,
+  portalInquilino: false,
+  mercadoLibreIntegration: false,
+  agentRole: false,
+  electronicInvoicing: false,
+  electronic_invoicing: false,
+  leads: false,
+  loteos: false,
+  customDomain: false,
+  prioritySupport: false,
+  apiAccess: false,
+};
+
 const plans = [
   {
     planId: 'basic',
     name: 'Plan Básico',
-    description: 'Perfecto para empezar - 1 usuario',
+    description: 'Gestión completa de propiedades, clientes, contratos y cobros — 1 usuario',
     priceMonthly: 9900,
     priceYearly: 99000,
     currency: 'ARS',
@@ -19,19 +42,11 @@ const plans = [
       maxClients: 100,
       maxUsers: 1,
       maxStorageGB: 5,
-      pdfTemplates: true,
+      ...CORE_ON,
       customTemplates: false,
       whatsappIntegration: false,
-      estadisticas: true,
-      exportData: true,
       apiAccess: false,
-      customDomain: false,
-      prioritySupport: false,
-      landingPage: false,
-      mercadoLibreIntegration: false,
-      agentRole: false,
-      leads: false,
-      loteos: false,
+      ...PREMIUM_OFF,
     },
     trialDays: 7,
     isActive: true,
@@ -41,7 +56,7 @@ const plans = [
   {
     planId: 'professional',
     name: 'Plan Profesional',
-    description: 'Para equipos - Landing + ML + Agentes',
+    description: 'Básico + Mercado Libre, CRM Leads, landing pública y portal de inquilinos',
     priceMonthly: 29900,
     priceYearly: 299000,
     currency: 'ARS',
@@ -50,19 +65,18 @@ const plans = [
       maxClients: 500,
       maxUsers: 5,
       maxStorageGB: 20,
-      pdfTemplates: true,
-      customTemplates: true,
-      whatsappIntegration: true,
-      estadisticas: true,
-      exportData: true,
+      ...CORE_ON,
       apiAccess: true,
-      customDomain: false,
       prioritySupport: true,
       landingPage: true,
+      portalInquilino: true,
       mercadoLibreIntegration: true,
-      agentRole: true,
-      leads: false,
-      loteos: true,
+      leads: true,
+      agentRole: false,
+      electronicInvoicing: false,
+      electronic_invoicing: false,
+      loteos: false,
+      customDomain: false,
     },
     trialDays: 7,
     isActive: true,
@@ -70,31 +84,29 @@ const plans = [
     sortOrder: 2,
   },
   {
-    planId: 'enterprise',
-    name: 'Plan Empresarial',
-    description: 'Todo ilimitado — dominio propio',
-    priceMonthly: 69900,
-    priceYearly: 699000,
+    planId: 'gestpro',
+    name: 'Plan GestPRO',
+    description: 'Todo Profesional + agentes y comisiones, facturación ARCA/AFIP y loteos',
+    priceMonthly: 99900,
+    priceYearly: 999000,
     currency: 'ARS',
     features: {
       maxProperties: -1,
       maxClients: -1,
       maxUsers: 20,
       maxStorageGB: 100,
-      pdfTemplates: true,
-      customTemplates: true,
-      whatsappIntegration: true,
-      estadisticas: true,
-      exportData: true,
+      ...CORE_ON,
       apiAccess: true,
       customDomain: true,
       prioritySupport: true,
       landingPage: true,
+      portalInquilino: true,
       mercadoLibreIntegration: true,
+      leads: true,
       agentRole: true,
       electronicInvoicing: true,
-      leads: false,
-      loteos: false,
+      electronic_invoicing: true,
+      loteos: true,
     },
     trialDays: 7,
     isActive: true,
@@ -102,41 +114,9 @@ const plans = [
     sortOrder: 3,
   },
   {
-    planId: 'agencia',
-    name: 'Plan Agencia',
-    description: 'Todo ilimitado + CRM Leads + Gestión de Loteos',
-    priceMonthly: 129900,
-    priceYearly: 1299000,
-    currency: 'ARS',
-    features: {
-      maxProperties: -1,
-      maxClients: -1,
-      maxUsers: 50,
-      maxStorageGB: 200,
-      pdfTemplates: true,
-      customTemplates: true,
-      whatsappIntegration: true,
-      estadisticas: true,
-      exportData: true,
-      apiAccess: true,
-      customDomain: true,
-      prioritySupport: true,
-      landingPage: true,
-      mercadoLibreIntegration: true,
-      agentRole: true,
-      electronicInvoicing: true,
-      leads: true,
-      loteos: true,
-    },
-    trialDays: 7,
-    isActive: true,
-    isPopular: false,
-    sortOrder: 4,
-  },
-  {
     planId: 'lifetime',
     name: 'Plan Lifetime',
-    description: 'Acceso permanente — pago único',
+    description: 'Acceso permanente GestPRO — solo asignación manual por Platform Admin',
     priceMonthly: 0,
     priceYearly: 0,
     currency: 'ARS',
@@ -145,31 +125,31 @@ const plans = [
       maxClients: -1,
       maxUsers: 20,
       maxStorageGB: 100,
-      pdfTemplates: true,
-      customTemplates: true,
-      whatsappIntegration: true,
-      estadisticas: true,
-      exportData: true,
+      ...CORE_ON,
       apiAccess: true,
       customDomain: true,
       prioritySupport: true,
       landingPage: true,
+      portalInquilino: true,
       mercadoLibreIntegration: true,
+      leads: true,
       agentRole: true,
       electronicInvoicing: true,
-      leads: true,
+      electronic_invoicing: true,
       loteos: true,
     },
     trialDays: 0,
     isActive: true,
     isPopular: false,
-    sortOrder: 5,
+    sortOrder: 4,
   },
 ];
 
+const LEGACY_PLAN_IDS = ['enterprise', 'agencia'];
+
 async function seedPlans() {
   try {
-    console.log('\n🚀 Iniciando creación de planes...\n');
+    console.log('\n🚀 Sincronizando planes...\n');
 
     for (const planData of plans) {
       await prisma.plans.upsert({
@@ -177,7 +157,15 @@ async function seedPlans() {
         update: planData,
         create: planData,
       });
-      console.log(`✅ Plan "${planData.name}" sincronizado`);
+      console.log(`✅ ${planData.name} (${planData.planId})`);
+    }
+
+    const deactivated = await prisma.plans.updateMany({
+      where: { planId: { in: LEGACY_PLAN_IDS } },
+      data: { isActive: false },
+    });
+    if (deactivated.count > 0) {
+      console.log(`\n⏸  Planes legacy desactivados: ${LEGACY_PLAN_IDS.join(', ')}`);
     }
 
     const allPlans = await prisma.plans.findMany({ orderBy: { sortOrder: 'asc' } });
@@ -187,20 +175,25 @@ async function seedPlans() {
         ID: p.planId,
         Nombre: p.name,
         'Precio/mes': `$${Number(p.priceMonthly) / 100}`,
-        'Precio/año': `$${Number(p.priceYearly || 0) / 100}`,
-        'Trial (días)': p.trialDays,
         Activo: p.isActive ? '✅' : '❌',
-        Popular: p.isPopular ? '⭐' : '-',
-      }))
+        ML: p.features?.mercadoLibreIntegration ? '✅' : '—',
+        Leads: p.features?.leads ? '✅' : '—',
+        Landing: p.features?.landingPage ? '✅' : '—',
+        Portal: p.features?.portalInquilino ? '✅' : '—',
+        Agentes: p.features?.agentRole ? '✅' : '—',
+        ARCA: p.features?.electronicInvoicing ? '✅' : '—',
+        Loteos: p.features?.loteos ? '✅' : '—',
+      })),
     );
 
-    console.log('\n✅ Proceso completado exitosamente');
+    console.log('\n✅ Planes sincronizados');
+    console.log('   Públicos: basic, professional, gestpro');
+    console.log('   Oculto: lifetime (solo Platform Admin)\n');
   } catch (error) {
-    console.error('\n❌ Error durante la creación de planes:', error);
+    console.error('\n❌ Error:', error);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
-    console.log('🔌 Conexión cerrada\n');
   }
 }
 

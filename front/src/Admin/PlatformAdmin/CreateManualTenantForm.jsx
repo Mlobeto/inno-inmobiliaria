@@ -379,7 +379,8 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
                 <option value="free">Free</option>
                 <option value="basic">Basic</option>
                 <option value="professional">Professional</option>
-                <option value="enterprise">Enterprise</option>
+                <option value="gestpro">GestPRO</option>
+                <option value="lifetime">Lifetime</option>
                 <option value="lifetime">Lifetime (Permanente)</option>
               </select>
             </div>

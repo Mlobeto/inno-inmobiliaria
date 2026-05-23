@@ -14,11 +14,13 @@ import {
   IoFunnelOutline,
   IoSparkles,
   IoTrophyOutline,
+  IoKeyOutline,
 } from 'react-icons/io5';
 
 const PLAN_COLORS = {
   basic:        { from: 'from-[#3D4A42]',   to: 'to-[#2A3530]',   accent: 'text-textSecondary', btn: 'bg-brand-muted hover:bg-brand-dark' },
   professional: { from: 'from-brand-dark',  to: 'to-brand',       accent: 'text-brand-light',   btn: 'bg-brand hover:bg-brand-dark' },
+  gestpro:      { from: 'from-brand',       to: 'to-brand-light', accent: 'text-brand-light',   btn: 'bg-brand hover:bg-brand-dark' },
   enterprise:   { from: 'from-brand',       to: 'to-brand-light', accent: 'text-brand-light',   btn: 'bg-brand hover:bg-brand-dark' },
   agencia:      { from: 'from-customYellow', to: 'to-brand-dark', accent: 'text-customYellow',  btn: 'bg-brand hover:bg-brand-dark' },
 };
@@ -30,10 +32,12 @@ const COMPARE_ROWS = [
   { label: 'Usuarios',             key: 'maxUsers',               render: v => v },
   { label: 'Almacenamiento',       key: 'maxStorageGB',           render: v => `${v} GB` },
   { label: 'Landing Page',         key: 'landingPage',            render: v => v },
+  { label: 'Portal inquilinos',    key: 'portalInquilino',        render: v => v },
   { label: 'MercadoLibre',         key: 'mercadoLibreIntegration',render: v => v },
   { label: 'WhatsApp',             key: 'whatsappIntegration',    render: v => v },
-  { label: 'Agentes & Comisiones', key: 'agentRole',              render: v => v },
   { label: 'CRM Leads',            key: 'leads',                  render: v => v },
+  { label: 'Agentes & Comisiones', key: 'agentRole',              render: v => v },
+  { label: 'Facturación ARCA',     key: 'electronicInvoicing',    render: v => v },
   { label: 'Gestión Loteos',       key: 'loteos',                 render: v => v },
   { label: 'Dominio propio',       key: 'customDomain',           render: v => v },
   { label: 'Soporte prioritario',  key: 'prioritySupport',        render: v => v },
@@ -126,7 +130,7 @@ const PlanSelector = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {plans.map((plan) => {
               const colors  = PLAN_COLORS[plan.planId] || PLAN_COLORS.basic;
-              const isNew   = plan.planId === 'agencia';
+              const isNew   = plan.planId === 'gestpro';
               const isPopular = plan.isPopular;
               const hasTrial  = plan.trialDays > 0;
               const isFree    = parseFloat(plan.priceMonthly) === 0;
@@ -211,9 +215,11 @@ const PlanSelector = () => {
                     <div className="space-y-1.5 mb-6 text-sm flex-1">
                       {[
                         { key: 'landingPage',             label: 'Landing Page',          icon: <IoGlobeOutline /> },
+                        { key: 'portalInquilino',         label: 'Portal inquilinos',     icon: <IoKeyOutline /> },
                         { key: 'mercadoLibreIntegration', label: 'MercadoLibre',           icon: <IoStorefrontOutline /> },
-                        { key: 'agentRole',               label: 'Agentes & Comisiones',  icon: <IoPeopleCircleOutline /> },
                         { key: 'leads',                   label: 'CRM Leads',             icon: <IoFunnelOutline /> },
+                        { key: 'agentRole',               label: 'Agentes & Comisiones',  icon: <IoPeopleCircleOutline /> },
+                        { key: 'electronicInvoicing',     label: 'Facturación ARCA',      icon: null },
                         { key: 'loteos',                  label: 'Gestión Loteos',        icon: <IoMapOutline /> },
                         { key: 'customDomain',            label: 'Dominio propio',        icon: <IoGlobeOutline /> },
                         { key: 'prioritySupport',         label: 'Soporte prioritario',   icon: null },
@@ -257,7 +263,7 @@ const PlanSelector = () => {
                   <th className="text-left text-slate-400 font-semibold px-6 py-4 w-44">Característica</th>
                   {plans.map((plan) => {
                     const colors  = PLAN_COLORS[plan.planId] || PLAN_COLORS.basic;
-                    const isNew   = plan.planId === 'agencia';
+                    const isNew   = plan.planId === 'gestpro';
                     const isPopular = plan.isPopular;
                     return (
                       <th key={plan.planId} className="text-center px-4 py-4">
