@@ -103,8 +103,8 @@ const MP_SUBSCRIPTION_PAYMENT_METHODS = {
 /** Mercado Pago rechaza `start_date` si la interpreta como pasada (desfase de relojes/red). */
 function mpSubscriptionStartDateISO() {
   const leewayMs = Number(process.env.MP_SUBSCRIPTION_START_DATE_LEEWAY_MS);
-  const buffer = Number.isFinite(leewayMs) && leewayMs >= 0 ? leewayMs : 5 * 60 * 1000;
-  return new Date(Date.now() + buffer).toISOString();
+  const fallbackMs = Number.isFinite(leewayMs) && leewayMs >= 0 ? leewayMs : 120 * 1000;
+  return new Date(Date.now() + fallbackMs).toISOString();
 }
 
 function buildAutoRecurring(plan, currencyId, includeTrial) {
@@ -439,31 +439,34 @@ class SubscriptionController {
         response = await preApprovalClient.create({ body: preapprovalData });
       } catch (firstError) {
         const firstMsg = extractMercadoPagoError(firstError).message;
-        const startDateBroken = /cannot be a past date|past date/i.test(firstMsg);
+        /** Mensaje muy concreto: evitar falsos positivos con errores MP que sólo mencionan "past" en otros contextos. */
+        const startDateBroken =
+          /invalid value for auto_recurring\.start_date/i.test(firstMsg) ||
+          (/start_date\b/i.test(firstMsg) && /past date|fecha pasada|cannot be a past/i.test(firstMsg));
+        const stripPlanFromDbAfterSuccess = async () => {
+          await prisma.plans
+            .update({ where: { planId }, data: { mpPlanId: null } })
+            .catch(() => {});
+        };
+        const retryWithoutMpPlanInline = async (logLine) => {
+          console.warn(logLine);
+          const fallbackPayload = {
+            ...preapprovalBase,
+            ...buildMpCheckoutRecurring(plan, currencyId, false),
+          };
+          const created = await preApprovalClient.create({ body: fallbackPayload });
+          await stripPlanFromDbAfterSuccess();
+          preapprovalData = fallbackPayload;
+          return created;
+        };
         if (mpPlanId && /different countries/i.test(firstMsg)) {
-          console.warn(
+          response = await retryWithoutMpPlanInline(
             `[subscriptions] Reintentando sin preapproval_plan_id (plan sandbox vs token prod)`
           );
-          await prisma.plans
-            .update({ where: { planId }, data: { mpPlanId: null } })
-            .catch(() => {});
-          preapprovalData = {
-            ...preapprovalBase,
-            ...buildMpCheckoutRecurring(plan, currencyId, false),
-          };
-          response = await preApprovalClient.create({ body: preapprovalData });
         } else if (mpPlanId && startDateBroken) {
-          console.warn(
-            `[subscriptions] MP rechazó start_date con preapproval_plan_id; reintentando con auto_recurring inline (start_date con margen)`
+          response = await retryWithoutMpPlanInline(
+            `[subscriptions] MP rechazó start_date con preapproval_plan_id; reintentando con auto_recurring inline`
           );
-          await prisma.plans
-            .update({ where: { planId }, data: { mpPlanId: null } })
-            .catch(() => {});
-          preapprovalData = {
-            ...preapprovalBase,
-            ...buildMpCheckoutRecurring(plan, currencyId, false),
-          };
-          response = await preApprovalClient.create({ body: preapprovalData });
         } else {
           throw firstError;
         }
