@@ -4,12 +4,21 @@
 
 import { baseApi } from './baseApi';
 
+const LEAD_STATUSES = ['NUEVO', 'CONTACTADO', 'EN_SEGUIMIENTO', 'CERRADO_GANADO', 'CERRADO_PERDIDO'];
+
 export const leadApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
     getAllLeads: builder.query({
       query: () => '/leads',
       providesTags: ['Lead'],
+      transformResponse: (res) => ({
+        ...res,
+        leads: (res?.leads || []).map((lead) => ({
+          ...lead,
+          status: LEAD_STATUSES.includes(lead?.status) ? lead.status : (lead?.status || 'NUEVO'),
+        })),
+      }),
     }),
 
     createLead: builder.mutation({
@@ -28,6 +37,22 @@ export const leadApi = baseApi.injectEndpoints({
         body: data,
       }),
       invalidatesTags: ['Lead'],
+      async onQueryStarted({ id, status, ...rest }, { dispatch, queryFulfilled }) {
+        if (status === undefined || Object.keys(rest).length > 0) return;
+
+        const patchResult = dispatch(
+          leadApi.util.updateQueryData('getAllLeads', undefined, (draft) => {
+            const lead = draft?.leads?.find((l) => String(l.id) === String(id));
+            if (lead) lead.status = status;
+          }),
+        );
+
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
 
     assignLeadAgent: builder.mutation({

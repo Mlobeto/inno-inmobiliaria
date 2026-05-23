@@ -14,6 +14,8 @@ const LEAD_INCLUDE = {
   },
 };
 
+const VALID_STATUSES = ['NUEVO', 'CONTACTADO', 'EN_SEGUIMIENTO', 'CERRADO_GANADO', 'CERRADO_PERDIDO'];
+
 /** Normaliza un lead para que el frontend reciba `assignedAgents: [{adminId, fullName, ...}]` */
 const normalize = (lead) => ({
   ...lead,
@@ -130,6 +132,10 @@ exports.updateLead = async (req, res) => {
     // Agente solo puede editar leads donde está asignado
     if (role === 'AGENT' && !existing.agents.some((la) => la.agentId === adminId)) {
       return res.status(403).json({ success: false, message: 'Sin acceso a este lead' });
+    }
+
+    if (status !== undefined && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, message: `Estado inválido: ${status}` });
     }
 
     // Agentes no pueden reasignar agentes

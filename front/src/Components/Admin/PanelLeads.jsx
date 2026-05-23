@@ -37,6 +37,16 @@ const COLUMNS = [
   { key: 'CERRADO_PERDIDO', label: 'Perdido', color: 'red' },
 ];
 
+const COLUMN_KEYS = new Set(COLUMNS.map((c) => c.key));
+
+const normalizeLeadStatus = (status) => {
+  if (!status) return 'NUEVO';
+  const raw = String(status).trim();
+  if (COLUMN_KEYS.has(raw)) return raw;
+  const upper = raw.toUpperCase().replace(/\s+/g, '_');
+  return COLUMN_KEYS.has(upper) ? upper : raw;
+};
+
 const COLUMN_STYLES = {
   blue: 'border-customBlue/30 bg-customBlueMuted/40',
   yellow: 'border-customYellow/30 bg-customYellowMuted/40',
@@ -73,7 +83,7 @@ export default function PanelLeads() {
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const isAgent = currentUser?.role === 'AGENT';
 
-  const { data, isLoading } = useGetAllLeadsQuery();
+  const { data, isLoading, isFetching } = useGetAllLeadsQuery();
   const { data: agentsRaw = [] } = useGetAgentsQuery(undefined, { skip: !isSuperAdmin });
   const [createLead] = useCreateLeadMutation();
   const [updateLead] = useUpdateLeadMutation();
@@ -81,8 +91,15 @@ export default function PanelLeads() {
   const [unassignLeadAgent] = useUnassignLeadAgentMutation();
   const [deleteLead] = useDeleteLeadMutation();
 
-  const leads = data?.leads || [];
+  const leads = useMemo(
+    () => (data?.leads || []).map((l) => ({ ...l, status: normalizeLeadStatus(l.status) })),
+    [data?.leads],
+  );
   const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
+  const orphanLeads = useMemo(
+    () => leads.filter((l) => !COLUMN_KEYS.has(l.status)),
+    [leads],
+  );
 
   const [showModal, setShowModal] = useState(false);
   const [editingLead, setEditingLead] = useState(null);
@@ -111,7 +128,7 @@ export default function PanelLeads() {
       currency: lead.currency || 'ARS',
       zone: lead.zone || '',
       notes: lead.notes || '',
-      status: lead.status || 'NUEVO',
+      status: normalizeLeadStatus(lead.status),
       agentIds: assigned.map((a) => a.adminId),
     });
     setError('');
@@ -175,8 +192,9 @@ export default function PanelLeads() {
   const handleStatusChange = async (lead, newStatus) => {
     try {
       await updateLead({ id: lead.id, status: newStatus }).unwrap();
-    } catch {
-      // silencioso
+    } catch (err) {
+      const msg = err?.data?.message || 'No se pudo mover el lead. Intentá de nuevo.';
+      alert(msg);
     }
   };
 
@@ -248,30 +266,60 @@ export default function PanelLeads() {
       }
     >
       <div>
-        {isLoading ? (
+        {isLoading && !data ? (
           <div className="text-center text-textMuted py-16">Cargando leads...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
-            {COLUMNS.map((col) => {
-              const colLeads = getLeadsByStatus(col.key);
-              return (
-                <div
-                  key={col.key}
-                  className={`rounded-xl border p-3 flex flex-col gap-3 ${COLUMN_STYLES[col.color]}`}
-                >
-                  {/* Column header */}
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${BADGE_STYLES[col.color]}`}>
-                      {col.label}
-                    </span>
-                    <span className="text-textMuted text-xs font-bold">{colLeads.length}</span>
-                  </div>
+          <>
+            {isFetching && (
+              <p className="text-xs text-textMuted mb-3">Actualizando tablero...</p>
+            )}
+            <div className="overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="flex gap-4 min-w-max">
+                {COLUMNS.map((col) => {
+                  const colLeads = getLeadsByStatus(col.key);
+                  return (
+                    <div
+                      key={col.key}
+                      className={`w-[min(100%,280px)] sm:w-[280px] shrink-0 rounded-xl border p-3 flex flex-col gap-3 min-h-[120px] ${COLUMN_STYLES[col.color]}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${BADGE_STYLES[col.color]}`}>
+                          {col.label}
+                        </span>
+                        <span className="text-textMuted text-xs font-bold">{colLeads.length}</span>
+                      </div>
 
-                  {/* Cards */}
-                  {colLeads.length === 0 && (
-                    <p className="text-textMuted text-xs text-center py-4">Sin leads</p>
-                  )}
-                  {colLeads.map((lead) => (
+                      {colLeads.length === 0 && (
+                        <p className="text-textMuted text-xs text-center py-4">Sin leads</p>
+                      )}
+                      {colLeads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          agents={agents}
+                          columns={COLUMNS}
+                          canDelete={!isAgent}
+                          showQuickAssign={isSuperAdmin && agents.length > 0}
+                          onQuickAssign={(agentId) => handleQuickAssignAgent(lead.id, agentId)}
+                          onQuickUnassign={(agentId) => handleQuickUnassignAgent(lead.id, agentId)}
+                          onEdit={() => openEdit(lead)}
+                          onDelete={() => handleDelete(lead)}
+                          onStatusChange={(s) => handleStatusChange(lead, s)}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {orphanLeads.length > 0 && (
+              <div className="mt-4 rounded-xl border border-customYellow/30 bg-customYellowMuted/40 p-3">
+                <p className="text-xs font-semibold text-customYellow mb-2">
+                  Leads con estado desconocido ({orphanLeads.length})
+                </p>
+                <div className="flex flex-col gap-2">
+                  {orphanLeads.map((lead) => (
                     <LeadCard
                       key={lead.id}
                       lead={lead}
@@ -287,9 +335,9 @@ export default function PanelLeads() {
                     />
                   ))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
