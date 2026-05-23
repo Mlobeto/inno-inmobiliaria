@@ -13,6 +13,8 @@ import {
   IoAlertCircleOutline,
   IoCheckmarkCircleOutline,
   IoCashOutline,
+  IoDocumentAttachOutline,
+  IoChevronForwardOutline,
 } from 'react-icons/io5';
 
 const FREQ_MONTHS = { semestral: 6, cuatrimestral: 4, anual: 12, trimestral: 3 };
@@ -138,6 +140,37 @@ const EstadoAlertasContratos = () => {
       .filter(({ atrasadas }) => atrasadas > 0);
   }, [leases]);
 
+  /** Inquilino informó pago desde el portal — comprobante en revisión (voucherStatus pending_review). */
+  const comprobantesPorRevisar = useMemo(() => {
+    if (!leases?.length) return [];
+
+    const items = [];
+    for (const lease of leases) {
+      for (const receipt of lease.PaymentReceipts || []) {
+        if (
+          receipt.type === 'installment' &&
+          receipt.voucherStatus === 'pending_review' &&
+          receipt.voucherUrl
+        ) {
+          items.push({ lease, receipt });
+        }
+      }
+    }
+
+    return items.sort(
+      (a, b) =>
+        new Date(b.receipt.updatedAt || b.receipt.createdAt || 0) -
+        new Date(a.receipt.updatedAt || a.receipt.createdAt || 0)
+    );
+  }, [leases]);
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+    }).format(parseFloat(amount) || 0);
+
   // Ordenar por 'nextUpdate' (null al final) y luego por 'terminationDate'
   const sortedContractDetails = [...contractDetails].sort((a, b) => {
     if (!a.nextUpdate && !b.nextUpdate) return 0;
@@ -240,7 +273,7 @@ const EstadoAlertasContratos = () => {
               </h1>
             </div>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-              Monitorea vencimientos y actualizaciones pendientes de contratos
+              Monitorea vencimientos, cuotas impagas y comprobantes de pago informados por inquilinos
             </p>
           </div>
         </div>
@@ -248,6 +281,60 @@ const EstadoAlertasContratos = () => {
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Comprobantes del portal — acción requerida */}
+        {comprobantesPorRevisar.length > 0 && (
+          <div className="mb-8">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h3 className="text-xl font-semibold text-white flex items-center">
+                <IoDocumentAttachOutline className="w-6 h-6 mr-2 text-amber-400" />
+                Pagos informados por inquilinos ({comprobantesPorRevisar.length})
+              </h3>
+              <button
+                type="button"
+                onClick={() => navigate('/paymentList')}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-sm font-medium border border-amber-400/30 transition-colors"
+              >
+                Revisar comprobantes
+                <IoChevronForwardOutline className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              {comprobantesPorRevisar.map(({ lease, receipt }) => (
+                <button
+                  type="button"
+                  key={receipt.id}
+                  onClick={() => navigate('/paymentList')}
+                  className="w-full text-left bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center justify-between gap-4 hover:bg-amber-500/15 hover:border-amber-400/40 transition-colors"
+                >
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className="p-2 bg-amber-500/20 rounded-lg shrink-0">
+                      <IoDocumentAttachOutline className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white font-semibold truncate">
+                        {lease.Property?.address || `Contrato #${lease.id || lease.leaseId}`}
+                      </p>
+                      <p className="text-slate-400 text-sm truncate">
+                        Inquilino: {lease.Tenant?.name || 'N/A'}
+                        {receipt.period ? ` · ${receipt.period}` : ''}
+                        {receipt.installmentNumber && receipt.totalInstallments
+                          ? ` (cuota ${receipt.installmentNumber}/${receipt.totalInstallments})`
+                          : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-amber-300 text-sm font-medium block">
+                      {formatCurrency(receipt.amount)}
+                    </span>
+                    <span className="text-slate-500 text-xs">Pendiente de aprobación</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Cuotas con atraso */}
         {cuotasImpagas.length > 0 && (
@@ -289,7 +376,9 @@ const EstadoAlertasContratos = () => {
           </div>
         )}
 
-        {sortedContractDetails.length === 0 ? (
+        {sortedContractDetails.length === 0 &&
+        cuotasImpagas.length === 0 &&
+        comprobantesPorRevisar.length === 0 ? (
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-12 text-center">
             <IoCheckmarkCircleOutline className="w-16 h-16 text-green-400 mx-auto mb-4" />
             <p className="text-green-400 text-xl font-medium mb-2">No hay alertas pendientes</p>

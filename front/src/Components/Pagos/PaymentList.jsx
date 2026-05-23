@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ReciboPdf from '../PdfTemplates/ReciboPdf';
+import ComprobantesPendientes from './ComprobantesPendientes';
 import Swal from 'sweetalert2';
 import {
   IoArrowBackOutline,
@@ -235,6 +236,23 @@ const PaymentList = () => {
     }
   };
 
+  const getVoucherBadge = (payment) => {
+    switch (payment.voucherStatus) {
+      case 'pending_review':
+        return { label: 'Comprobante en revisión', className: 'bg-amber-500/20 text-amber-400 border-amber-400/30' };
+      case 'approved':
+        return { label: 'Comprobante OK', className: 'bg-green-500/20 text-green-400 border-green-400/30' };
+      case 'rejected':
+        return { label: 'Comprobante rechazado', className: 'bg-red-500/20 text-red-400 border-red-400/30' };
+      default:
+        return null;
+    }
+  };
+
+  const pendingComprobantesCount = payments.filter(
+    (p) => p.voucherStatus === 'pending_review' && p.voucherUrl
+  ).length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
@@ -274,6 +292,12 @@ const PaymentList = () => {
             </div>
             <p className="text-slate-400 text-lg max-w-2xl mx-auto">
               Administra y consulta todos los pagos registrados en el sistema
+              {pendingComprobantesCount > 0 && (
+                <span className="block mt-2 text-amber-400 text-base font-medium">
+                  {pendingComprobantesCount} comprobante{pendingComprobantesCount !== 1 ? 's' : ''} pendiente
+                  {pendingComprobantesCount !== 1 ? 's' : ''} de revisión
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -281,6 +305,13 @@ const PaymentList = () => {
 
       {/* Contenido principal */}
       <div className="max-w-7xl mx-auto px-6 py-8">
+        <ComprobantesPendientes
+          payments={payments}
+          formatCurrency={formatCurrency}
+          onRefresh={loadPayments}
+          onDownloadReceipt={handleDownloadReceipt}
+        />
+
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
@@ -447,7 +478,9 @@ const PaymentList = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPayments.map((payment, idx) => (
+                  {filteredPayments.map((payment, idx) => {
+                    const voucherBadge = getVoucherBadge(payment);
+                    return (
                     <tr
                       key={payment.id}
                       className={`border-b border-white/5 hover:bg-white/5 transition-colors ${idx % 2 === 0 ? '' : 'bg-white/[0.02]'}`}
@@ -491,9 +524,16 @@ const PaymentList = () => {
                         )}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
-                          {getStatusName(payment.status)}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
+                            {getStatusName(payment.status)}
+                          </span>
+                          {voucherBadge && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${voucherBadge.className}`}>
+                              {voucherBadge.label}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center justify-center gap-1">
@@ -521,7 +561,8 @@ const PaymentList = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

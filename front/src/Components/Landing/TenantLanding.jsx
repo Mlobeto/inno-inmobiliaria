@@ -15,6 +15,7 @@ import {
   IoFunnelOutline,
   IoCloseOutline,
   IoCheckmarkCircleOutline,
+  IoKeyOutline,
 } from 'react-icons/io5';
 import {
   landingShell,
@@ -181,6 +182,15 @@ const TenantLanding = () => {
             </div>
 
             <div className="flex items-center gap-3">
+              <Link
+                to={`/${subdomain}/inquilinos`}
+                className={`${landingBtnGhost} font-medium text-sm`}
+                title="Acceso inquilinos — informar pagos de alquiler"
+              >
+                <IoKeyOutline className="w-5 h-5" />
+                <span className="hidden sm:inline">Soy inquilino</span>
+              </Link>
+
               {tenant.contact.whatsapp && (
                 <a
                   href={`https://wa.me/${tenant.contact.whatsapp.replace(/\D/g, '')}?text=Hola! Me gustaría consultar por una propiedad`}

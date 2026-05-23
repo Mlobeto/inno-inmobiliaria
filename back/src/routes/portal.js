@@ -46,6 +46,13 @@ router.post('/auth', tenancyMiddleware, PortalController.login);
  */
 router.get('/mis-pagos', portalMiddleware, PortalController.getMisPagos);
 
+router.post(
+  '/informar-pago',
+  portalMiddleware,
+  upload.single('file'),
+  PortalController.informarPago
+);
+
 /**
  * POST /api/portal/pago/:id/comprobante
  * Sube comprobante de pago (imagen/pdf) para una cuota

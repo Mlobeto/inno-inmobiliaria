@@ -2,6 +2,27 @@ const prisma = require('../utils/prismaClient');
 const { logAudit } = require('../utils/audit');
 const { createFromPayment } = require('./OwnerSettlementController');
 
+/**
+ * Marca una cuota como pagada y dispara liquidación al propietario (mismo efecto que createPayment manual).
+ */
+async function finalizeInstallmentPayment(receipt, tenantId) {
+  if (receipt.type !== 'installment' || !receipt.leaseId) return receipt;
+
+  const lease = await prisma.Leases.findFirst({
+    where: { id: receipt.leaseId, tenantId },
+    include: { Property: true },
+  });
+  if (!lease) return receipt;
+
+  const existingSettlement = await prisma.OwnerSettlements.findFirst({
+    where: { paymentReceiptId: receipt.id, tenantId },
+  });
+  if (!existingSettlement) {
+    await createFromPayment({ tenantId, paymentReceipt: receipt, lease });
+  }
+  return receipt;
+}
+
 exports.createPayment = async (req, res) => {
     try {
       const { tenantId } = req.user; // Obtener tenantId del token JWT (una sola vez)
@@ -177,7 +198,13 @@ exports.getAllPayments = async (req, res) => {
     
     const payments = await prisma.PaymentReceipts.findMany({
       where: { tenantId },
-      include: { Clients: true },
+      include: {
+        Clients: true,
+        PaymentMethods: {
+          select: { id: true, type: true, label: true, value: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
     });
 
     // Enrich with lease + property data
@@ -322,9 +349,12 @@ exports.aprobarComprobante = async (req, res) => {
         voucherStatus: 'approved',
         status: 'paid',
         paidAt: new Date(),
+        paymentDate: receipt.paymentDate || new Date(),
         voucherRejReason: null,
       },
     });
+
+    await finalizeInstallmentPayment(updated, tenantId);
 
     res.status(200).json({ success: true, data: updated });
   } catch (error) {

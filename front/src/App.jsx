@@ -29,6 +29,7 @@ import PrivacyPolicy from "./Components/PrivacyPolicy";
 import SubscriptionSuccess from "./Components/SubscriptionSuccess";
 // 🆕 NUEVO - Landing Pages Públicas
 import TenantLanding from "./Components/Landing/TenantLanding";
+import PortalInquilinos from "./Components/Landing/PortalInquilinos";
 import PropertyDetail from "./Components/Landing/PropertyDetail";
 import LoteoDetail from "./Components/Landing/LoteoDetail";
 import PanelLoteos from "./Components/Admin/PanelLoteos";
@@ -103,9 +104,10 @@ function App() {
       <Route path="/registro" element={<Register />} />
 
       {/* 🌐 Rutas Públicas - Landing Pages (sin autenticación) */}
-      <Route path="/:subdomain" element={<TenantLanding />} />
+      <Route path="/:subdomain/inquilinos" element={<PortalInquilinos />} />
       <Route path="/:subdomain/property/:propertyId" element={<PropertyDetail />} />
       <Route path="/:subdomain/loteo/:loteoId" element={<LoteoDetail />} />
+      <Route path="/:subdomain" element={<TenantLanding />} />
       
       {/* Ruta protegida: solo los administradores pueden ver el Panel */}
       <Route path="/panel" element={<ProtectedRoute><Panel /></ProtectedRoute>} />

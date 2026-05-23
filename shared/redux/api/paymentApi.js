@@ -64,6 +64,23 @@ export const paymentApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Payment', 'Lease'],
     }),
+
+    approveComprobante: builder.mutation({
+      query: (paymentId) => ({
+        url: `/payment/${paymentId}/aprobar-comprobante`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Payment', 'Lease'],
+    }),
+
+    rejectComprobante: builder.mutation({
+      query: ({ paymentId, reason }) => ({
+        url: `/payment/${paymentId}/rechazar-comprobante`,
+        method: 'PUT',
+        body: { reason },
+      }),
+      invalidatesTags: ['Payment'],
+    }),
     
   }),
   overrideExisting: false,
@@ -79,6 +96,8 @@ export const {
   useCreatePaymentMutation,
   useUpdatePaymentMutation,
   useDeletePaymentMutation,
+  useApproveComprobanteMutation,
+  useRejectComprobanteMutation,
 } = paymentApi;
 
 export default paymentApi;

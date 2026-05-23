@@ -178,6 +178,7 @@ model PaymentReceipts {
   voucherUrl        String?                             @db.VarChar(1000)         // URL comprobante en Azure Blob
   voucherStatus     enum_PaymentReceipts_voucherStatus  @default(none)            // Estado del comprobante subido por inquilino
   voucherRejReason  String?                             @db.VarChar(500)          // Motivo de rechazo (si aplica)
+  paymentMethodId   Int?                                                            // Cuenta/método que usó el inquilino
   paidAt            DateTime?                           @db.Timestamptz(6)        // Fecha en que se marcó como pagado
   createdAt         DateTime                            @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime                            @default(now()) @updatedAt @db.Timestamptz(6)
@@ -187,8 +188,10 @@ model PaymentReceipts {
   tenantId          Int?
   Clients           Clients?                    @relation(fields: [idClient], references: [idClient])
   tenants           tenants?                    @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  PaymentMethods    PaymentMethods?             @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@index([tenantId], map: "idx_payment_receipts_tenant")
+  @@index([paymentMethodId], map: "idx_payment_receipts_payment_method")
   @@index([originalCurrency], map: "idx_payment_receipts_currency")
 }
 
@@ -666,7 +669,8 @@ model PaymentMethods {
   isActive  Boolean                  @default(true)
   createdAt DateTime                 @default(now()) @db.Timestamptz(6)
   updatedAt DateTime                 @default(now()) @updatedAt @db.Timestamptz(6)
-  tenants   tenants                  @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  tenants          tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade, onUpdate: NoAction)
+  PaymentReceipts  PaymentReceipts[]
 
   @@index([tenantId], map: "idx_payment_methods_tenant")
 }
