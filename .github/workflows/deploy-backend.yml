@@ -87,7 +87,6 @@ jobs:
               "ML_CLIENT_SECRET=secretref:ml-client-secret" \
               "AZURE_STORAGE_ACCOUNT_NAME=innomediaprod" \
               "FRONTEND_URL=https://gestprop.com.ar" \
-              "MP_OMIT_PAYER_EMAIL=true" \
               "ML_CLIENT_ID=6081765459956502" \
               "ML_REDIRECT_URI=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io/api/mercadolibre/callback" \
               "PLATFORM_ADMIN_EMAIL=admin@innoinmo.com" \

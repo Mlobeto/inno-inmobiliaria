@@ -121,28 +121,34 @@ function buildAutoRecurring(plan, currencyId, includeTrial) {
   return recurring;
 }
 
-/** Evita pre-login con el mail del cobrador (bloquea Confirmar si es la misma cuenta MP). */
-function resolvePayerEmailForCheckout(userEmail) {
-  const email = (userEmail || '').trim().toLowerCase();
-  if (!email) return undefined;
+/** Formato RFC simplificado suficiente para MP / facturación. */
+function looksLikeEmail(value) {
+  const s = String(value || '').trim();
+  return s.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
 
-  const collectorEmails = (process.env.MP_COLLECTOR_EMAILS || process.env.PLATFORM_ADMIN_EMAILS || '')
+/** Mercado Pago Preapproval exige `payer_email`; antes se omitía si coincidía el cobrador, pero la API rechaza sin el campo. */
+function resolvePayerEmailForMercadoPago(userEmail) {
+  const trimmed = String(userEmail || '').trim();
+  if (!trimmed || !looksLikeEmail(trimmed)) return null;
+
+  const lowered = trimmed.toLowerCase();
+  const collectorEmails = (
+    process.env.MP_COLLECTOR_EMAILS ||
+    process.env.PLATFORM_ADMIN_EMAILS ||
+    ''
+  )
     .split(',')
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 
-  if (collectorEmails.includes(email)) {
+  if (collectorEmails.includes(lowered)) {
     console.warn(
-      `[subscriptions] payer_email omitido (${email}): coincide con cuenta cobradora MP; el comprador debe iniciar sesión con otra cuenta.`
+      `[subscriptions] payer_email coincide con cuenta cobradora configurada (${lowered}); igual se envía a MP por requisito de API — en checkout usá otro payer si MP lo exige.`
     );
-    return undefined;
   }
 
-  if (process.env.MP_OMIT_PAYER_EMAIL === 'true') {
-    return undefined;
-  }
-
-  return userEmail;
+  return trimmed;
 }
 
 function buildMpCheckoutRecurring(plan, currencyId, includeMpFreeTrial) {
@@ -385,13 +391,21 @@ class SubscriptionController {
       // Trial gratis solo en GestProp (registro). En MP: autorizar tarjeta y cobrar al confirmar.
       const includeMpFreeTrial = false;
 
-      const payerEmail = resolvePayerEmailForCheckout(email);
+      const payerEmail = resolvePayerEmailForMercadoPago(email);
+      if (!payerEmail) {
+        return res.status(400).json({
+          success: false,
+          error:
+            'Falta un email válido para la suscripción en Mercado Pago (completá el email del administrador en el perfil o usá un usuario con formato correo electrónico).',
+          code: 'PAYER_EMAIL_REQUIRED',
+        });
+      }
       const preapprovalBase = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
         back_url: buildFrontendUrl('/subscription/success'),
         external_reference: `tenant_${tenantId}_plan_${planId}`,
         status: 'pending',
-        ...(payerEmail ? { payer_email: payerEmail } : {}),
+        payer_email: payerEmail,
       };
 
       const mpPlanId = await resolveMpPlanId(plan, {

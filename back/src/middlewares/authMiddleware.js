@@ -2,6 +2,20 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../utils/prismaClient');
 require('dotenv').config();
 
+function looksLikeEmail(value) {
+  const s = String(value || '').trim();
+  return s.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+}
+
+/** Email de contacto/cobros: campo `email` o `username` si tiene formato correo (muchos registros tienen solo username). */
+function resolveAdminBillingEmail(admin) {
+  const field = (admin.email || '').trim();
+  if (looksLikeEmail(field)) return field;
+  const user = (admin.username || '').trim();
+  if (looksLikeEmail(user)) return user;
+  return field || null;
+}
+
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
 
@@ -24,9 +38,9 @@ const authMiddleware = async (req, res, next) => {
     req.user = {
       adminId: admin.adminId,
       username: admin.username,
-      email: admin.email,
+      email: resolveAdminBillingEmail(admin),
       role: admin.role,
-      tenantId: admin.tenantId
+      tenantId: admin.tenantId,
     };
     
     // Mantener compatibilidad con código antiguo
