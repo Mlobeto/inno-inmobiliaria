@@ -19,8 +19,18 @@ import {
   IoLinkOutline
 } from 'react-icons/io5';
 import Swal from 'sweetalert2';
-import TemporaryRentalOptions from './TemporaryRentalOptions';
-import axios from 'axios';
+import {
+  modalOverlay,
+  modalBox,
+  modalHeader,
+  btnPrimary,
+  btnSecondary,
+  inputClass,
+  selectClass,
+  labelClass,
+  formSectionAccent,
+  formSectionAccentTitle,
+} from './propiedadesTheme';
 
 const EditPropertyModal = ({ property, onClose }) => {
   const dispatch = useDispatch();
@@ -176,20 +186,19 @@ const EditPropertyModal = ({ property, onClose }) => {
   if (!property) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl my-8">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
+    <div className={modalOverlay}>
+      <div className={`${modalBox} max-w-5xl my-8`}>
+        <div className={`${modalHeader} bg-brand-subtle/40 rounded-t-xl`}>
           <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <IoHomeOutline className="text-3xl" />
+            <h2 className="text-2xl font-bold flex items-center gap-2 text-textPrimary">
+              <IoHomeOutline className="text-3xl text-brand-light" />
               Editar Propiedad
             </h2>
-            <p className="text-blue-100 text-sm mt-1">ID: {property.propertyId}</p>
+            <p className="text-textSecondary text-sm mt-1">ID: {property.propertyId}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            className="p-2 hover:bg-brand-subtle rounded-full transition-colors text-textSecondary hover:text-textPrimary"
           >
             <IoCloseOutline className="text-2xl" />
           </button>
@@ -199,13 +208,13 @@ const EditPropertyModal = ({ property, onClose }) => {
         <form onSubmit={handleSubmit} className="p-6 max-h-[70vh] overflow-y-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Información Básica */}
-            <div className="col-span-2 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-              <h3 className="font-bold text-blue-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoHomeOutline /> Información Básica
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Dirección *
                   </label>
                   <input
@@ -213,13 +222,13 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="address"
                     value={formData.address}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={inputClass}
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Barrio *
                   </label>
                   <input
@@ -227,13 +236,13 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="neighborhood"
                     value={formData.neighborhood}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={inputClass}
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Ciudad *
                   </label>
                   <input
@@ -241,20 +250,20 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={inputClass}
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Tipo de Operación *
                   </label>
                   <select
                     name="type"
                     value={formData.type}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={inputClass}
                   >
                     <option value="venta">Venta</option>
                     <option value="alquiler">Alquiler</option>
@@ -263,14 +272,14 @@ const EditPropertyModal = ({ property, onClose }) => {
 
                 {formData.type === 'alquiler' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className={labelClass}>
                       Modalidad de Alquiler
                     </label>
                     <select
                       name="rentalType"
                       value={formData.rentalType}
                       onChange={handleChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={inputClass}
                     >
                       <option value="TRADICIONAL">Alquiler Tradicional</option>
                       <option value="TEMPORAL">Alquiler Temporal (Turismo)</option>
@@ -280,7 +289,7 @@ const EditPropertyModal = ({ property, onClose }) => {
 
                 {formData.type === 'alquiler' && formData.rentalType === 'TEMPORAL' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className={labelClass}>
                       Estadía Mínima (días)
                     </label>
                     <input
@@ -289,21 +298,21 @@ const EditPropertyModal = ({ property, onClose }) => {
                       value={formData.minStayDays}
                       onChange={handleChange}
                       min="1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={inputClass}
                       placeholder="Ej: 2"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Tipo de Propiedad *
                   </label>
                   <select
                     name="typeProperty"
                     value={formData.typeProperty}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={inputClass}
                   >
                     <option value="casa">Casa</option>
                     <option value="departamento">Departamento</option>
@@ -316,13 +325,13 @@ const EditPropertyModal = ({ property, onClose }) => {
                 </div>
 
                 <div>
-                  <label className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+                  <label className="flex items-center space-x-2 text-sm text-textSecondary">
                     <input
                       type="checkbox"
                       name="isAvailable"
                       checked={formData.isAvailable}
                       onChange={handleChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-borderStrong text-brand focus:ring-brand"
                     />
                     <span>Disponible</span>
                   </label>
@@ -331,14 +340,14 @@ const EditPropertyModal = ({ property, onClose }) => {
             </div>
 
             {/* Precio y Comisión */}
-            <div className="col-span-2 bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-              <h3 className="font-bold text-green-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoPricetagOutline /> Precio y Comisión
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Moneda + Precio */}
                 <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Moneda y Precio *
                   </label>
                   <div className="flex gap-2">
@@ -346,7 +355,7 @@ const EditPropertyModal = ({ property, onClose }) => {
                       name="currency"
                       value={formData.currency}
                       onChange={handleChange}
-                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 min-w-[90px]"
+                      className={`${selectClass} min-w-[90px]`}
                     >
                       <option value="ARS">$ ARS</option>
                       <option value="USD">U$D USD</option>
@@ -357,44 +366,44 @@ const EditPropertyModal = ({ property, onClose }) => {
                       onChange={handleChange}
                       currency={formData.currency}
                       placeholder={formData.currency === 'USD' ? 'Precio en USD' : 'Precio en pesos'}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className={`${inputClass} flex-1`}
                       required
                     />
                   </div>
 
                   {formData.currency === 'USD' && (
-                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs">
+                    <div className="mt-2 p-3 bg-customYellowMuted border border-customYellow/30 rounded-lg text-xs text-customYellow">
                       {dolarLoading ? (
-                        <p className="text-amber-600">Obteniendo cotización...</p>
+                        <p className="text-customYellow">Obteniendo cotización...</p>
                       ) : dolar ? (
                         <div className="space-y-1">
-                          <div className="flex justify-between text-gray-600">
+                          <div className="flex justify-between text-textSecondary">
                             <span>Dólar Oficial venta:</span>
                             <span className="font-semibold">{formatCurrency(dolar.oficial?.venta, 'ARS')}</span>
                           </div>
-                          <div className="flex justify-between text-gray-600">
+                          <div className="flex justify-between text-textSecondary">
                             <span>Dólar Blue venta:</span>
                             <span className="font-semibold">{formatCurrency(dolar.blue?.venta, 'ARS')}</span>
                           </div>
                           {formData.price && (
                             <>
-                              <div className="border-t border-amber-200 pt-1 mt-1">
+                              <div className="border-t border-customYellow/30 pt-1 mt-1">
                                 <div className="flex justify-between">
-                                  <span className="text-amber-700">Equiv. Oficial:</span>
-                                  <span className="text-amber-700 font-semibold">
+                                  <span className="text-customYellow">Equiv. Oficial:</span>
+                                  <span className="text-customYellow font-semibold">
                                     {formatCurrency(parseFloat(formData.price) * (dolar.oficial?.venta || 0), 'ARS')}
                                   </span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span className="text-blue-700">Equiv. Blue:</span>
-                                  <span className="text-blue-700 font-semibold">
+                                  <span className="text-brand-light">Equiv. Blue:</span>
+                                  <span className="text-brand-light font-semibold">
                                     {formatCurrency(parseFloat(formData.price) * (dolar.blue?.venta || 0), 'ARS')}
                                   </span>
                                 </div>
                               </div>
                               {formData.comision && (
-                                <div className="border-t border-amber-200 pt-1 mt-1">
-                                  <p className="text-gray-500 mb-0.5">Comisión {formData.comision}%:</p>
+                                <div className="border-t border-customYellow/30 pt-1 mt-1">
+                                  <p className="text-textMuted mb-0.5">Comisión {formData.comision}%:</p>
                                   {(() => {
                                     const { comisionOriginal, comisionARS: comArsOficial } = calcularComision(formData.price, 'USD', formData.comision, dolar.oficial?.venta);
                                     const { comisionARS: comArsBlue } = calcularComision(formData.price, 'USD', formData.comision, dolar.blue?.venta);
@@ -404,11 +413,11 @@ const EditPropertyModal = ({ property, onClose }) => {
                                           <span>En USD:</span>
                                           <span>USD {comisionOriginal.toLocaleString('es-AR', { maximumFractionDigits: 0 })}</span>
                                         </div>
-                                        <div className="flex justify-between text-amber-700">
+                                        <div className="flex justify-between text-customYellow">
                                           <span>En ARS (Oficial):</span>
                                           <span>{formatCurrency(comArsOficial, 'ARS')}</span>
                                         </div>
-                                        <div className="flex justify-between text-blue-700">
+                                        <div className="flex justify-between text-brand-light">
                                           <span>En ARS (Blue):</span>
                                           <span>{formatCurrency(comArsBlue, 'ARS')}</span>
                                         </div>
@@ -419,17 +428,17 @@ const EditPropertyModal = ({ property, onClose }) => {
                               )}
                             </>
                           )}
-                          <p className="text-gray-400 text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
+                          <p className="text-textMuted text-[10px] mt-1">Actualizado: {dolar.lastUpdate ? new Date(dolar.lastUpdate).toLocaleString('es-AR') : '—'}</p>
                         </div>
                       ) : (
-                        <p className="text-red-500">No se pudo obtener la cotización</p>
+                        <p className="text-customRed">No se pudo obtener la cotización</p>
                       )}
                     </div>
                   )}
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Precio Referencia
                   </label>
                   <CurrencyInput
@@ -437,12 +446,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     value={formData.precioReferencia}
                     onChange={handleChange}
                     currency={formData.currency}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className={inputClass}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Comisión (%) *
                   </label>
                   <input
@@ -451,7 +460,7 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="comision"
                     value={formData.comision}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    className={inputClass}
                     required
                   />
                 </div>
@@ -459,13 +468,13 @@ const EditPropertyModal = ({ property, onClose }) => {
             </div>
 
             {/* Características */}
-            <div className="col-span-2 bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-              <h3 className="font-bold text-purple-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoBedOutline /> Características
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Habitaciones
                   </label>
                   <input
@@ -473,12 +482,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="rooms"
                     value={formData.rooms}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className={inputClass}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Baños
                   </label>
                   <input
@@ -486,12 +495,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="bathrooms"
                     value={formData.bathrooms}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Sup. Cubierta (m²)
                   </label>
                   <input
@@ -499,12 +508,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="superficieCubierta"
                     value={formData.superficieCubierta}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Sup. Total (m²)
                   </label>
                   <input
@@ -512,20 +521,20 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="superficieTotal"
                     value={formData.superficieTotal}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </div>
 
             {/* Medidas (para lotes) */}
-            <div className="col-span-2 bg-orange-50 p-4 rounded-lg border-l-4 border-orange-500">
-              <h3 className="font-bold text-orange-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoResizeOutline /> Medidas (Lotes)
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Frente (m)
                   </label>
                   <input
@@ -533,12 +542,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="frente"
                     value={formData.frente}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className={inputClass}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Profundidad (m)
                   </label>
                   <input
@@ -546,20 +555,20 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="profundidad"
                     value={formData.profundidad}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </div>
 
             {/* Documentación */}
-            <div className="col-span-2 bg-gray-50 p-4 rounded-lg border-l-4 border-gray-500">
-              <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoDocumentTextOutline /> Documentación
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Escritura *
                   </label>
                   <input
@@ -567,13 +576,13 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="escritura"
                     value={formData.escritura}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                    className={inputClass}
                     required
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Matrícula o Padrón
                   </label>
                   <input
@@ -581,12 +590,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="matriculaOPadron"
                     value={formData.matriculaOPadron}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Socio
                   </label>
                   <input
@@ -594,20 +603,20 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="socio"
                     value={formData.socio}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
+                    className={inputClass}
                   />
                 </div>
               </div>
             </div>
 
             {/* Links */}
-            <div className="col-span-2 bg-indigo-50 p-4 rounded-lg border-l-4 border-indigo-500">
-              <h3 className="font-bold text-indigo-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoLinkOutline /> Enlaces
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Link Google Maps
                   </label>
                   <input
@@ -616,12 +625,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     value={formData.linkMaps}
                     onChange={handleChange}
                     placeholder="https://maps.app.goo.gl/..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className={inputClass}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Link Instagram
                   </label>
                   <input
@@ -630,7 +639,7 @@ const EditPropertyModal = ({ property, onClose }) => {
                     value={formData.linkInstagram}
                     onChange={handleChange}
                     placeholder="https://www.instagram.com/..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -638,12 +647,12 @@ const EditPropertyModal = ({ property, onClose }) => {
 
             {/* Requisitos de Alquiler - Solo para propiedades en alquiler */}
             {formData.type === "alquiler" && (
-              <div className="col-span-2 bg-amber-50 p-4 rounded-lg border-l-4 border-amber-500">
-                <h3 className="font-bold text-amber-900 flex items-center gap-2 mb-4">
+              <div className={`col-span-2 ${formSectionAccent}`}>
+                <h3 className={formSectionAccentTitle}>
                   <IoDocumentTextOutline /> Requisitos de Alquiler
                 </h3>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Requisitos Específicos
                   </label>
                   <textarea
@@ -652,9 +661,9 @@ const EditPropertyModal = ({ property, onClose }) => {
                     onChange={handleChange}
                     rows="10"
                     placeholder="Deja en blanco para usar la plantilla por defecto..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 font-mono text-sm"
+                    className={`${inputClass} font-mono text-sm`}
                   />
-                  <p className="text-gray-500 text-xs mt-1">
+                  <p className="text-textMuted text-xs mt-1">
                     Si no completas este campo, se usará la plantilla estándar de requisitos
                   </p>
                 </div>
@@ -662,13 +671,13 @@ const EditPropertyModal = ({ property, onClose }) => {
             )}
 
             {/* Finca (si aplica) */}
-            <div className="col-span-2 bg-lime-50 p-4 rounded-lg border-l-4 border-lime-500">
-              <h3 className="font-bold text-lime-900 flex items-center gap-2 mb-4">
+            <div className={`col-span-2 ${formSectionAccent}`}>
+              <h3 className={formSectionAccentTitle}>
                 <IoWaterOutline /> Información de Finca
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Tipo de Planta
                   </label>
                   <input
@@ -676,12 +685,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="plantType"
                     value={formData.plantType}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500"
+                    className={inputClass}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={labelClass}>
                     Cantidad de Plantas
                   </label>
                   <input
@@ -689,7 +698,7 @@ const EditPropertyModal = ({ property, onClose }) => {
                     name="plantQuantity"
                     value={formData.plantQuantity}
                     onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -697,7 +706,7 @@ const EditPropertyModal = ({ property, onClose }) => {
 
             {/* Descripciones */}
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className={labelClass}>
                 Descripción
               </label>
               <textarea
@@ -705,12 +714,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                 value={formData.description}
                 onChange={handleChange}
                 rows="3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={inputClass}
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className={labelClass}>
                 Destacados
               </label>
               <textarea
@@ -718,12 +727,12 @@ const EditPropertyModal = ({ property, onClose }) => {
                 value={formData.highlights}
                 onChange={handleChange}
                 rows="3"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className={inputClass}
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className={labelClass}>
                 Inventario
               </label>
               <textarea
@@ -731,26 +740,18 @@ const EditPropertyModal = ({ property, onClose }) => {
                 value={formData.inventory}
                 onChange={handleChange}
                 rows="6"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                className={`${inputClass} font-mono text-sm`}
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 mt-6 pt-6 border-t">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-2"
-            >
+          <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-borderBase">
+            <button type="button" onClick={onClose} className={btnSecondary}>
               <IoCloseOutline className="text-xl" />
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button type="submit" disabled={loading} className={btnPrimary}>
               <IoSaveOutline className="text-xl" />
               {loading ? 'Guardando...' : 'Guardar Cambios'}
             </button>

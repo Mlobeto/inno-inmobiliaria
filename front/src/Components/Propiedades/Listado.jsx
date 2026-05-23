@@ -14,7 +14,33 @@ import RequisitoButton from './RequisitoButton';
 import ImageManager from './ImageManager';
 import EditPropertyModal from './EditPropertyModal';
 import AutorizacionVentaPdf from '../PdfTemplates/AutorizacionVentaPdf';
-import { 
+import {
+  panelShell,
+  pageHeaderBar,
+  breadcrumbNav,
+  backLink,
+  btnPrimary,
+  btnSecondary,
+  btnGhost,
+  formCard,
+  filterInput,
+  filterLabel,
+  propertyCard,
+  tableWrap,
+  tableHeadRow,
+  tableTh,
+  tableRow,
+  spinner,
+  alertError,
+  emptyState,
+  modalOverlay,
+  modalBox,
+  modalHeader,
+  heroIconWrap,
+  heroTitle,
+  heroSubtitle,
+} from './propiedadesTheme';
+import {
   IoArrowBackOutline,
   IoHomeOutline,
   IoBusinessOutline,
@@ -396,62 +422,65 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   // Solo mostrar loading si no hay propiedades cargadas aún
   if (isLoading && (!allProperties || allProperties.length === 0)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Cargando propiedades...</div>
+      <div className={`${panelShell} flex items-center justify-center gap-3`}>
+        <div className={`${spinner} h-12 w-12 shrink-0`} aria-hidden />
+        <span className="text-textSecondary text-xl">Cargando propiedades...</span>
       </div>
     );
   }
-  
+
   if (error) {
+    const errorMessage =
+      typeof error === 'string'
+        ? error
+        : error?.message || error?.data?.message || error?.error || 'Error al cargar';
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-red-400 text-xl">Error: {error}</div>
+      <div className={`${panelShell} flex items-center justify-center p-4`}>
+        <div className={alertError}>Error: {errorMessage}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className={panelShell}>
       {/* Header */}
-      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 shadow-lg">
+      <div className={pageHeaderBar}>
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={() => navigate(-1)} 
-              className="text-white hover:text-blue-300 transition-colors duration-300 flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30"
-            >
-              <IoArrowBackOutline className="w-5 h-5" />
+            <button type="button" onClick={() => navigate(-1)} className={`${backLink} px-3 py-2 rounded-lg bg-bgElevated border border-borderBase hover:bg-brand-subtle`}>
+              <IoArrowBackOutline className="w-5 h-5" aria-hidden />
               <span className="hidden sm:inline">Volver</span>
             </button>
-            
+
             {/* Breadcrumb */}
-            <nav className="flex items-center space-x-2 text-slate-300">
-              <button onClick={() => navigate('/panel')} className="hover:text-white transition-colors">
-                <IoHomeOutline className="w-4 h-4" />
+            <nav className={breadcrumbNav} aria-label="Migas de pan">
+              <button type="button" onClick={() => navigate('/panel')} className="hover:text-textPrimary transition-colors">
+                <IoHomeOutline className="w-4 h-4" aria-hidden />
               </button>
-              <span>/</span>
-              <button onClick={() => navigate('/panelPropiedades')} className="hover:text-white transition-colors">
+              <span aria-hidden>/</span>
+              <button type="button" onClick={() => navigate('/panelPropiedades')} className="hover:text-textPrimary transition-colors">
                 Propiedades
               </button>
-              <span>/</span>
-              <span className="text-white font-medium">
-                {mode === "lease" ? "Propiedades para Alquilar" : 
-                 mode === "sale" ? "Propiedades para Vender" : 
+              <span aria-hidden>/</span>
+              <span className="text-textPrimary font-medium">
+                {mode === "lease" ? "Propiedades para Alquilar" :
+                 mode === "sale" ? "Propiedades para Vender" :
                  "Listado de Propiedades"}
               </span>
             </nav>
           </div>
-          
+
           {/* Botón contextual según el modo */}
           {mode !== "default" && (
             <button
+              type="button"
               onClick={() => {
                 if (mode === "lease") setShowCreateModal(true);
                 if (mode === "sale") setShowSaleModal(true);
               }}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg font-medium transition-all duration-300 hover:scale-[1.02]"
+              className={`${btnPrimary} hover:scale-[1.02]`}
             >
-              <IoAddOutline className="w-5 h-5" />
+              <IoAddOutline className="w-5 h-5" aria-hidden />
               <span className="hidden sm:inline">
                 {mode === "lease" ? "Crear Contrato" : "Nueva Compraventa"}
               </span>
@@ -465,48 +494,52 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         {/* Title Section */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="p-4 bg-blue-500/20 rounded-full">
-              <IoBusinessOutline className="w-12 h-12 text-blue-400" />
+            <div className={heroIconWrap}>
+              <IoBusinessOutline className="w-12 h-12 text-brand-light" aria-hidden />
             </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4">
+          <h1 className={heroTitle}>
             Listado de Propiedades
           </h1>
-          <p className="text-slate-300 text-lg max-w-2xl mx-auto">
+          <p className={heroSubtitle}>
             Gestiona todas las propiedades registradas en el sistema
           </p>
         </div>
 
         {/* Search and Filters Section */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 mb-8">
+        <div className={`${formCard} mb-8`}>
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             <div className="flex-1 max-w-md">
+              <label htmlFor="tour-search" className={`${filterLabel} mb-2 sm:sr-only`}>
+                Buscar por dirección
+              </label>
               <div className="relative">
-                <IoSearchOutline className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+                <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted w-5 h-5 pointer-events-none" aria-hidden />
                 <input
                   id="tour-search"
                   type="text"
                   placeholder="Buscar por dirección..."
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-300 backdrop-blur-sm"
+                  className={`${filterInput} pl-10`}
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />
               </div>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-slate-300">
-                <IoFilterOutline className="w-5 h-5" />
-                <span className="text-sm">
+
+            <div className="flex items-center gap-4">
+              <div className={`${filterLabel} gap-2`}>
+                <IoFilterOutline className="w-5 h-5 shrink-0" aria-hidden />
+                <span>
                   {filteredProperties.length} de {allProperties.length} propiedades
                 </span>
               </div>
               <button
+                type="button"
                 onClick={startTour}
-                className="flex items-center gap-1.5 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg border border-blue-500/30 transition-all text-sm font-medium"
+                className={btnGhost}
                 title="Ver tour de funciones"
               >
-                <IoHelpCircleOutline className="w-4 h-4" />
+                <IoHelpCircleOutline className="w-4 h-4 shrink-0" aria-hidden />
                 <span className="hidden sm:inline">Tour</span>
               </button>
             </div>
@@ -516,53 +549,58 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {paginatedProperties.map((property) => (
-            <div key={property.propertyId} className={`bg-white/5 backdrop-blur-sm rounded-xl p-5 border transition-all duration-300 group hover:shadow-xl ${
-              property.isAvailable 
-                ? 'border-green-500/30 hover:border-green-500/50' 
-                : 'border-red-500/30 hover:border-red-500/50 opacity-75'
-            }`}>
+            <div
+              key={property.propertyId}
+              className={`${propertyCard} p-5 ${
+              property.isAvailable
+                ? 'border-brand/35 hover:border-brand'
+                : 'border-customRed/35 hover:border-customRed/50 opacity-75'
+            }`}
+            >
               {/* Header con estado e ID */}
-              <div className="flex justify-between items-center mb-4 pb-4 border-b border-white/10">
+              <div className="flex justify-between items-center mb-4 pb-4 border-b border-borderBase">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl">
-                    <IoBusinessOutline className="w-6 h-6 text-blue-400" />
+                  <div className="p-3 bg-brand-muted/40 rounded-xl">
+                    <IoBusinessOutline className="w-6 h-6 text-brand-light" aria-hidden />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-lg">Propiedad #{property.propertyId}</h3>
+                    <h3 className="text-textPrimary font-bold text-lg">Propiedad #{property.propertyId}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        property.type === 'alquiler' 
-                          ? 'bg-blue-500/20 text-blue-300' 
-                          : 'bg-purple-500/20 text-purple-300'
+                        property.type === 'alquiler'
+                          ? 'bg-brand-muted text-brand-light'
+                          : 'bg-brand-subtle text-brand-light border border-borderBase'
                       }`}>
                         {property.type === 'alquiler' ? '🏠 Alquiler' : '💰 Venta'}
                       </span>
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        property.isAvailable 
-                          ? 'bg-green-500/20 text-green-300' 
-                          : 'bg-red-500/20 text-red-300'
+                        property.isAvailable
+                          ? 'bg-brand-subtle text-brand-light'
+                          : 'bg-customRedMuted text-customRed border border-customRed/30'
                       }`}>
                         {property.isAvailable ? '✓ Disponible' : '✗ No Disponible'}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => handleEdit(property)}
-                    className="tour-edit-btn p-2.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    className={`tour-edit-btn ${btnGhost} p-2.5 text-brand-light border-brand/30`}
                     title="Editar Propiedad"
                   >
-                    <IoPencilOutline className="w-5 h-5" />
+                    <IoPencilOutline className="w-5 h-5" aria-hidden />
                   </button>
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => handleDelete(property.propertyId)}
-                    className="tour-delete-btn p-2.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-200 hover:scale-110"
+                    className="tour-delete-btn p-2.5 bg-customRedMuted hover:bg-customRed/20 text-customRed rounded-lg border border-customRed/30 transition-all duration-200 hover:scale-110"
                     title="Eliminar"
                   >
-                    <IoTrashOutline className="w-5 h-5" />
+                    <IoTrashOutline className="w-5 h-5" aria-hidden />
                   </button>
                 </div>
               </div>
@@ -571,24 +609,24 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 {/* Columna izquierda: Ubicación */}
                 <div className="space-y-3">
-                  <div className="bg-blue-500/10 rounded-lg p-3 border border-blue-500/20">
+                  <div className="bg-brand-subtle/40 rounded-lg p-3 border border-borderBase">
                     <div className="flex items-center gap-2 mb-2">
-                      <IoLocationOutline className="w-4 h-4 text-blue-400" />
-                      <span className="text-blue-300 text-xs font-semibold uppercase">Ubicación</span>
+                      <IoLocationOutline className="w-4 h-4 text-brand-light" aria-hidden />
+                      <span className="text-brand-light text-xs font-semibold uppercase">Ubicación</span>
                     </div>
-                    <p className="text-white font-medium text-base">{property.address}</p>
-                    <p className="text-slate-300 text-sm mt-1">{property.neighborhood}</p>
+                    <p className="text-textPrimary font-medium text-base">{property.address}</p>
+                    <p className="text-textSecondary text-sm mt-1">{property.neighborhood}</p>
                   </div>
                 </div>
 
                 {/* Columna derecha: Precio */}
                 <div className="space-y-3">
-                  <div className="bg-emerald-500/10 rounded-lg p-3 border border-emerald-500/20">
+                  <div className="bg-brand-muted/25 rounded-lg p-3 border border-borderStrong">
                     <div className="flex items-center gap-2 mb-2">
-                      <IoPricetagOutline className="w-4 h-4 text-emerald-400" />
-                      <span className="text-emerald-300 text-xs font-semibold uppercase">Precio</span>
+                      <IoPricetagOutline className="w-4 h-4 text-brand-light" aria-hidden />
+                      <span className="text-brand-light text-xs font-semibold uppercase">Precio</span>
                     </div>
-                    <p className="text-emerald-400 font-bold text-2xl">
+                    <p className="text-brand-light font-bold text-2xl">
                       {property.currency === 'USD'
                         ? `USD ${Number(property.price).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
                         : formatCurrency(property.price)
@@ -600,16 +638,16 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
               {/* Clientes asignados */}
               {property.Clients && property.Clients.length > 0 && (
-                <div className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/20 mb-4">
+                <div className="bg-brand-subtle/30 rounded-lg p-3 border border-borderBase mb-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <IoPeopleOutline className="w-4 h-4 text-purple-400" />
-                    <span className="text-purple-300 text-xs font-semibold uppercase">Clientes Asignados</span>
+                    <IoPeopleOutline className="w-4 h-4 text-brand-light" aria-hidden />
+                    <span className="text-brand-light text-xs font-semibold uppercase">Clientes Asignados</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {property.Clients.map((client) => (
-                      <div key={client.idClient} className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
-                        <span className="text-white text-sm font-medium">{client.name}</span>
-                        <span className="text-xs bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full">
+                      <div key={client.idClient} className="flex items-center gap-2 bg-bgElevated rounded-lg px-3 py-1.5 border border-borderBase">
+                        <span className="text-textPrimary text-sm font-medium">{client.name}</span>
+                        <span className="text-xs bg-brand-muted/50 text-brand-light px-2 py-0.5 rounded-full border border-borderBase">
                           {client.ClientProperty?.role || 'Sin rol'}
                         </span>
                       </div>
@@ -619,7 +657,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
               )}
 
               {/* Footer con acciones */}
-              <div className="pt-4 mt-4 border-t border-white/10">
+              <div className="pt-4 mt-4 border-t border-borderBase">
                 {/* Acciones Rápidas */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   <span className="tour-whatsapp-btn">
@@ -638,35 +676,36 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   {/* Botón de MercadoLibre */}
                   {tenantHasMl && !mlConnection.loading && mlConnection.connected && !mlListings[property.propertyId] && (
                     <button
+                      type="button"
                       onClick={() => handlePublishML(property.propertyId)}
                       disabled={publishingML[property.propertyId]}
-                      className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors text-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`${btnPrimary} bg-customYellow hover:bg-customYellow/90 px-4 py-2 shadow-none`}
                       title="Publicar en MercadoLibre"
                     >
-                      <IoLogoBuffer className="w-4 h-4" />
+                      <IoLogoBuffer className="w-4 h-4 shrink-0" aria-hidden />
                       {publishingML[property.propertyId] ? 'Publicando...' : 'Publicar en ML'}
                     </button>
                   )}
-                  
+
                   {/* Publicado en ML (cambios se sincronizan al guardar la propiedad) */}
                   {tenantHasMl && mlListings[property.propertyId] && (
                     <a
                       href={mlListings[property.propertyId].mlPermalink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-yellow-500/30 transition-colors"
+                      className="px-4 py-2 bg-customYellowMuted border border-customYellow text-customYellow rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-customYellow/10 transition-colors"
                       title="Ver en Mercado Libre. Los cambios se actualizan al guardar la propiedad."
                     >
-                      <IoLogoBuffer className="w-4 h-4" />
+                      <IoLogoBuffer className="w-4 h-4 shrink-0" aria-hidden />
                       <span>Ver en ML</span>
-                      <IoCheckmarkCircle className="w-4 h-4" />
+                      <IoCheckmarkCircle className="w-4 h-4 shrink-0 text-brand-light" aria-hidden />
                     </a>
                   )}
 
                   {tenantHasMl && !mlConnection.loading && !mlConnection.connected && (
                     <Link
                       to="/admin/company-settings?tab=mercadolibre"
-                      className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 rounded-lg text-sm font-medium hover:bg-yellow-500/20"
+                      className={`${btnGhost} px-4 py-2 border-customYellow/40 text-customYellow hover:bg-customYellow/10`}
                     >
                       Conectar Mercado Libre
                     </Link>
@@ -687,41 +726,43 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
                 {/* Checkbox Publicar en Landing */}
                 <div className={`tour-landing-toggle flex items-center justify-between p-3 rounded-lg border transition-all ${
-                  property.isPublishedInLanding 
-                    ? 'bg-emerald-500/10 border-emerald-500/30' 
-                    : 'bg-slate-500/10 border-slate-500/30'
+                  property.isPublishedInLanding
+                    ? 'bg-brand-subtle/60 border-brand/35'
+                    : 'bg-bgElevated border-borderBase'
                 }`}>
                   <div className="flex items-center gap-2">
-                    <IoGlobeOutline className={`w-5 h-5 ${property.isPublishedInLanding ? 'text-emerald-400' : 'text-slate-400'}`} />
+                    <IoGlobeOutline className={`w-5 h-5 ${property.isPublishedInLanding ? 'text-brand-light' : 'text-textMuted'}`} aria-hidden />
                     <div>
-                      <p className={`text-sm font-medium ${property.isPublishedInLanding ? 'text-emerald-300' : 'text-slate-300'}`}>
+                      <p className={`text-sm font-medium ${property.isPublishedInLanding ? 'text-brand-light' : 'text-textSecondary'}`}>
                         Landing Page
                       </p>
-                      <p className="text-xs text-slate-400">
-                        {tenantHasLanding 
-                          ? (property.isPublishedInLanding ? 'Visible en tu sitio' : 'Oculta del sitio') 
+                      <p className="text-xs text-textMuted">
+                        {tenantHasLanding
+                          ? (property.isPublishedInLanding ? 'Visible en tu sitio' : 'Oculta del sitio')
                           : 'Plan sin landing pages'
                         }
                       </p>
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={() => handleTogglePublish(property.propertyId, property.isPublishedInLanding)}
                     disabled={!tenantHasLanding}
                     className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors ${
-                      property.isPublishedInLanding 
-                        ? 'bg-emerald-500' 
-                        : 'bg-slate-600'
-                    } ${!tenantHasLanding ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                      property.isPublishedInLanding
+                        ? 'bg-brand'
+                        : 'bg-bgSurface border border-borderStrong'
+                    } ${!tenantHasLanding ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:opacity-90'}`}
                     title={tenantHasLanding ? (property.isPublishedInLanding ? 'Despublicar' : 'Publicar') : 'Actualiza tu plan'}
                   >
-                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    <span className={`inline-block h-5 w-5 transform rounded-full bg-textPrimary transition-transform ${
                       property.isPublishedInLanding ? 'translate-x-8' : 'translate-x-1'
-                    }`}>
+                    }`}
+                    >
                       {property.isPublishedInLanding ? (
-                        <IoCheckmarkCircle className="text-emerald-500 w-5 h-5" />
+                        <IoCheckmarkCircle className="text-brand w-5 h-5" aria-hidden />
                       ) : (
-                        <IoCloseCircle className="text-slate-400 w-5 h-5" />
+                        <IoCloseCircle className="text-textMuted w-5 h-5" aria-hidden />
                       )}
                     </span>
                   </button>
@@ -730,11 +771,12 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 {/* Botón contextual según el modo */}
                 {mode !== "default" && (
                   <button
+                    type="button"
                     onClick={() => {
                       console.log("=== Click en botón de selección ===");
                       console.log("onSelectProperty definido:", !!onSelectProperty);
                       console.log("Property:", property);
-                      
+
                       // Si hay callback de selección, usarlo (cuando viene de CreateLeaseForm)
                       if (onSelectProperty) {
                         console.log("Llamando a onSelectProperty...");
@@ -749,11 +791,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                         setShowSaleModal(true);
                       }
                     }}
-                    className={`w-full flex items-center justify-center px-4 py-3 rounded-xl font-medium transition-all duration-300 hover:scale-[1.02] shadow-lg ${
-                      mode === "lease" 
-                        ? "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
-                        : "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white"
-                    }`}
+                    className={`${btnPrimary} w-full mt-4 justify-center py-3 rounded-xl hover:scale-[1.02] shadow-lg`}
                   >
                     {mode === "lease" ? (
                       <>
@@ -775,106 +813,127 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-            <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
-              <div className="text-slate-300 text-sm">
-                Mostrando {((currentPage - 1) * propertiesPerPage) + 1} a {Math.min(currentPage * propertiesPerPage, filteredProperties.length)} de {filteredProperties.length} propiedades
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => handlePageChange("prev")}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  <IoChevronBackOutline className="w-4 h-4" />
-                  <span className="hidden sm:inline">Anterior</span>
-                </button>
-                
-                <div className="flex items-center space-x-2">
-                  {[...Array(totalPages)].map((_, index) => {
-                    const page = index + 1;
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
+          <div className={`${tableWrap} rounded-2xl p-6 sm:p-8 shadow-brandGlow`}>
+            <table className="min-w-full w-full text-sm border-collapse">
+                <thead className="sr-only">
+                  <tr className={tableHeadRow}>
+                    <th className={`${tableTh} w-[45%]`} scope="col">
+                      Resumen del listado
+                    </th>
+                    <th className={tableTh} scope="col">
+                      Navegación de páginas
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className={tableRow}>
+                    <td className="px-4 py-3 align-middle text-textSecondary">
+                      Mostrando {((currentPage - 1) * propertiesPerPage) + 1} a{' '}
+                      {Math.min(currentPage * propertiesPerPage, filteredProperties.length)} de{' '}
+                      {filteredProperties.length} propiedades
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <div className="flex flex-col sm:flex-row items-center sm:justify-end gap-4">
                         <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`w-10 h-10 rounded-lg font-medium transition-all duration-300 ${
-                            currentPage === page
-                              ? 'bg-blue-500 text-white border border-blue-400'
-                              : 'bg-white/10 text-slate-300 border border-white/20 hover:bg-white/20'
-                          }`}
+                          type="button"
+                          disabled={currentPage === 1}
+                          onClick={() => handlePageChange('prev')}
+                          className={`${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                          {page}
+                          <IoChevronBackOutline className="w-4 h-4 shrink-0" aria-hidden />
+                          <span className="hidden sm:inline">Anterior</span>
                         </button>
-                      );
-                    } else if (
-                      page === currentPage - 2 ||
-                      page === currentPage + 2
-                    ) {
-                      return (
-                        <span key={page} className="text-slate-400">
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-                
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() => handlePageChange("next")}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
-                >
-                  <span className="hidden sm:inline">Siguiente</span>
-                  <IoChevronForwardOutline className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+
+                        <div className="flex items-center gap-2">
+                          {[...Array(totalPages)].map((_, index) => {
+                            const page = index + 1;
+                            if (
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= currentPage - 1 && page <= currentPage + 1)
+                            ) {
+                              return (
+                                <button
+                                  type="button"
+                                  key={page}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={
+                                    currentPage === page
+                                      ? `${btnPrimary} !px-0 w-10 h-10 justify-center`
+                                      : `${btnGhost} !px-0 w-10 h-10 justify-center`
+                                  }
+                                >
+                                  {page}
+                                </button>
+                              );
+                            } else if (page === currentPage - 2 || page === currentPage + 2) {
+                              return (
+                                <span key={page} className="text-textMuted">
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          })}
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={currentPage === totalPages}
+                          onClick={() => handlePageChange('next')}
+                          className={`${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          <span className="hidden sm:inline">Siguiente</span>
+                          <IoChevronForwardOutline className="w-4 h-4 shrink-0" aria-hidden />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
           </div>
         )}
 
         {/* Empty State */}
         {filteredProperties.length === 0 && (
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-12 border border-white/10 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-slate-500/20 rounded-full">
-                <IoBusinessOutline className="w-12 h-12 text-slate-400" />
+          <div className={formCard}>
+            <div className={emptyState}>
+              <div className="flex justify-center mb-4">
+                <div className={heroIconWrap}>
+                  <IoBusinessOutline className="w-12 h-12 text-textMuted" aria-hidden />
+                </div>
               </div>
+              <h3 className="text-textPrimary font-medium mb-2">No se encontraron propiedades</h3>
+              <p className="text-textSecondary text-sm max-w-md mx-auto">
+                {searchTerm ?
+                  `No hay propiedades que coincidan con "${searchTerm}"` :
+                  'No hay propiedades registradas en el sistema'
+                }
+              </p>
             </div>
-            <h3 className="text-white font-medium mb-2">No se encontraron propiedades</h3>
-            <p className="text-slate-400 text-sm">
-              {searchTerm ? 
-                `No hay propiedades que coincidan con "${searchTerm}"` : 
-                'No hay propiedades registradas en el sistema'
-              }
-            </p>
           </div>
         )}
       </div>
 
       {/* Modal para crear contrato de alquiler - solo si no hay callback externo */}
       {!onSelectProperty && showCreateModal && selectedProperty && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-2xl border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-white flex items-center">
-                <IoKeyOutline className="w-6 h-6 mr-2 text-blue-400" />
+        <div className={`${modalOverlay} backdrop-blur-sm z-50`}>
+          <div className={`${modalBox} max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl`}>
+            <div className={`${modalHeader} px-6 py-5`}>
+              <h3 className="text-xl font-semibold text-textPrimary flex items-center gap-2">
+                <IoKeyOutline className="w-6 h-6 text-brand-light shrink-0" aria-hidden />
                 Crear Contrato - {selectedProperty.address}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setShowCreateModal(false);
                   setSelectedProperty(null);
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className={`${btnGhost} p-2`}
+                aria-label="Cerrar"
               >
-                <IoCloseOutline className="w-6 h-6 text-slate-400" />
+                <IoCloseOutline className="w-6 h-6 text-textMuted" aria-hidden />
               </button>
             </div>
             <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
@@ -894,21 +953,23 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
       {/* Modal para compraventa - solo si no hay callback externo */}
       {!onSelectProperty && showSaleModal && selectedProperty && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-2xl border border-white/10 w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-white flex items-center">
-                <IoBusinessOutline className="w-6 h-6 mr-2 text-purple-400" />
+        <div className={`${modalOverlay} backdrop-blur-sm z-50`}>
+          <div className={`${modalBox} max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl`}>
+            <div className={`${modalHeader} px-6 py-5`}>
+              <h3 className="text-xl font-semibold text-textPrimary flex items-center gap-2">
+                <IoBusinessOutline className="w-6 h-6 text-brand-light shrink-0" aria-hidden />
                 Compraventa - {selectedProperty.address}
               </h3>
               <button
+                type="button"
                 onClick={() => {
                   setShowSaleModal(false);
                   setSelectedProperty(null);
                 }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className={`${btnGhost} p-2`}
+                aria-label="Cerrar"
               >
-                <IoCloseOutline className="w-6 h-6 text-slate-400" />
+                <IoCloseOutline className="w-6 h-6 text-textMuted" aria-hidden />
               </button>
             </div>
             <div className="max-h-[calc(90vh-120px)] overflow-y-auto">

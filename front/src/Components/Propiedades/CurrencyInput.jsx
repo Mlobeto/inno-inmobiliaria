@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { formatCurrency } from '../../utils/formatCurrency';
+import PropTypes from 'prop-types';
+import { inputClass } from './propiedadesTheme';
 
 /**
  * Input de moneda que muestra el valor formateado cuando está sin foco
@@ -16,7 +17,7 @@ const CurrencyInput = ({
   onChange,
   currency = 'ARS',
   placeholder,
-  className,
+  className = inputClass,
   required,
   disabled,
   id,
@@ -49,6 +50,18 @@ const CurrencyInput = ({
       disabled={disabled}
     />
   );
+};
+
+CurrencyInput.propTypes = {
+  name: PropTypes.string,
+  value: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  onChange: PropTypes.func.isRequired,
+  currency: PropTypes.oneOf(['ARS', 'USD']),
+  placeholder: PropTypes.string,
+  className: PropTypes.string,
+  required: PropTypes.bool,
+  disabled: PropTypes.bool,
+  id: PropTypes.string,
 };
 
 export default CurrencyInput;

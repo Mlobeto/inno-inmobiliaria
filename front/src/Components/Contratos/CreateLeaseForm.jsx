@@ -27,6 +27,25 @@ import {
   IoSaveOutline,
   IoCloseOutline,
 } from "react-icons/io5";
+import {
+  modalOverlay,
+  modalBox,
+  modalHeader,
+  btnPrimary,
+  btnSecondary,
+  btnGhost,
+  inputClass,
+  selectClass,
+  labelClass,
+  formSectionAccent,
+  formSectionAccentTitle,
+  alertSuccess,
+  spinner,
+} from '../Propiedades/propiedadesTheme';
+
+const fieldClass = `${inputClass} py-1.5 text-sm rounded-lg`;
+const fieldSelect = `${selectClass} py-1.5 text-sm rounded-lg w-full`;
+const sectionTitle = 'text-sm font-semibold text-textPrimary border-b border-borderBase pb-2';
 
 const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const dispatch = useDispatch();
@@ -60,6 +79,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     }
   }, [newClientData.provincia]);
 
+  const [step, setStep] = useState(1);
   const [leaseCreated, setLeaseCreated] = useState(null);
   // eslint-disable-next-line no-unused-vars
   const [pdfData, setPdfData] = useState(null);
@@ -120,9 +140,23 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
   const handleRenterSelect = (client) => {
     setFormData((prev) => ({ ...prev, locatario: client.name, locatarioId: client.idClient }));
-    setSelectedClient(client);
     setRenterSearch('');
     setShowRenterDropdown(false);
+  };
+
+  const canGoToStep2 = () =>
+    formData.locatarioId &&
+    formData.startDate &&
+    formData.rentAmount &&
+    formData.updateFrequency &&
+    formData.totalMonths;
+
+  const handleNextStep = () => {
+    if (!canGoToStep2()) {
+      Swal.fire({ icon: 'warning', title: 'Campos incompletos', text: 'Completá inquilino, fechas, montos y duración.' });
+      return;
+    }
+    setStep(2);
   };
 
   const handleNewClientChange = (e) => {
@@ -437,87 +471,81 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   };
 
   return (
-    <div className={isModal ? "" : "min-h-screen"}>      
-      {/* Mostrar spinner o Listado interno si no hay propiedad seleccionada */}
+    <div className={isModal ? '' : 'min-h-screen'}>
       {!formData.propertyId ? (
         (isModal || propertyFromRoute) ? (
-          <div className="flex items-center justify-center p-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mr-3"></div>
-            <span className="text-white">Cargando propiedad...</span>
+          <div className="flex items-center justify-center p-8">
+            <div className={`w-8 h-8 ${spinner} border-2 mr-3`} />
+            <span className="text-textSecondary text-sm">Cargando propiedad...</span>
           </div>
         ) : (
           <Listado mode="lease" onSelectProperty={handlePropertySelect} />
         )
       ) : (
-        // Modal overlay con formulario
         formData.propertyId && (
-        <div className={isModal ? "" : "fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"}>
-          <div className={isModal ? "" : "bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"}>
-            {/* Header del modal - solo en modo standalone */}
-            {!isModal && <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-6 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <IoDocumentTextOutline className="w-6 h-6 text-blue-400" />
-                <h2 className="text-2xl font-bold text-white">
-                  Crear Contrato de Alquiler
-                </h2>
+        <div className={isModal ? '' : `${modalOverlay} p-4`}>
+          <div className={isModal ? '' : `${modalBox} max-w-3xl w-full`}>
+            {!isModal && (
+              <div className={`${modalHeader} bg-brand-subtle/30`}>
+                <div className="flex items-center gap-2">
+                  <IoDocumentTextOutline className="w-5 h-5 text-brand-light" />
+                  <h2 className="text-lg font-bold text-textPrimary">Crear Contrato de Alquiler</h2>
+                </div>
+                <button type="button" onClick={handleClose} className={btnGhost}>
+                  <IoCloseOutline className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                onClick={handleClose}
-                className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-              >
-                <IoCloseOutline className="w-6 h-6" />
-              </button>
-            </div>}
+            )}
 
-            {/* Contenido del modal */}
-            <div className="p-6">
+            <div className={isModal ? 'p-4' : 'p-4'}>
               {!leaseCreated ? (
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* Información de la propiedad seleccionada */}
-                  <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-4 mb-6">
-                    <h3 className="text-lg font-semibold text-blue-300 mb-2 flex items-center">
-                      <IoBusinessOutline className="w-5 h-5 mr-2" />
-                      Propiedad Seleccionada
-                    </h3>
-                    <p className="text-white">ID: {formData.propertyId}</p>
-                    <p className="text-slate-300">Propietario: {formData.locador}</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Propiedad + pasos */}
+                  <div className={`${formSectionAccent} py-2 px-3 flex flex-wrap items-center justify-between gap-2 text-sm`}>
+                    <div className="flex items-center gap-2 text-textSecondary">
+                      <IoBusinessOutline className="w-4 h-4 text-brand-light shrink-0" />
+                      <span className="text-textPrimary font-medium">#{formData.propertyId}</span>
+                      <span className="text-textMuted">· {formData.locador || 'Sin propietario'}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      {['Datos', 'Garantía'].map((label, i) => {
+                        const n = i + 1;
+                        const active = step === n;
+                        return (
+                          <span
+                            key={label}
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              active ? 'bg-brand text-textWhite' : 'bg-bgElevated text-textMuted border border-borderBase'
+                            }`}
+                          >
+                            {n}. {label}
+                          </span>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* Aviso de plantillas de contrato */}
                   {templateWarning && !templateWarning.hasTemplates && (
-                    <div className="flex items-start gap-3 bg-amber-500/10 border border-amber-400/30 rounded-xl p-4 mb-2">
-                      <svg className="w-5 h-5 text-amber-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                      </svg>
-                      <div>
-                        <p className="text-amber-300 font-medium text-sm">
-                          No tenés plantillas de {templateWarning.typeName} configuradas
-                        </p>
-                        <p className="text-amber-200/70 text-xs mt-1">
-                          El contrato se generará con el diseño por defecto del sistema.{' '}
-                          <a
-                            href="/admin/plantillas"
-                            className="underline hover:text-amber-100 transition-colors"
-                            onClick={e => { e.preventDefault(); navigate('/admin/plantillas'); }}
-                          >
-                            Configurar plantillas
-                          </a>
-                        </p>
-                      </div>
+                    <div className={`${alertSuccess} py-2 px-3 text-xs`}>
+                      Sin plantilla de {templateWarning.typeName}.{' '}
+                      <button
+                        type="button"
+                        className="underline text-brand-light hover:text-textPrimary"
+                        onClick={() => navigate('/admin/plantillas')}
+                      >
+                        Configurar
+                      </button>
                     </div>
                   )}
 
-                  {/* Información básica del contrato */}
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-white border-b border-white/10 pb-3">
-                      Información del Contrato
-                    </h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {step === 1 && (
+                  <div className="space-y-3">
+                    <h3 className={sectionTitle}>Información del contrato</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Inquilino */}
                       <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoPersonOutline className="w-4 h-4 mr-2 text-purple-400" />
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoPersonOutline className="w-3.5 h-3.5 text-brand-light" />
                           Inquilino *
                         </label>
                         <div className="flex gap-2">
@@ -539,20 +567,20 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               onBlur={() => setTimeout(() => setShowRenterDropdown(false), 150)}
                               placeholder="Buscar inquilino..."
                               required={!formData.locatarioId}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                              className={fieldClass}
                             />
                             {showRenterDropdown && (
-                              <ul className="absolute z-50 w-full mt-1 bg-slate-800 border border-white/20 rounded-xl shadow-2xl max-h-52 overflow-y-auto">
+                              <ul className="absolute z-50 w-full mt-1 bg-bgElevated border border-borderStrong rounded-lg shadow-xl max-h-40 overflow-y-auto">
                                 {(clients || [])
                                   .filter(c => c.name.toLowerCase().includes(renterSearch.toLowerCase()))
                                   .map(client => (
                                     <li
                                       key={client.idClient}
                                       onMouseDown={() => handleRenterSelect(client)}
-                                      className="px-4 py-2.5 text-white hover:bg-white/10 cursor-pointer text-sm transition-colors border-b border-white/5 last:border-b-0"
+                                      className="px-3 py-2 text-textPrimary hover:bg-brand-subtle cursor-pointer text-sm border-b border-borderBase last:border-b-0"
                                     >
                                       <p className="font-medium">{client.name}</p>
-                                      {client.email && <p className="text-slate-400 text-xs">{client.email}</p>}
+                                      {client.email && <p className="text-textMuted text-xs">{client.email}</p>}
                                     </li>
                                   ))}
                                 {(clients || []).filter(c => c.name.toLowerCase().includes(renterSearch.toLowerCase())).length === 0 && (
@@ -562,7 +590,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                                       setNewClientData(prev => ({ ...prev, name: renterSearch }));
                                       setShowNewClientModal(true);
                                     }}
-                                    className="px-4 py-2.5 text-emerald-400 hover:bg-emerald-500/10 cursor-pointer text-sm flex items-center gap-2 transition-colors"
+                                    className="px-3 py-2 text-brand-light hover:bg-brand-subtle cursor-pointer text-sm flex items-center gap-2"
                                   >
                                     <IoPersonAddOutline className="w-4 h-4 flex-shrink-0" />
                                     Crear &quot;{renterSearch}&quot; como nuevo cliente
@@ -575,7 +603,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                             type="button"
                             onClick={() => setShowNewClientModal(true)}
                             title="Crear nuevo cliente"
-                            className="flex items-center justify-center px-3 py-3 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-400/30 text-emerald-400 rounded-xl transition-all duration-200"
+                            className={`${btnSecondary} px-2.5 py-1.5 shrink-0`}
                           >
                             <IoPersonAddOutline className="w-5 h-5" />
                           </button>
@@ -584,8 +612,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
                       {/* Fecha de inicio */}
                       <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoCalendarOutline className="w-4 h-4 mr-2 text-amber-400" />
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoCalendarOutline className="w-3.5 h-3.5 text-brand-light" />
                           Fecha de Inicio
                         </label>
                         <input
@@ -593,15 +621,15 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="startDate"
                           value={formData.startDate}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                          className={fieldClass}
                           required
                         />
                       </div>
 
                       {/* Monto de alquiler */}
                       <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoCashOutline className="w-4 h-4 mr-2 text-emerald-400" />
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoCashOutline className="w-3.5 h-3.5 text-brand-light" />
                           Monto de Alquiler
                         </label>
                         <input
@@ -609,7 +637,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="rentAmount"
                           value={formData.rentAmount}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                          className={fieldClass}
                           placeholder="Monto mensual..."
                           required
                         />
@@ -625,20 +653,20 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="updateFrequency"
                           value={formData.updateFrequency}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                          className={fieldClass}
                           required
                         >
-                          <option value="" className="bg-slate-800">Seleccionar frecuencia</option>
-                          <option value="semestral" className="bg-slate-800">Semestral</option>
-                          <option value="cuatrimestral" className="bg-slate-800">Cuatrimestral</option>
-                          <option value="anual" className="bg-slate-800">Anual</option>
+                          <option value="" className="bg-bgElevated">Seleccionar frecuencia</option>
+                          <option value="semestral" className="bg-bgElevated">Semestral</option>
+                          <option value="cuatrimestral" className="bg-bgElevated">Cuatrimestral</option>
+                          <option value="anual" className="bg-bgElevated">Anual</option>
                         </select>
                       </div>
 
                       {/* Comisión mensual al propietario (%) */}
                       <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoCashOutline className="w-4 h-4 mr-2 text-orange-400" />
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoCashOutline className="w-3.5 h-3.5 text-brand-light" />
                           Comisión mensual al propietario (%)
                         </label>
                         <input
@@ -646,7 +674,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="commission"
                           value={formData.commission}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                          className={fieldClass}
                           placeholder="Ej: 10 (% sobre cada cuota)"
                         />
                       </div>
@@ -662,10 +690,10 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                             name="agencyCommissionType"
                             value={formData.agencyCommissionType}
                             onChange={handleInputChange}
-                            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 flex-shrink-0"
+                            className={`${fieldSelect} flex-shrink-0`}
                           >
-                            <option value="months" className="bg-slate-800">Meses de alquiler</option>
-                            <option value="amount" className="bg-slate-800">Monto fijo ($)</option>
+                            <option value="months" className="bg-bgElevated">Meses de alquiler</option>
+                            <option value="amount" className="bg-bgElevated">Monto fijo ($)</option>
                           </select>
                           <input
                             type="number"
@@ -674,7 +702,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                             onChange={handleInputChange}
                             min="0"
                             step={formData.agencyCommissionType === 'months' ? '0.5' : '1'}
-                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                            className={`${fieldClass} flex-1`}
                             placeholder={formData.agencyCommissionType === 'months' ? 'Ej: 1 o 2' : 'Monto en $'}
                           />
                         </div>
@@ -701,7 +729,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="totalMonths"
                           value={formData.totalMonths}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                          className={fieldClass}
                           placeholder="Meses totales..."
                           required
                         />
@@ -718,55 +746,55 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         name="inventory"
                         value={formData.inventory}
                         onChange={handleInputChange}
-                        rows={4}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 resize-none"
-                        placeholder="Detalle del inventario de la propiedad..."
+                        rows={2}
+                        className={`${fieldClass} resize-none`}
+                        placeholder="Inventario (opcional)..."
                       />
                     </div>
+                    <button type="button" onClick={handleNextStep} className={`${btnPrimary} w-full py-2 text-sm`}>
+                      Siguiente: Garantía →
+                    </button>
                   </div>
+                  )}
 
-                  {/* Tipo de garantía */}
-                  <div className="space-y-6">
-                    <h3 className="text-xl font-semibold text-white border-b border-white/10 pb-3 flex items-center">
-                      <IoShieldCheckmarkOutline className="w-6 h-6 mr-2 text-green-400" />
-                      Tipo de Garantía
+                  {step === 2 && (
+                  <div className="space-y-3">
+                    <h3 className={`${sectionTitle} flex items-center gap-2`}>
+                      <IoShieldCheckmarkOutline className="w-4 h-4 text-brand-light" />
+                      Tipo de garantía
                     </h3>
 
-                    {/* Selector */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setFormData(p => ({ ...p, garantiaType: 'garantes' }))}
-                        className={`py-4 px-6 rounded-xl border-2 font-semibold transition-all duration-200 flex flex-col items-center gap-2 ${
+                        className={`py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors flex flex-col items-center gap-1 ${
                           formData.garantiaType === 'garantes'
-                            ? 'border-green-400 bg-green-500/20 text-green-300'
-                            : 'border-white/20 bg-white/5 text-white/70 hover:border-white/40'
+                            ? 'border-brand bg-brand-muted text-brand-light'
+                            : 'border-borderBase bg-bgElevated text-textSecondary hover:border-borderStrong'
                         }`}
                       >
-                        <IoShieldCheckmarkOutline className="w-7 h-7" />
-                        <span>Garantes</span>
-                        <span className="text-xs font-normal opacity-70">Personas que avalan el contrato</span>
+                        <IoShieldCheckmarkOutline className="w-5 h-5" />
+                        Garantes
                       </button>
                       <button
                         type="button"
                         onClick={() => setFormData(p => ({ ...p, garantiaType: 'seguro_caucion' }))}
-                        className={`py-4 px-6 rounded-xl border-2 font-semibold transition-all duration-200 flex flex-col items-center gap-2 ${
+                        className={`py-2.5 px-3 rounded-lg border text-sm font-medium transition-colors flex flex-col items-center gap-1 ${
                           formData.garantiaType === 'seguro_caucion'
-                            ? 'border-blue-400 bg-blue-500/20 text-blue-300'
-                            : 'border-white/20 bg-white/5 text-white/70 hover:border-white/40'
+                            ? 'border-brand bg-brand-muted text-brand-light'
+                            : 'border-borderBase bg-bgElevated text-textSecondary hover:border-borderStrong'
                         }`}
                       >
-                        <IoDocumentTextOutline className="w-7 h-7" />
-                        <span>Seguro de Caución</span>
-                        <span className="text-xs font-normal opacity-70">Póliza de seguro como garantía</span>
+                        <IoDocumentTextOutline className="w-5 h-5" />
+                        Seguro de caución
                       </button>
                     </div>
 
-                    {/* Formulario Seguro de Caución */}
                     {formData.garantiaType === 'seguro_caucion' && (
-                      <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-6 space-y-4">
-                        <h4 className="text-lg font-medium text-blue-300">Datos del Seguro de Caución</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={`${formSectionAccent} p-3 space-y-2`}>
+                        <h4 className={formSectionAccentTitle}>Datos del seguro</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="space-y-2">
                             <label className="text-sm font-medium text-slate-300">Compañía aseguradora *</label>
                             <input
@@ -774,7 +802,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               name="seguroCaucionCompania"
                               value={formData.seguroCaucionCompania}
                               onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              className={fieldClass}
                               placeholder="Ej: Sancor Seguros, Zurich..."
                               required
                             />
@@ -786,7 +814,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               name="seguroCaucionPoliza"
                               value={formData.seguroCaucionPoliza}
                               onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              className={fieldClass}
                               placeholder="Número de póliza"
                             />
                           </div>
@@ -797,7 +825,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               name="seguroCaucionVigencia"
                               value={formData.seguroCaucionVigencia}
                               onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              className={fieldClass}
                             />
                           </div>
                           <div className="space-y-2 md:col-span-2">
@@ -815,19 +843,17 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
                     )}
 
-                    {/* Formulario Garantes */}
                     {formData.garantiaType === 'garantes' && (
                       <>
-                        {/* Garante 1 */}
-                    <div className="bg-white/5 rounded-xl p-6 space-y-4">
-                      <h4 className="text-lg font-medium text-white">Garante 1</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-borderBase bg-bgElevated p-3 space-y-2">
+                      <h4 className="text-sm font-medium text-textPrimary">Garante 1</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <input
                           type="text"
                           name="guarantor1Name"
                           value={formData.guarantor1Name}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Nombre completo del garante"
                         />
                         <input
@@ -835,7 +861,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor1Cuil"
                           value={formData.guarantor1Cuil}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="CUIL del garante"
                         />
                         <input
@@ -843,7 +869,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor1Direccion"
                           value={formData.guarantor1Direccion}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Dirección"
                         />
                         <input
@@ -851,7 +877,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor1Email"
                           value={formData.guarantor1Email}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Email"
                         />
                         <input
@@ -859,7 +885,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor1MobilePhone"
                           value={formData.guarantor1MobilePhone}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Teléfono (10 dígitos)"
                           maxLength="10"
                         />
@@ -867,12 +893,12 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor1Description"
                           value={formData.guarantor1Description}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldSelect}
                         >
-                          <option value="" className="bg-slate-800">Tipo de documentación</option>
-                          <option value="recibos" className="bg-slate-800">Recibos de sueldo</option>
-                          <option value="certificacion" className="bg-slate-800">Certificación de ingresos</option>
-                          <option value="escritura" className="bg-slate-800">Escritura de propiedad</option>
+                          <option value="" className="bg-bgElevated">Tipo de documentación</option>
+                          <option value="recibos" className="bg-bgElevated">Recibos de sueldo</option>
+                          <option value="certificacion" className="bg-bgElevated">Certificación de ingresos</option>
+                          <option value="escritura" className="bg-bgElevated">Escritura de propiedad</option>
                         </select>
                         {formData.guarantor1Description === "certificacion" && (
                           <div className="md:col-span-2">
@@ -881,7 +907,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               name="guarantor1CertificationEntity"
                               value={formData.guarantor1CertificationEntity}
                               onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              className={fieldClass}
                               placeholder="Entidad certificadora"
                             />
                           </div>
@@ -889,16 +915,15 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
                     </div>
 
-                    {/* Garante 2 */}
-                    <div className="bg-white/5 rounded-xl p-6 space-y-4">
-                      <h4 className="text-lg font-medium text-white">Garante 2 (Opcional)</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-lg border border-borderBase bg-bgElevated p-3 space-y-2">
+                      <h4 className="text-sm font-medium text-textPrimary">Garante 2 (opcional)</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <input
                           type="text"
                           name="guarantor2Name"
                           value={formData.guarantor2Name}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Nombre completo del garante"
                         />
                         <input
@@ -906,7 +931,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor2Cuil"
                           value={formData.guarantor2Cuil}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="CUIL del garante"
                         />
                         <input
@@ -914,7 +939,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor2Direccion"
                           value={formData.guarantor2Direccion}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Dirección"
                         />
                         <input
@@ -922,7 +947,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor2Email"
                           value={formData.guarantor2Email}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Email"
                         />
                         <input
@@ -930,7 +955,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor2MobilePhone"
                           value={formData.guarantor2MobilePhone}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldClass}
                           placeholder="Teléfono (10 dígitos)"
                           maxLength="10"
                         />
@@ -938,12 +963,12 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                           name="guarantor2Description"
                           value={formData.guarantor2Description}
                           onChange={handleInputChange}
-                          className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                          className={fieldSelect}
                         >
-                          <option value="" className="bg-slate-800">Tipo de documentación</option>
-                          <option value="recibos" className="bg-slate-800">Recibos de sueldo</option>
-                          <option value="certificacion" className="bg-slate-800">Certificación de ingresos</option>
-                          <option value="escritura" className="bg-slate-800">Escritura de propiedad</option>
+                          <option value="" className="bg-bgElevated">Tipo de documentación</option>
+                          <option value="recibos" className="bg-bgElevated">Recibos de sueldo</option>
+                          <option value="certificacion" className="bg-bgElevated">Certificación de ingresos</option>
+                          <option value="escritura" className="bg-bgElevated">Escritura de propiedad</option>
                         </select>
                         {formData.guarantor2Description === "certificacion" && (
                           <div className="md:col-span-2">
@@ -952,7 +977,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               name="guarantor2CertificationEntity"
                               value={formData.guarantor2CertificationEntity}
                               onChange={handleInputChange}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                              className={fieldClass}
                               placeholder="Entidad certificadora"
                             />
                           </div>
@@ -961,35 +986,30 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                     </div>
                       </>
                     )}
+                    <div className="flex gap-2 pt-2">
+                      <button type="button" onClick={() => setStep(1)} className={`${btnSecondary} flex-1 py-2 text-sm`}>
+                        ← Anterior
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isLoading || !formData.garantiaType}
+                        className={`${btnPrimary} flex-1 py-2 text-sm disabled:opacity-50`}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className={`w-4 h-4 ${spinner} border-2`} />
+                            Creando...
+                          </span>
+                        ) : (
+                          <>
+                            <IoSaveOutline className="w-4 h-4 inline mr-1" />
+                            Crear contrato
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-
-                  {/* Botón de envío */}
-                  <div className="pt-6">
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className={`w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold transition-all duration-300 shadow-xl ${
-                        isLoading 
-                          ? 'opacity-50 cursor-not-allowed' 
-                          : 'hover:from-green-600 hover:to-emerald-700 hover:scale-[1.02]'
-                      }`}
-                    >
-                      {isLoading ? (
-                        <>
-                          <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span>Creando contrato...</span>
-                        </>
-                      ) : (
-                        <>
-                          <IoSaveOutline className="w-5 h-5 mr-2" />
-                          <span>Crear Contrato de Alquiler</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+                  )}
                 </form>
               ) : (
                 /* Vista del contrato creado: abrir editor directamente */
@@ -1091,9 +1111,9 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         onChange={handleNewClientChange}
                         className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
                       >
-                        <option value="" className="bg-slate-800">Seleccionar</option>
+                        <option value="" className="bg-bgElevated">Seleccionar</option>
                         {PROVINCIAS_ARGENTINA.map((prov) => (
-                          <option key={prov.id} value={prov.name} className="bg-slate-800">{prov.name}</option>
+                          <option key={prov.id} value={prov.name} className="bg-bgElevated">{prov.name}</option>
                         ))}
                       </select>
                     </div>
@@ -1106,11 +1126,11 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         disabled={!newClientData.provincia}
                         className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <option value="" className="bg-slate-800">
+                        <option value="" className="bg-bgElevated">
                           {newClientData.provincia ? 'Seleccione' : 'Primero provincia'}
                         </option>
                         {newClientCities.map((ciudad, i) => (
-                          <option key={i} value={ciudad} className="bg-slate-800">{ciudad}</option>
+                          <option key={i} value={ciudad} className="bg-bgElevated">{ciudad}</option>
                         ))}
                       </select>
                     </div>

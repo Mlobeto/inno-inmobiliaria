@@ -75,19 +75,19 @@ export const getLegalStatusBadgeConfig = (legalStatus) => {
   if (SAFE_STATUSES.has(legalStatus)) {
     return {
       label: 'Safe',
-      className: 'bg-green-100 text-green-700',
+      className: 'bg-brand-muted text-brand-light border border-borderStrong',
     };
   }
 
   if (MEDIUM_STATUSES.has(legalStatus)) {
     return {
       label: 'Medium',
-      className: 'bg-yellow-100 text-yellow-700',
+      className: 'bg-customYellowMuted text-customYellow border border-customYellow/30',
     };
   }
 
   return {
     label: 'Review',
-    className: 'bg-red-100 text-red-700',
+    className: 'bg-customRedMuted text-customRed border border-customRed/30',
   };
 };

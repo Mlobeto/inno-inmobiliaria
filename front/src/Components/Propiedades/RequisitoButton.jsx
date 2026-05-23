@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { IoCheckmarkCircleOutline, IoCopyOutline } from 'react-icons/io5';
 import axios from 'axios';
+import { btnPrimary } from './propiedadesTheme';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -110,13 +111,9 @@ Correo electrónico:
       disabled={isLoading}
       className={`
         flex items-center gap-2 px-4 py-2 rounded-lg font-medium
-        transition-all duration-200 transform hover:scale-105
-        ${copied 
-          ? 'bg-blue-500 text-white' 
-          : 'bg-gradient-to-r from-blue-400 to-blue-600 text-white hover:from-blue-500 hover:to-blue-700'
-        }
+        transition-all duration-200
+        ${copied ? `${btnPrimary} shadow-brandGlow` : btnPrimary}
         disabled:opacity-50 disabled:cursor-not-allowed
-        shadow-md hover:shadow-lg
       `}
       title="Copiar requisitos para enviar por WhatsApp"
     >

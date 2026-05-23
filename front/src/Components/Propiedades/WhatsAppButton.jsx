@@ -3,6 +3,17 @@ import { useDispatch } from 'react-redux';
 import PropTypes from 'prop-types';
 import { IoLogoWhatsapp, IoCheckmarkCircleOutline, IoPencilOutline, IoSaveOutline, IoCloseOutline } from 'react-icons/io5';
 import { copyWhatsAppToClipboard, updateWhatsAppTemplate } from '../../redux/Actions/actions';
+import {
+  modalOverlay,
+  modalBox,
+  modalHeader,
+  btnPrimary,
+  btnSecondary,
+  btnWa,
+  inputClass,
+  labelClass,
+  formSectionAccent,
+} from './propiedadesTheme';
 
 const WhatsAppButton = ({ propertyId, property }) => {
   const dispatch = useDispatch();
@@ -54,16 +65,7 @@ const WhatsAppButton = ({ propertyId, property }) => {
       <button
         onClick={handleCopyWhatsApp}
         disabled={isLoading}
-        className={`
-          flex items-center gap-2 px-4 py-2 rounded-lg font-medium
-          transition-all duration-200 transform hover:scale-105
-          ${copied 
-            ? 'bg-green-500 text-white' 
-            : 'bg-gradient-to-r from-green-400 to-green-600 text-white hover:from-green-500 hover:to-green-700'
-          }
-          disabled:opacity-50 disabled:cursor-not-allowed
-          shadow-md hover:shadow-lg
-        `}
+        className={`${btnWa} disabled:opacity-50 disabled:cursor-not-allowed ${copied ? 'ring-2 ring-brand-light' : ''}`}
       >
         {copied ? (
           <>
@@ -81,12 +83,7 @@ const WhatsAppButton = ({ propertyId, property }) => {
       {/* Botón Editar Plantilla */}
       <button
         onClick={handleEditTemplate}
-        className="
-          flex items-center gap-2 px-3 py-2 rounded-lg
-          bg-blue-500 text-white hover:bg-blue-600
-          transition-all duration-200 transform hover:scale-105
-          shadow-md hover:shadow-lg
-        "
+        className={btnSecondary}
         title="Editar plantilla de WhatsApp"
       >
         <IoPencilOutline className="text-lg" />
@@ -94,90 +91,66 @@ const WhatsAppButton = ({ propertyId, property }) => {
 
       {/* Modal para Editar Plantilla */}
       {showTemplateEditor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-t-2xl">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <IoPencilOutline />
-                Editar Plantilla de WhatsApp
-              </h2>
-              <p className="text-blue-100 mt-2 text-sm">
-                Personaliza el mensaje para esta propiedad usando variables
-              </p>
+        <div className={modalOverlay}>
+          <div className={`${modalBox} max-w-3xl max-h-[90vh] overflow-y-auto`}>
+            <div className={`${modalHeader} bg-brand-subtle/40`}>
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-textPrimary">
+                  <IoPencilOutline />
+                  Editar Plantilla de WhatsApp
+                </h2>
+                <p className="text-textSecondary mt-2 text-sm">
+                  Personaliza el mensaje para esta propiedad usando variables
+                </p>
+              </div>
             </div>
 
-            {/* Body */}
             <div className="p-6 space-y-4">
-              {/* Info de la propiedad */}
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                <p className="font-semibold text-blue-900">
+              <div className={`${formSectionAccent} p-4`}>
+                <p className="font-semibold text-textPrimary">
                   {property?.address || 'Dirección no disponible'}
                 </p>
-                <p className="text-sm text-blue-700 mt-1">
+                <p className="text-sm text-textSecondary mt-1">
                   Precio: AR$ {property?.price?.toLocaleString() || 'N/A'}
                 </p>
               </div>
 
-              {/* Variables disponibles */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="font-semibold text-gray-800 mb-2">📋 Variables Disponibles:</h3>
+              <div className="bg-bgElevated p-4 rounded-lg border border-borderBase">
+                <h3 className="font-semibold text-textPrimary mb-2">Variables disponibles</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-                  <code className="bg-white px-2 py-1 rounded border">{'{precio}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{direccion}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{ciudad}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{barrio}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{tipo}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{habitaciones}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{baños}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{superficieTotal}'}</code>
-                  <code className="bg-white px-2 py-1 rounded border">{'{descripcion}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{precio}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{direccion}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{ciudad}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{barrio}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{tipo}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{habitaciones}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{baños}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{superficieTotal}'}</code>
+                  <code className="bg-bgSurface px-2 py-1 rounded border border-borderBase text-textSecondary">{'{descripcion}'}</code>
                 </div>
               </div>
 
-              {/* Editor de plantilla */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Plantilla de Mensaje:
-                </label>
+                <label className={labelClass}>Plantilla de Mensaje</label>
                 <textarea
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
                   rows={12}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                  className={`${inputClass} font-mono`}
                   placeholder="Escribe tu plantilla aquí..."
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  💡 Usa las variables para que se reemplacen automáticamente con los datos de la propiedad
+                <p className="text-xs text-textMuted mt-2">
+                  Usa las variables para que se reemplacen automáticamente con los datos de la propiedad
                 </p>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex justify-end gap-3">
-              <button
-                onClick={handleCancelEdit}
-                disabled={isLoading}
-                className="
-                  flex items-center gap-2 px-4 py-2 rounded-lg
-                  bg-gray-200 text-gray-700 hover:bg-gray-300
-                  transition-colors duration-200
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
-              >
+            <div className="bg-bgElevated px-6 py-4 border-t border-borderBase flex justify-end gap-3">
+              <button onClick={handleCancelEdit} disabled={isLoading} className={btnSecondary}>
                 <IoCloseOutline className="text-lg" />
                 Cancelar
               </button>
-              <button
-                onClick={handleSaveTemplate}
-                disabled={isLoading}
-                className="
-                  flex items-center gap-2 px-4 py-2 rounded-lg
-                  bg-blue-500 text-white hover:bg-blue-600
-                  transition-colors duration-200
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                "
-              >
+              <button onClick={handleSaveTemplate} disabled={isLoading} className={btnPrimary}>
                 <IoSaveOutline className="text-lg" />
                 {isLoading ? 'Guardando...' : 'Guardar Plantilla'}
               </button>

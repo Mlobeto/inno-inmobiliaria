@@ -6,6 +6,14 @@ import {
   IoTimeOutline,
   IoDocumentTextOutline,
 } from 'react-icons/io5';
+import {
+  formSectionAccent,
+  formSectionAccentTitle,
+  inputClass,
+  labelClass,
+  selectClass,
+  alertSuccess,
+} from './propiedadesTheme';
 
 const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) => {
   const [selectedAmenities, setSelectedAmenities] = useState([]);
@@ -56,13 +64,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
   return (
     <div className="space-y-6">
       {/* Sección de Precios */}
-      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 rounded-lg border-l-4 border-emerald-500">
-        <h4 className="font-bold text-emerald-900 flex items-center gap-2 mb-4">
+      <div className={formSectionAccent}>
+        <h4 className={formSectionAccentTitle}>
           <IoPricetagOutline className="w-5 h-5" /> Precios de Alquiler
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Precio por Noche (ARS) *
             </label>
             <input
@@ -72,14 +80,14 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className={inputClass}
               placeholder="Ej: 150.00"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Precio por Semana (ARS)
             </label>
             <input
@@ -89,13 +97,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className={inputClass}
               placeholder="Ej: 900.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Precio por Mes (ARS)
             </label>
             <input
@@ -105,7 +113,7 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className={inputClass}
               placeholder="Ej: 3000.00"
             />
           </div>
@@ -113,7 +121,7 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Tarifa de Limpieza (ARS)
             </label>
             <input
@@ -123,13 +131,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               onChange={handleChange}
               step="0.01"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className={inputClass}
               placeholder="Ej: 50.00"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Comisión (%) *
             </label>
             <input
@@ -140,7 +148,7 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               step="0.01"
               min="0"
               max="100"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className={inputClass}
               placeholder="Ej: 15"
               required
             />
@@ -149,13 +157,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
       </div>
 
       {/* Sección de Disponibilidad */}
-      <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg border-l-4 border-blue-500">
-        <h4 className="font-bold text-blue-900 flex items-center gap-2 mb-4">
+      <div className={formSectionAccent}>
+        <h4 className={formSectionAccentTitle}>
           <IoSwapHorizontalOutline className="w-5 h-5" /> Disponibilidad
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Estadía Mínima (noches) *
             </label>
             <input
@@ -164,14 +172,14 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               value={formData.temporaryRentalMinimumStay || 1}
               onChange={handleChange}
               min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={inputClass}
               placeholder="Ej: 3"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Estadía Máxima (noches)
             </label>
             <input
@@ -180,13 +188,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               value={formData.temporaryRentalMaximumStay || ''}
               onChange={handleChange}
               min="1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={inputClass}
               placeholder="Ej: 90"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Publicar en Landing *
             </label>
             <select
@@ -201,7 +209,7 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
                   },
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className={selectClass}
             >
               <option value="false">No publicado</option>
               <option value="true">Publicado</option>
@@ -211,13 +219,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
       </div>
 
       {/* Sección de Horarios */}
-      <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg border-l-4 border-orange-500">
-        <h4 className="font-bold text-orange-900 flex items-center gap-2 mb-4">
+      <div className={formSectionAccent}>
+        <h4 className={formSectionAccentTitle}>
           <IoTimeOutline className="w-5 h-5" /> Horarios de Check-in/Check-out
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Hora Check-in
             </label>
             <input
@@ -225,12 +233,12 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               name="temporaryRentalCheckInTime"
               value={formData.temporaryRentalCheckInTime || '15:00'}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Hora Check-out
             </label>
             <input
@@ -238,44 +246,43 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               name="temporaryRentalCheckOutTime"
               value={formData.temporaryRentalCheckOutTime || '11:00'}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+              className={inputClass}
             />
           </div>
         </div>
       </div>
 
       {/* Sección de Comodidades */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg border-l-4 border-purple-500">
-        <h4 className="font-bold text-purple-900 flex items-center gap-2 mb-4">
+      <div className={formSectionAccent}>
+        <h4 className={formSectionAccentTitle}>
           ✨ Comodidades / Amenities
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
           {amenityOptions.map((amenity) => (
             <label
               key={amenity}
-              className="flex items-center space-x-2 p-2 rounded hover:bg-purple-200 transition-colors cursor-pointer"
+              className="flex items-center space-x-2 p-2 rounded hover:bg-brand-subtle transition-colors cursor-pointer"
             >
               <input
                 type="checkbox"
                 checked={selectedAmenities.includes(amenity)}
                 onChange={() => toggleAmenity(amenity)}
-                className="rounded w-4 h-4 text-purple-600 focus:ring-purple-500 border-gray-300"
+                className="rounded w-4 h-4 text-brand focus:ring-brand border-borderStrong"
               />
-              <span className="text-sm text-gray-700">{amenity}</span>
+              <span className="text-sm text-textSecondary">{amenity}</span>
             </label>
           ))}
         </div>
       </div>
 
-      {/* Sección de Descripción y Reglas */}
-      <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 p-4 rounded-lg border-l-4 border-indigo-500">
-        <h4 className="font-bold text-indigo-900 flex items-center gap-2 mb-4">
+      <div className={formSectionAccent}>
+        <h4 className={formSectionAccentTitle}>
           <IoDocumentTextOutline className="w-5 h-5" /> Descripción y Reglas
         </h4>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Título de la Propiedad *
             </label>
             <input
@@ -284,17 +291,17 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               value={formData.temporaryRentalTitle || ''}
               onChange={handleChange}
               maxLength="255"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClass}
               placeholder="Ej: Casa frente al mar - Mar del Plata"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-textMuted mt-1">
               {(formData.temporaryRentalTitle || '').length}/255 caracteres
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Descripción Detallada
             </label>
             <textarea
@@ -302,13 +309,13 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               value={formData.temporaryRentalDescription || ''}
               onChange={handleChange}
               rows="4"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClass}
               placeholder="Describe la propiedad, sus características especiales, vistas, ubicación estratégica..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className={labelClass}>
               Reglas de la Propiedad
             </label>
             <textarea
@@ -316,18 +323,17 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
               value={formData.temporaryRentalRules || ''}
               onChange={handleChange}
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className={inputClass}
               placeholder="Ej: No fumar, sin mascotas, cuidar las plantas, no hacer ruido después de las 22:00..."
             />
           </div>
         </div>
       </div>
 
-      {/* Nota informativa */}
-      <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-        <p className="text-sm text-blue-800">
-          <strong>💡 Nota:</strong> Una vez guardada la propiedad, podrás crear un alquiler temporal en la pestaña de
-          "Alquileres Temporales" del panel admin, donde podrás configurar el calendario de disponibilidad y gestionar
+      <div className={alertSuccess}>
+        <p className="text-sm">
+          <strong>Nota:</strong> Una vez guardada la propiedad, podrás crear un alquiler temporal en la pestaña de
+          &ldquo;Alquileres Temporales&rdquo; del panel admin, donde podrás configurar el calendario de disponibilidad y gestionar
           las reservas.
         </p>
       </div>
