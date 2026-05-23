@@ -918,11 +918,11 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       {/* Modal para crear contrato de alquiler - solo si no hay callback externo */}
       {!onSelectProperty && showCreateModal && selectedProperty && (
         <div className={`${modalOverlay} backdrop-blur-sm z-50`}>
-          <div className={`${modalBox} max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl`}>
-            <div className={`${modalHeader} px-6 py-5`}>
-              <h3 className="text-xl font-semibold text-textPrimary flex items-center gap-2">
-                <IoKeyOutline className="w-6 h-6 text-brand-light shrink-0" aria-hidden />
-                Crear Contrato - {selectedProperty.address}
+          <div className={`${modalBox} max-w-2xl w-full rounded-2xl`}>
+            <div className={`${modalHeader} px-5 py-3`}>
+              <h3 className="text-base font-semibold text-textPrimary flex items-center gap-2">
+                <IoKeyOutline className="w-5 h-5 text-brand-light shrink-0" aria-hidden />
+                Crear Contrato — {selectedProperty.address}
               </h3>
               <button
                 type="button"
@@ -936,8 +936,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 <IoCloseOutline className="w-6 h-6 text-textMuted" aria-hidden />
               </button>
             </div>
-            <div className="max-h-[calc(90vh-120px)] overflow-y-auto">
-              <CreateLeaseForm 
+            <CreateLeaseForm
                 isModal={true}
                 preselectedProperty={selectedProperty}
                 onClose={() => {
@@ -946,7 +945,6 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                   // RTK Query se actualiza automáticamente
                 }}
               />
-            </div>
           </div>
         </div>
       )}

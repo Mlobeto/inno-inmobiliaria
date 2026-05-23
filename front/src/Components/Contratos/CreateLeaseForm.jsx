@@ -543,7 +543,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                     <h3 className={sectionTitle}>Información del contrato</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Inquilino */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoPersonOutline className="w-3.5 h-3.5 text-brand-light" />
                           Inquilino *
@@ -611,7 +611,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
 
                       {/* Fecha de inicio */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoCalendarOutline className="w-3.5 h-3.5 text-brand-light" />
                           Fecha de Inicio
@@ -627,7 +627,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
 
                       {/* Monto de alquiler */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoCashOutline className="w-3.5 h-3.5 text-brand-light" />
                           Monto de Alquiler
@@ -644,9 +644,9 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
 
                       {/* Frecuencia de actualización */}
-                      <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoTimeOutline className="w-4 h-4 mr-2 text-yellow-400" />
+                      <div className="space-y-1">
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoTimeOutline className="w-3.5 h-3.5 text-brand-light" />
                           Frecuencia de Actualización
                         </label>
                         <select
@@ -664,7 +664,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       </div>
 
                       {/* Comisión mensual al propietario (%) */}
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoCashOutline className="w-3.5 h-3.5 text-brand-light" />
                           Comisión mensual al propietario (%)
@@ -681,9 +681,9 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
                       {/* Honorarios de la inmobiliaria por contrato */}
                       <div className="space-y-2 md:col-span-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoCashOutline className="w-4 h-4 mr-2 text-amber-400" />
-                          Honorarios de la inmobiliaria (apertura)
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoCashOutline className="w-3.5 h-3.5 text-brand-light" />
+                          Honorarios inmobiliaria
                         </label>
                         <div className="flex gap-3">
                           <select
@@ -708,20 +708,20 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         </div>
                         {/* Preview del monto */}
                         {formData.rentAmount && formData.agencyCommissionValue && (
-                          <p className="text-xs text-amber-400 font-medium">
+                          <p className="text-xs text-customYellow font-medium">
                             {formData.agencyCommissionType === 'months'
                               ? `= $ ${(parseFloat(formData.rentAmount) * parseFloat(formData.agencyCommissionValue)).toLocaleString('es-AR')} (${formData.agencyCommissionValue} mes${parseFloat(formData.agencyCommissionValue) !== 1 ? 'es' : ''} de alquiler)`
                               : `= $ ${parseFloat(formData.agencyCommissionValue).toLocaleString('es-AR')}`
                             }
                           </p>
                         )}
-                        <p className="text-xs text-slate-500">Se registrará automáticamente como pago pendiente de cobro al propietario.</p>
+                        <p className="text-xs text-textMuted">Se registrará como pago pendiente al propietario.</p>
                       </div>
 
                       {/* Duración en meses */}
-                      <div className="space-y-2">
-                        <label className="flex items-center text-sm font-medium text-slate-300">
-                          <IoCalendarOutline className="w-4 h-4 mr-2 text-indigo-400" />
+                      <div className="space-y-1">
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoCalendarOutline className="w-3.5 h-3.5 text-brand-light" />
                           Duración (meses)
                         </label>
                         <input
@@ -738,8 +738,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
                     {/* Inventario */}
                     <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-slate-300">
-                        <IoClipboardOutline className="w-4 h-4 mr-2 text-cyan-400" />
+                        <label className={`${labelClass} flex items-center gap-1.5`}>
+                          <IoClipboardOutline className="w-3.5 h-3.5 text-brand-light" />
                         Inventario
                       </label>
                       <textarea
@@ -795,8 +795,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                       <div className={`${formSectionAccent} p-3 space-y-2`}>
                         <h4 className={formSectionAccentTitle}>Datos del seguro</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Compañía aseguradora *</label>
+                          <div className="space-y-1">
+                            <label className={labelClass}>Compañía aseguradora *</label>
                             <input
                               type="text"
                               name="seguroCaucionCompania"
@@ -807,8 +807,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               required
                             />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Número de póliza</label>
+                          <div className="space-y-1">
+                            <label className={labelClass}>Número de póliza</label>
                             <input
                               type="text"
                               name="seguroCaucionPoliza"
@@ -818,8 +818,8 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                               placeholder="Número de póliza"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Vigencia hasta</label>
+                          <div className="space-y-1">
+                            <label className={labelClass}>Vigencia hasta</label>
                             <input
                               type="date"
                               name="seguroCaucionVigencia"
@@ -829,13 +829,13 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                             />
                           </div>
                           <div className="space-y-2 md:col-span-2">
-                            <label className="text-sm font-medium text-slate-300">Observaciones</label>
+                            <label className={labelClass}>Observaciones</label>
                             <textarea
                               name="seguroCaucionNotas"
                               value={formData.seguroCaucionNotas}
                               onChange={handleInputChange}
-                              rows={3}
-                              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none"
+                              rows={2}
+                              className={`${fieldClass} resize-none sm:col-span-2`}
                               placeholder="Datos adicionales del seguro, condiciones, etc."
                             />
                           </div>
@@ -1025,171 +1025,97 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
       )}
       {/* Modal: Crear nuevo cliente (inquilino) */}
       {showNewClientModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-slate-800 border border-white/20 rounded-2xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-500/20 rounded-lg">
-                  <IoPersonAddOutline className="w-5 h-5 text-emerald-400" />
-                </div>
+        <div className={`${modalOverlay} z-[60]`}>
+          <div className={`${modalBox} max-w-md w-full`}>
+            <div className={modalHeader}>
+              <div className="flex items-center gap-2">
+                <IoPersonAddOutline className="w-5 h-5 text-brand-light" />
                 <div>
-                  <h3 className="text-base font-bold text-white">Nuevo Cliente</h3>
-                  <p className="text-xs text-emerald-400">Se asignará automáticamente como Inquilino</p>
+                  <h3 className="text-sm font-bold text-textPrimary">Nuevo Cliente</h3>
+                  <p className="text-xs text-textMuted">Se asignará como inquilino</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className={btnGhost}
               >
                 <IoCloseOutline className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Cuerpo scrolleable */}
-            <form onSubmit={handleNewClientSubmit} className="flex flex-col flex-1 min-h-0">
-              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+            <form onSubmit={handleNewClientSubmit}>
+              <div className="p-4 space-y-3">
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Nombre completo *</label>
+                  <label className={labelClass}>Nombre completo *</label>
                   <input
                     type="text"
                     name="name"
                     value={newClientData.name}
                     onChange={handleNewClientChange}
-                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.name ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                    className={`${fieldClass} ${newClientErrors.name ? 'border-customRed/60' : ''}`}
                     placeholder="Ej: Juan Pérez"
                   />
-                  {newClientErrors.name && <p className="mt-1 text-red-400 text-xs">{newClientErrors.name}</p>}
+                  {newClientErrors.name && <p className="mt-1 text-customRed text-xs">{newClientErrors.name}</p>}
                 </div>
-
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">CUIL / DNI</label>
-                  <input
-                    type="text"
-                    name="cuil"
-                    value={newClientData.cuil}
-                    onChange={handleNewClientChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
-                    placeholder="XX-XXXXXXXX-X"
-                  />
+                  <label className={labelClass}>CUIL / DNI</label>
+                  <input type="text" name="cuil" value={newClientData.cuil} onChange={handleNewClientChange} className={fieldClass} placeholder="XX-XXXXXXXX-X" />
                 </div>
-
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={newClientData.email}
-                    onChange={handleNewClientChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
-                    placeholder="email@ejemplo.com"
-                  />
+                  <label className={labelClass}>Email</label>
+                  <input type="email" name="email" value={newClientData.email} onChange={handleNewClientChange} className={fieldClass} placeholder="email@ejemplo.com" />
                 </div>
-
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Teléfono *</label>
+                  <label className={labelClass}>Teléfono *</label>
                   <input
                     type="text"
                     name="mobilePhone"
                     value={newClientData.mobilePhone}
                     onChange={handleNewClientChange}
-                    className={`w-full px-4 py-3 bg-white/10 border rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 transition-all ${newClientErrors.mobilePhone ? 'border-red-500/60 focus:ring-red-500/30' : 'border-white/20 focus:ring-emerald-500/30 focus:border-emerald-500/50'}`}
+                    className={`${fieldClass} ${newClientErrors.mobilePhone ? 'border-customRed/60' : ''}`}
                     placeholder="Ej: 3835503166"
                   />
-                  {newClientErrors.mobilePhone && <p className="mt-1 text-red-400 text-xs">{newClientErrors.mobilePhone}</p>}
+                  {newClientErrors.mobilePhone && <p className="mt-1 text-customRed text-xs">{newClientErrors.mobilePhone}</p>}
                 </div>
-
-                <div className="border-t border-white/10 pt-4">
-                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Domicilio</p>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="border-t border-borderBase pt-3">
+                  <p className="text-textMuted text-xs font-semibold uppercase mb-2">Domicilio</p>
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1">Provincia</label>
-                      <select
-                        name="provincia"
-                        value={newClientData.provincia}
-                        onChange={handleNewClientChange}
-                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
-                      >
-                        <option value="" className="bg-bgElevated">Seleccionar</option>
+                      <label className={labelClass}>Provincia</label>
+                      <select name="provincia" value={newClientData.provincia} onChange={handleNewClientChange} className={fieldSelect}>
+                        <option value="">Seleccionar</option>
                         {PROVINCIAS_ARGENTINA.map((prov) => (
-                          <option key={prov.id} value={prov.name} className="bg-bgElevated">{prov.name}</option>
+                          <option key={prov.id} value={prov.name}>{prov.name}</option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1">Ciudad</label>
-                      <select
-                        name="ciudad"
-                        value={newClientData.ciudad}
-                        onChange={handleNewClientChange}
-                        disabled={!newClientData.provincia}
-                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <option value="" className="bg-bgElevated">
-                          {newClientData.provincia ? 'Seleccione' : 'Primero provincia'}
-                        </option>
+                      <label className={labelClass}>Ciudad</label>
+                      <select name="ciudad" value={newClientData.ciudad} onChange={handleNewClientChange} disabled={!newClientData.provincia} className={fieldSelect}>
+                        <option value="">{newClientData.provincia ? 'Seleccione' : 'Primero provincia'}</option>
                         {newClientCities.map((ciudad, i) => (
-                          <option key={i} value={ciudad} className="bg-bgElevated">{ciudad}</option>
+                          <option key={i} value={ciudad}>{ciudad}</option>
                         ))}
                       </select>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1">Código Postal</label>
-                      <input
-                        type="text"
-                        name="codigoPostal"
-                        value={newClientData.codigoPostal}
-                        onChange={handleNewClientChange}
-                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
-                        placeholder="Ej: 4700"
-                      />
+                      <label className={labelClass}>C.P.</label>
+                      <input type="text" name="codigoPostal" value={newClientData.codigoPostal} onChange={handleNewClientChange} className={fieldClass} placeholder="4700" />
                     </div>
                     <div>
-                      <label className="block text-slate-300 text-sm font-medium mb-1">Dirección</label>
-                      <input
-                        type="text"
-                        name="direccion"
-                        value={newClientData.direccion}
-                        onChange={handleNewClientChange}
-                        className="w-full px-3 py-2.5 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-sm"
-                        placeholder="Calle, número..."
-                      />
+                      <label className={labelClass}>Dirección</label>
+                      <input type="text" name="direccion" value={newClientData.direccion} onChange={handleNewClientChange} className={fieldClass} placeholder="Calle, número" />
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Footer */}
-              <div className="flex gap-3 p-4 border-t border-white/10 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }}
-                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 font-medium rounded-lg transition-colors text-sm"
-                >
+              <div className="flex gap-2 p-4 border-t border-borderBase">
+                <button type="button" onClick={() => { setShowNewClientModal(false); setNewClientErrors({}); }} className={`${btnSecondary} flex-1 text-sm`}>
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={isCreatingClient}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
-                >
-                  {isCreatingClient ? (
-                    <>
-                      <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                      <span>Creando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <IoPersonAddOutline className="w-4 h-4" />
-                      <span>Crear e Inquilino</span>
-                    </>
-                  )}
+                <button type="submit" disabled={isCreatingClient} className={`${btnPrimary} flex-1 text-sm`}>
+                  {isCreatingClient ? 'Creando...' : 'Crear inquilino'}
                 </button>
               </div>
             </form>
