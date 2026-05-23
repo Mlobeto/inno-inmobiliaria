@@ -1,23 +1,82 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import {
   IoCardOutline,
+  IoCheckmarkCircle,
   IoCheckmarkCircleOutline,
+  IoCloseCircle,
   IoCloseCircleOutline,
   IoTimeOutline,
-  IoRocketOutline,
   IoArrowBackOutline,
-  IoCheckmarkOutline,
   IoInformationCircleOutline,
   IoWarningOutline,
-  IoReceiptOutline
+  IoReceiptOutline,
+  IoLayersOutline,
+  IoGlobeOutline,
+  IoStorefrontOutline,
+  IoPeopleCircleOutline,
+  IoMapOutline,
+  IoFunnelOutline,
+  IoKeyOutline,
 } from 'react-icons/io5';
+import {
+  panelShell,
+  panelContainer,
+  backLink,
+  btnPrimary,
+  btnSecondary,
+  card,
+  statCard,
+  alertError,
+  tableWrap,
+  tableHeadRow,
+  tableTh,
+  tableRow,
+} from './adminPanelTheme';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-/** Estados en los que el tenant debe volver a pagar (no puede usar "Plan Actual" bloqueado). */
+const PLAN_COLORS = {
+  basic: { border: 'border-borderBase', active: 'border-brand ring-1 ring-brand/30' },
+  professional: { border: 'border-brand/40', active: 'border-brand ring-2 ring-brand/40' },
+  gestpro: { border: 'border-borderStrong', active: 'border-brand-light ring-2 ring-brand/50' },
+};
+
+const COMPARE_ROWS = [
+  { label: 'Propiedades', key: 'maxProperties', render: (v) => (v === -1 ? 'Ilimitadas' : v) },
+  { label: 'Clientes', key: 'maxClients', render: (v) => (v === -1 ? 'Ilimitados' : v) },
+  { label: 'Usuarios', key: 'maxUsers', render: (v) => v },
+  { label: 'Almacenamiento', key: 'maxStorageGB', render: (v) => `${v} GB` },
+  { label: 'Landing Page', key: 'landingPage', render: (v) => v },
+  { label: 'Portal inquilinos', key: 'portalInquilino', render: (v) => v },
+  { label: 'MercadoLibre', key: 'mercadoLibreIntegration', render: (v) => v },
+  { label: 'WhatsApp', key: 'whatsappIntegration', render: (v) => v },
+  { label: 'CRM Leads', key: 'leads', render: (v) => v },
+  { label: 'Agentes & Comisiones', key: 'agentRole', render: (v) => v },
+  { label: 'Facturación ARCA', key: 'electronicInvoicing', render: (v) => v },
+  { label: 'Gestión Loteos', key: 'loteos', render: (v) => v },
+  { label: 'Dominio propio', key: 'customDomain', render: (v) => v },
+  { label: 'Soporte prioritario', key: 'prioritySupport', render: (v) => v },
+];
+
+const FEATURE_FLAGS = [
+  { key: 'landingPage', label: 'Landing Page', icon: IoGlobeOutline },
+  { key: 'portalInquilino', label: 'Portal inquilinos', icon: IoKeyOutline },
+  { key: 'mercadoLibreIntegration', label: 'MercadoLibre', icon: IoStorefrontOutline },
+  { key: 'leads', label: 'CRM Leads', icon: IoFunnelOutline },
+  { key: 'agentRole', label: 'Agentes & Comisiones', icon: IoPeopleCircleOutline },
+  { key: 'electronicInvoicing', label: 'Facturación ARCA', icon: null },
+  { key: 'loteos', label: 'Gestión Loteos', icon: IoMapOutline },
+  { key: 'customDomain', label: 'Dominio propio', icon: IoGlobeOutline },
+  { key: 'prioritySupport', label: 'Soporte prioritario', icon: null },
+  { key: 'whatsappIntegration', label: 'WhatsApp', icon: null },
+  { key: 'exportData', label: 'Exportación de datos', icon: null },
+  { key: 'estadisticas', label: 'Estadísticas avanzadas', icon: null },
+];
+
 const STATUSES_NEEDING_PAYMENT = ['past_due', 'canceled', 'incomplete', 'expired'];
 
 function subscriptionNeedsPayment(sub) {
@@ -38,6 +97,65 @@ function isTrialExpired(sub) {
   return new Date(sub.trialEnd) <= new Date();
 }
 
+function PlanFeaturesList({ features, compact = false }) {
+  const f = features || {};
+  return (
+    <ul className={`space-y-1.5 ${compact ? 'text-xs' : 'text-sm'}`}>
+      {COMPARE_ROWS.map((row) => {
+        const raw = f[row.key];
+        if (raw === undefined || raw === null) return null;
+        const rendered = row.render(raw);
+        const isBool = typeof rendered === 'boolean';
+        const included = isBool ? rendered : true;
+        return (
+          <li
+            key={row.key}
+            className={`flex items-center gap-2 ${included ? 'text-textSecondary' : 'text-textMuted'}`}
+          >
+            {isBool ? (
+              included ? (
+                <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
+              ) : (
+                <IoCloseCircle className="w-4 h-4 text-textMuted shrink-0 opacity-60" />
+              )
+            ) : (
+              <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
+            )}
+            <span className={included ? '' : 'line-through opacity-50'}>
+              {row.label}
+              {!isBool && `: ${rendered}`}
+            </span>
+          </li>
+        );
+      })}
+      {FEATURE_FLAGS.map(({ key, label, icon: Icon }) => {
+        const val = f[key];
+        if (val === undefined) return null;
+        if (COMPARE_ROWS.some((r) => r.key === key)) return null;
+        return (
+          <li
+            key={key}
+            className={`flex items-center gap-2 ${val ? 'text-textSecondary' : 'text-textMuted'}`}
+          >
+            {val ? (
+              <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
+            ) : (
+              <IoCloseCircle className="w-4 h-4 text-textMuted shrink-0 opacity-60" />
+            )}
+            {Icon && <Icon className={`w-3.5 h-3.5 shrink-0 ${val ? 'text-brand-light' : 'text-textMuted'}`} />}
+            <span className={val ? '' : 'line-through opacity-50'}>{label}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+PlanFeaturesList.propTypes = {
+  features: PropTypes.object,
+  compact: PropTypes.bool,
+};
+
 const SubscriptionManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -57,25 +175,17 @@ const SubscriptionManager = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      // Cargar suscripción actual
       const subResponse = await axios.get(`${API_URL}/subscriptions/current`, { headers });
-      console.log('📊 Respuesta de suscripción:', subResponse.data);
-      console.log('📊 Subscription:', subResponse.data?.subscription);
-      console.log('📊 Plan en subscription:', subResponse.data?.subscription?.Plan);
       setSubscription(subResponse.data?.subscription || null);
 
-      // Cargar planes disponibles
       const plansResponse = await axios.get(`${API_URL}/plans`, { headers });
-      console.log('📋 Respuesta de planes:', plansResponse.data);
-      console.log('📋 Planes array:', plansResponse.data?.plans);
       setPlans(plansResponse.data?.plans || []);
 
-      // Cargar historial de pagos
       try {
         const paymentsResponse = await axios.get(`${API_URL}/subscriptions/payment-history`, { headers });
         setPaymentHistory(paymentsResponse.data?.payments || []);
-      } catch (error) {
-        console.log('No se pudo cargar historial de pagos:', error);
+      } catch {
+        /* historial opcional */
       }
 
       setIsLoading(false);
@@ -90,8 +200,8 @@ const SubscriptionManager = () => {
     const needsPayment = subscriptionNeedsPayment(subscription);
     const confirmMsg = needsPayment
       ? 'Vas a Mercado Pago para activar la suscripción.\n\n' +
-        '• El período de prueba ya lo usaste en GestProp: el primer cobro es al confirmar (o en el próximo ciclo según MP).\n' +
-        '• Las suscripciones se debitan con tarjeta de crédito o débito; el dinero en cuenta de MP no suele estar habilitado para pagos recurrentes.\n\n' +
+        '• El período de prueba ya lo usaste: el primer cobro es al confirmar (o en el próximo ciclo según MP).\n' +
+        '• Las suscripciones se debitan con tarjeta de crédito o débito.\n\n' +
         '¿Continuar?'
       : '¿Querés suscribirte a este plan?';
     if (!window.confirm(confirmMsg)) return;
@@ -101,25 +211,14 @@ const SubscriptionManager = () => {
       const response = await axios.post(
         `${API_URL}/subscriptions/create-subscription`,
         { planId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-      // Redirigir a MercadoPago para completar el pago
       window.location.href = response.data.subscriptionUrl;
     } catch (error) {
-      console.error(
-        'Error al crear suscripción:',
-        error?.response?.data ? JSON.stringify(error.response.data, null, 2) : error?.message || error,
-        error?.response?.status
-      );
       const data = error.response?.data;
       const prefix = data?.code ? `[${data.code}] ` : '';
       const hint = typeof data?.hint === 'string' ? ` ${data.hint}` : '';
-      const detail = data?.fix || data?.mercadoPago?.tokenPrefix
-        ? ` (servidor: ${data.mercadoPago.tokenPrefix})`
-        : '';
-      const mpDetail =
-        data?.details && data.details !== data?.error ? ` — ${data.details}` : '';
-      toast.error(`${prefix}${(data?.error || error.message || 'Error al crear la suscripción')}${hint}${detail}${mpDetail}`, {
+      toast.error(`${prefix}${data?.error || error.message || 'Error al crear la suscripción'}${hint}`, {
         autoClose: 12000,
       });
     } finally {
@@ -128,9 +227,7 @@ const SubscriptionManager = () => {
   };
 
   const handleChangePlan = async (newPlanId) => {
-    if (!window.confirm('¿Estás seguro de cambiar tu plan de suscripción?')) {
-      return;
-    }
+    if (!window.confirm('¿Estás seguro de cambiar tu plan de suscripción?')) return;
 
     setIsChangingPlan(true);
     try {
@@ -138,13 +235,11 @@ const SubscriptionManager = () => {
       await axios.post(
         `${API_URL}/subscriptions/change-plan`,
         { newPlanId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
-
       toast.success('Plan actualizado exitosamente');
       await loadSubscriptionData();
     } catch (error) {
-      console.error('Error al cambiar plan:', error);
       toast.error(error.response?.data?.error || 'Error al cambiar plan');
     } finally {
       setIsChangingPlan(false);
@@ -153,21 +248,25 @@ const SubscriptionManager = () => {
 
   const getStatusBadge = (status) => {
     const badges = {
-      active: { color: 'bg-green-100 text-green-800 border-green-300', icon: IoCheckmarkCircleOutline, text: 'Activo' },
-      trialing: { color: 'bg-blue-100 text-blue-800 border-blue-300', icon: IoTimeOutline, text: 'Periodo de Prueba' },
-      trial: { color: 'bg-blue-100 text-blue-800 border-blue-300', icon: IoTimeOutline, text: 'Periodo de Prueba' },
-      past_due: { color: 'bg-red-100 text-red-800 border-red-300', icon: IoCloseCircleOutline, text: 'Vencido' },
-      canceled: { color: 'bg-gray-100 text-gray-800 border-gray-300', icon: IoCloseCircleOutline, text: 'Cancelado' },
-      incomplete: { color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: IoWarningOutline, text: 'Incompleto' }
+      active: { className: 'bg-brand-muted text-brand-light border-borderStrong', icon: IoCheckmarkCircleOutline, text: 'Activo' },
+      trialing: { className: 'bg-customBlueMuted text-customBlue border-customBlue/30', icon: IoTimeOutline, text: 'Periodo de prueba' },
+      trial: { className: 'bg-customBlueMuted text-customBlue border-customBlue/30', icon: IoTimeOutline, text: 'Periodo de prueba' },
+      past_due: { className: 'bg-customRedMuted text-customRed border-customRed/30', icon: IoCloseCircleOutline, text: 'Vencido' },
+      canceled: { className: 'bg-bgElevated text-textMuted border-borderBase', icon: IoCloseCircleOutline, text: 'Cancelado' },
+      incomplete: { className: 'bg-customYellowMuted text-customYellow border-customYellow/30', icon: IoWarningOutline, text: 'Incompleto' },
     };
 
     const normalizedStatus = status?.toLowerCase() || '';
-    const badge = badges[normalizedStatus] || { color: 'bg-gray-100 text-gray-800 border-gray-300', icon: IoInformationCircleOutline, text: status || 'Desconocido' };
+    const badge = badges[normalizedStatus] || {
+      className: 'bg-bgElevated text-textSecondary border-borderBase',
+      icon: IoInformationCircleOutline,
+      text: status || 'Desconocido',
+    };
     const Icon = badge.icon;
 
     return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${badge.color}`}>
-        <Icon className="w-4 h-4 mr-1" />
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${badge.className}`}>
+        <Icon className="w-4 h-4" />
         {badge.text}
       </span>
     );
@@ -178,139 +277,109 @@ const SubscriptionManager = () => {
     return new Date(dateString).toLocaleDateString('es-AR', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS'
-    }).format(amount);
-  };
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(amount);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="animate-pulse">
-            <div className="h-8 bg-white/20 rounded w-1/4 mb-8"></div>
-            <div className="h-64 bg-white/10 rounded-xl"></div>
-          </div>
-        </div>
+      <div className={`${panelShell} flex items-center justify-center min-h-screen`}>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-brand border-t-transparent" />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <button
-              onClick={() => navigate('/panel')}
-              className="text-white/70 hover:text-white flex items-center space-x-2 mb-4 transition-colors"
-            >
-              <IoArrowBackOutline className="w-5 h-5" />
-              <span>Volver al Panel</span>
-            </button>
-            <h1 className="text-4xl font-bold text-white flex items-center space-x-3">
-              <IoCardOutline className="w-10 h-10" />
-              <span>Mi Suscripción</span>
-            </h1>
-          </div>
-        </div>
+  const statusNorm = subscription?.status?.toLowerCase() || '';
+  const trialExpired = isTrialExpired(subscription);
+  const isVencida =
+    isExpired ||
+    trialExpired ||
+    ['past_due', 'canceled', 'incomplete'].includes(statusNorm);
 
-        {/* Alerta de suscripción expirada / vencida */}
-        {(() => {
-          const statusNorm = subscription?.status?.toLowerCase() || '';
-          const trialExpired = isTrialExpired(subscription);
-          const isVencida =
-            isExpired ||
-            trialExpired ||
-            ['past_due', 'canceled', 'incomplete'].includes(statusNorm);
-          if (!isVencida) return null;
-          const isPastDue = statusNorm === 'past_due';
-          const isCanceled = statusNorm === 'canceled';
-          const title = isPastDue
-            ? '⚠️ Tu suscripción está vencida'
-            : isCanceled
-            ? '⚠️ Tu suscripción fue cancelada'
-            : '⚠️ Tu período de prueba ha expirado';
-          const message = isPastDue
-            ? 'Tu suscripción venció y el acceso a la plataforma está restringido. Realizá el pago para reactivar tu cuenta y seguir gestionando tu inmobiliaria sin interrupciones.'
-            : isCanceled
-            ? 'Tu suscripción fue cancelada. Para volver a usar la plataforma, contratá un plan y completá el pago a través de Mercado Pago.'
-            : 'Tu período de prueba ha expirado. Para continuar usando la plataforma, seleccioná un plan y completá el pago a través de Mercado Pago.';
-          return (
-            <div className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-6 mb-8 shadow-xl">
-              <div className="flex items-start space-x-4">
-                <div className="bg-red-500/30 rounded-full p-3 flex-shrink-0">
-                  <IoWarningOutline className="w-8 h-8 text-red-300" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-                  <p className="text-white/90 mb-5 leading-relaxed">{message}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const plansSection = document.getElementById('available-plans');
-                      if (plansSection) {
-                        plansSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        return;
-                      }
-                      if (subscription?.planId) {
-                        handleCreateSubscription(subscription.planId);
-                      }
-                    }}
-                    className="px-6 py-3 bg-red-500 hover:bg-red-400 text-white font-bold rounded-xl transition-colors shadow-lg text-base"
-                  >
-                    💳 Contratar plan ahora
-                  </button>
-                </div>
+  return (
+    <div className={panelShell}>
+      <div className={`${panelContainer} max-w-6xl`}>
+        <header className="mb-6">
+          <button type="button" onClick={() => navigate('/panel')} className={`${backLink} mb-4`}>
+            <IoArrowBackOutline className="w-4 h-4" />
+            Volver al panel
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-textPrimary flex items-center gap-3">
+            <IoCardOutline className="w-8 h-8 text-brand-light shrink-0" />
+            Mi suscripción
+          </h1>
+          <p className="text-textSecondary text-sm mt-1">Plan, facturación y métodos de pago</p>
+        </header>
+
+        {isVencida && (
+          <div className={`${alertError} mb-6 p-4 rounded-xl`}>
+            <div className="flex items-start gap-3">
+              <IoWarningOutline className="w-6 h-6 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-textPrimary mb-1">
+                  {statusNorm === 'past_due'
+                    ? 'Tu suscripción está vencida'
+                    : statusNorm === 'canceled'
+                      ? 'Tu suscripción fue cancelada'
+                      : 'Tu período de prueba ha expirado'}
+                </h3>
+                <p className="text-sm text-textSecondary mb-4 leading-relaxed">
+                  {statusNorm === 'past_due'
+                    ? 'El acceso está restringido. Realizá el pago para reactivar tu cuenta.'
+                    : statusNorm === 'canceled'
+                      ? 'Contratá un plan y completá el pago a través de Mercado Pago para volver a usar la plataforma.'
+                      : 'Seleccioná un plan y completá el pago para continuar.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('available-plans');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    else if (subscription?.planId) handleCreateSubscription(subscription.planId);
+                  }}
+                  className={btnPrimary}
+                >
+                  <IoCardOutline className="w-4 h-4" />
+                  Contratar plan
+                </button>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        )}
 
-        {/* Banner de Periodo de Prueba */}
         {subscription?.status === 'trialing' && (() => {
           const now = new Date();
           const trialEnd = new Date(subscription.trialEnd);
           const daysLeft = Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24));
-          
+
           return (
-            <div className="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-2 border-blue-400 rounded-2xl p-6 mb-8 shadow-xl">
-              <div className="flex items-start space-x-4">
-                <div className="bg-blue-500/30 backdrop-blur-sm rounded-full p-3">
-                  <IoTimeOutline className="text-blue-200 text-3xl flex-shrink-0" />
+            <div className={`${card} mb-6 p-5 border-customBlue/30 bg-customBlueMuted/20`}>
+              <div className="flex items-start gap-4">
+                <div className="rounded-lg p-2.5 bg-customBlueMuted border border-customBlue/30 shrink-0">
+                  <IoTimeOutline className="w-6 h-6 text-customBlue" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-2 flex items-center">
-                    🎉 Período de Prueba Activo
-                  </h3>
-                  <p className="text-blue-100 text-base mb-3">
-                    Estás probando el <strong>{subscription.Plan?.name}</strong> de forma gratuita.
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-textPrimary mb-1">Período de prueba activo</h3>
+                  <p className="text-sm text-textSecondary mb-4">
+                    Estás usando <strong className="text-textPrimary">{subscription.Plan?.name}</strong> sin cargo.
                   </p>
-                  <div className="bg-blue-500/20 backdrop-blur-sm rounded-lg p-4 mb-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-blue-200 mb-1">📅 Tiempo restante:</p>
-                        <p className="text-3xl font-bold text-white">
-                          {daysLeft} {daysLeft === 1 ? 'día' : 'días'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-blue-200 mb-1">Finaliza el:</p>
-                        <p className="text-lg font-semibold text-white">
-                          {formatDate(subscription.trialEnd)}
-                        </p>
-                      </div>
+                  <div className="grid sm:grid-cols-2 gap-3 mb-3">
+                    <div className={statCard}>
+                      <p className="text-xs text-textMuted mb-0.5">Tiempo restante</p>
+                      <p className="text-2xl font-bold text-textPrimary">
+                        {daysLeft} {daysLeft === 1 ? 'día' : 'días'}
+                      </p>
+                    </div>
+                    <div className={statCard}>
+                      <p className="text-xs text-textMuted mb-0.5">Finaliza el</p>
+                      <p className="text-base font-semibold text-textPrimary">{formatDate(subscription.trialEnd)}</p>
                     </div>
                   </div>
-                  <p className="text-sm text-blue-200">
-                    💡 Después del periodo de prueba, necesitarás seleccionar un método de pago para continuar usando InnoInmobiliaria.
+                  <p className="text-xs text-textMuted">
+                    Al finalizar el trial deberás configurar un método de pago para seguir operando.
                   </p>
                 </div>
               </div>
@@ -318,189 +387,163 @@ const SubscriptionManager = () => {
           );
         })()}
 
-        {/* Suscripción Actual */}
-        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white flex items-center space-x-2">
-              <IoRocketOutline className="w-6 h-6" />
-              <span>Plan Actual</span>
+        <div className={`${card} p-5 sm:p-6 mb-6`}>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+            <h2 className="text-lg font-semibold text-textPrimary flex items-center gap-2">
+              <IoLayersOutline className="w-5 h-5 text-brand-light" />
+              Plan actual
             </h2>
             {getStatusBadge(subscription?.status)}
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <p className="text-white/60 text-sm mb-1">Plan</p>
-              <p className="text-white text-2xl font-bold">{subscription?.Plan?.name || 'N/A'}</p>
-              <p className="text-white/80 text-sm mt-2">{formatCurrency(parseFloat(subscription?.Plan?.priceMonthly || 0))}/mes</p>
+          <div className="grid sm:grid-cols-3 gap-3 mb-6">
+            <div className={statCard}>
+              <p className="text-xs text-textMuted mb-0.5">Plan</p>
+              <p className="text-lg font-bold text-textPrimary">{subscription?.Plan?.name || 'N/A'}</p>
+              <p className="text-sm text-textSecondary mt-1">
+                {formatCurrency(parseFloat(subscription?.Plan?.priceMonthly || 0))}/mes
+              </p>
             </div>
-
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <p className="text-white/60 text-sm mb-1">
+            <div className={statCard}>
+              <p className="text-xs text-textMuted mb-0.5">
                 {subscription?.status === 'trialing' ? 'Trial termina' : 'Próxima renovación'}
               </p>
-              <p className="text-white text-lg font-semibold">
-                {subscription?.status === 'trialing' 
+              <p className="text-sm font-semibold text-textPrimary">
+                {subscription?.status === 'trialing'
                   ? formatDate(subscription?.trialEnd)
-                  : formatDate(subscription?.currentPeriodEnd)
-                }
+                  : formatDate(subscription?.currentPeriodEnd)}
               </p>
             </div>
-
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <p className="text-white/60 text-sm mb-1">Fecha de inicio</p>
-              <p className="text-white text-lg font-semibold">{formatDate(subscription?.currentPeriodStart)}</p>
+            <div className={statCard}>
+              <p className="text-xs text-textMuted mb-0.5">Fecha de inicio</p>
+              <p className="text-sm font-semibold text-textPrimary">{formatDate(subscription?.currentPeriodStart)}</p>
             </div>
           </div>
 
-          {/* Características del plan */}
-          {subscription?.Plan && (
-            <div className="mt-6 pt-6 border-t border-white/10">
-              <h3 className="text-white font-semibold mb-3">Características incluidas:</h3>
-              <div className="grid md:grid-cols-2 gap-3">
-                <div className="flex items-center space-x-2 text-white/80">
-                  <IoCheckmarkOutline className="w-5 h-5 text-green-400" />
-                  <span>{subscription.Plan.features?.maxUsers === -1 ? 'Usuarios ilimitados' : `Hasta ${subscription.Plan.features?.maxUsers} usuarios`}</span>
-                </div>
-                <div className="flex items-center space-x-2 text-white/80">
-                  <IoCheckmarkOutline className="w-5 h-5 text-green-400" />
-                  <span>{subscription.Plan.features?.maxProperties === -1 ? 'Propiedades ilimitadas' : `Hasta ${subscription.Plan.features?.maxProperties} propiedades`}</span>
-                </div>
-                {subscription.Plan.features?.whatsappIntegration && (
-                  <div className="flex items-center space-x-2 text-white/80">
-                    <IoCheckmarkOutline className="w-5 h-5 text-green-400" />
-                    <span>Integración WhatsApp</span>
-                  </div>
-                )}
-                {subscription.Plan.features?.customDomain && (
-                  <div className="flex items-center space-x-2 text-white/80">
-                    <IoCheckmarkOutline className="w-5 h-5 text-green-400" />
-                    <span>Subdominio personalizado</span>
-                  </div>
-                )}
-                {subscription.Plan.features?.landingPage && (
-                  <div className="flex items-center space-x-2 text-white/80">
-                    <IoCheckmarkOutline className="w-5 h-5 text-green-400" />
-                    <span>Landing page pública</span>
-                  </div>
-                )}
-              </div>
+          {subscription?.Plan?.features && (
+            <div className="pt-5 border-t border-borderBase">
+              <h3 className="text-sm font-semibold text-textPrimary mb-3">Características incluidas</h3>
+              <PlanFeaturesList features={subscription.Plan.features} />
             </div>
           )}
         </div>
 
-        {/* Planes disponibles */}
-        <div
-          id="available-plans"
-          className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 mb-8 shadow-xl scroll-mt-6"
-        >
-          <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
-            <IoRocketOutline className="w-6 h-6" />
-            <span>
-              {subscriptionNeedsPayment(subscription)
-                ? 'Renovar o elegir plan'
-                : 'Cambiar Plan'}
-            </span>
+        <div id="available-plans" className={`${card} p-5 sm:p-6 mb-6 scroll-mt-4`}>
+          <h2 className="text-lg font-semibold text-textPrimary mb-5 flex items-center gap-2">
+            <IoLayersOutline className="w-5 h-5 text-brand-light" />
+            {subscriptionNeedsPayment(subscription) ? 'Renovar o elegir plan' : 'Cambiar plan'}
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {plans.filter(plan => plan.isActive && plan.planId !== 'lifetime').map((plan) => {
-              const isCurrentPlan = subscription?.planId === plan.planId;
-              const needsPayment = subscriptionNeedsPayment(subscription);
-              const isDisabled = isChangingPlan || (isCurrentPlan && !needsPayment);
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {plans
+              .filter((plan) => plan.isActive && plan.planId !== 'lifetime')
+              .map((plan) => {
+                const isCurrentPlan = subscription?.planId === plan.planId;
+                const needsPayment = subscriptionNeedsPayment(subscription);
+                const isDisabled = isChangingPlan || (isCurrentPlan && !needsPayment);
+                const colors = PLAN_COLORS[plan.planId] || PLAN_COLORS.basic;
+                const features = plan.features || {};
 
-              let buttonLabel = 'Suscribirse';
-              if (isCurrentPlan) {
-                buttonLabel = needsPayment ? 'Pagar y reactivar' : 'Plan Actual';
-              } else if (subscription && !needsPayment) {
-                buttonLabel = 'Cambiar a este plan';
-              }
+                let buttonLabel = 'Suscribirse';
+                if (isCurrentPlan) {
+                  buttonLabel = needsPayment ? 'Pagar y reactivar' : 'Plan actual';
+                } else if (subscription && !needsPayment) {
+                  buttonLabel = 'Cambiar a este plan';
+                }
 
-              return (
-              <div
-                key={plan.planId}
-                className={`bg-white/5 rounded-xl p-6 border transition-all ${
-                  isCurrentPlan
-                    ? 'border-blue-400 bg-blue-500/10'
-                    : 'border-white/10 hover:border-white/30'
-                }`}
-              >
-                <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-white/60 text-sm mb-4">{plan.description}</p>
-                <p className="text-3xl font-bold text-white mb-4">
-                  {formatCurrency(parseFloat(plan.priceMonthly || 0))}
-                  <span className="text-sm text-white/60 font-normal">/mes</span>
-                </p>
+                return (
+                  <div
+                    key={plan.planId}
+                    className={`rounded-xl border bg-bgElevated/40 p-4 flex flex-col transition-colors ${
+                      isCurrentPlan ? colors.active : `${colors.border} hover:border-borderStrong`
+                    }`}
+                  >
+                    <div className="mb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base font-bold text-textPrimary">{plan.name}</h3>
+                        {plan.isPopular && (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-light bg-brand-muted px-2 py-0.5 rounded-full border border-borderStrong">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-textMuted mt-1 min-h-[2rem]">{plan.description}</p>
+                    </div>
 
-                <ul className="space-y-2 mb-6">
-                  <li className="flex items-center space-x-2 text-white/80 text-sm">
-                    <IoCheckmarkOutline className="w-4 h-4 text-green-400" />
-                    <span>{plan.features?.maxUsers === -1 ? 'Usuarios ilimitados' : `${plan.features?.maxUsers} usuarios`}</span>
-                  </li>
-                  <li className="flex items-center space-x-2 text-white/80 text-sm">
-                    <IoCheckmarkOutline className="w-4 h-4 text-green-400" />
-                    <span>{plan.features?.maxProperties === -1 ? 'Propiedades ilimitadas' : `${plan.features?.maxProperties} propiedades`}</span>
-                  </li>
-                  {plan.features?.landingPage && (
-                    <li className="flex items-center space-x-2 text-white/80 text-sm">
-                      <IoCheckmarkOutline className="w-4 h-4 text-green-400" />
-                      <span>Landing page</span>
-                    </li>
-                  )}
-                </ul>
+                    <p className="text-2xl font-bold text-textPrimary mb-3">
+                      {formatCurrency(parseFloat(plan.priceMonthly || 0))}
+                      <span className="text-sm text-textMuted font-normal">/mes</span>
+                    </p>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (needsPayment || !subscription) {
-                      handleCreateSubscription(plan.planId);
-                    } else {
-                      handleChangePlan(plan.planId);
-                    }
-                  }}
-                  disabled={isDisabled}
-                  className={`w-full py-2 px-4 rounded-lg font-semibold transition-all ${
-                    isDisabled
-                      ? 'bg-gray-500 text-white cursor-not-allowed'
-                      : needsPayment && isCurrentPlan
-                        ? 'bg-red-500 hover:bg-red-400 text-white'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  {isChangingPlan ? 'Procesando...' : buttonLabel}
-                </button>
-              </div>
-              );
-            })}
+                    <div className="grid grid-cols-2 gap-2 mb-4 text-center text-xs">
+                      <div className="rounded-lg bg-bgSurface border border-borderBase px-2 py-1.5">
+                        <div className="font-bold text-textPrimary">
+                          {features.maxProperties === -1 ? '∞' : features.maxProperties ?? '—'}
+                        </div>
+                        <div className="text-textMuted">Propiedades</div>
+                      </div>
+                      <div className="rounded-lg bg-bgSurface border border-borderBase px-2 py-1.5">
+                        <div className="font-bold text-textPrimary">
+                          {features.maxClients === -1 ? '∞' : features.maxClients ?? '—'}
+                        </div>
+                        <div className="text-textMuted">Clientes</div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 mb-4">
+                      <PlanFeaturesList features={features} compact />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (needsPayment || !subscription) {
+                          handleCreateSubscription(plan.planId);
+                        } else {
+                          handleChangePlan(plan.planId);
+                        }
+                      }}
+                      disabled={isDisabled}
+                      className={
+                        isDisabled
+                          ? `${btnSecondary} w-full justify-center opacity-60 cursor-not-allowed`
+                          : needsPayment && isCurrentPlan
+                            ? 'w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-customRed hover:bg-customRedDark text-textWhite text-sm font-semibold rounded-lg transition-colors disabled:opacity-50'
+                            : `${btnPrimary} w-full justify-center`
+                      }
+                    >
+                      {isChangingPlan ? 'Procesando...' : buttonLabel}
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
-        {/* Historial de pagos */}
-        {paymentHistory && paymentHistory.length > 0 && (
-          <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-2xl font-bold text-white mb-6 flex items-center space-x-2">
-              <IoReceiptOutline className="w-6 h-6" />
-              <span>Historial de Pagos</span>
+        {paymentHistory?.length > 0 && (
+          <div className={`${card} p-5 sm:p-6`}>
+            <h2 className="text-lg font-semibold text-textPrimary mb-4 flex items-center gap-2">
+              <IoReceiptOutline className="w-5 h-5 text-brand-light" />
+              Historial de pagos
             </h2>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className={tableWrap}>
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-white/60 text-sm border-b border-white/10">
-                    <th className="pb-3">Fecha</th>
-                    <th className="pb-3">Concepto</th>
-                    <th className="pb-3">Monto</th>
-                    <th className="pb-3">Estado</th>
+                  <tr className={tableHeadRow}>
+                    <th className={tableTh}>Fecha</th>
+                    <th className={tableTh}>Concepto</th>
+                    <th className={tableTh}>Monto</th>
+                    <th className={tableTh}>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paymentHistory.map((payment, index) => (
-                    <tr key={index} className="text-white border-b border-white/5">
-                      <td className="py-3">{formatDate(payment.date)}</td>
-                      <td className="py-3">{payment.description}</td>
-                      <td className="py-3">{formatCurrency(payment.amount)}</td>
-                      <td className="py-3">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    <tr key={index} className={tableRow}>
+                      <td className="px-4 py-3 text-textSecondary">{formatDate(payment.date)}</td>
+                      <td className="px-4 py-3 text-textPrimary">{payment.description}</td>
+                      <td className="px-4 py-3 text-textPrimary font-medium">{formatCurrency(payment.amount)}</td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-brand-muted text-brand-light border border-borderStrong">
                           Pagado
                         </span>
                       </td>
