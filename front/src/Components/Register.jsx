@@ -1,7 +1,14 @@
 import  { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useRegisterTenantMutation } from '@shared/redux';
-import {  IoPersonSharp, IoMailSharp, IoLockClosedSharp, IoCheckmarkCircle } from 'react-icons/io5';
+import {
+  IoPersonSharp,
+  IoMailSharp,
+  IoLockClosedSharp,
+  IoCheckmarkCircle,
+  IoEyeOutline,
+  IoEyeOffOutline,
+} from 'react-icons/io5';
 
 /**
  * Componente de Registro con Plan Integrado
@@ -20,6 +27,8 @@ const Register = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerTenant, { isLoading }] = useRegisterTenantMutation();
 
   const validateForm = () => {
@@ -86,8 +95,8 @@ const Register = () => {
     }
   };
 
-  const inputClass = (field) =>
-    `w-full pl-10 pr-4 py-3 bg-bgElevated border rounded-xl text-textPrimary placeholder-textMuted focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition ${
+  const inputClass = (field, withToggle = false) =>
+    `w-full pl-10 ${withToggle ? 'pr-11' : 'pr-4'} py-3 bg-bgElevated border rounded-xl text-textPrimary placeholder-textMuted focus:ring-2 focus:ring-brand focus:border-transparent outline-none transition ${
       errors[field] ? 'border-customRed' : 'border-borderStrong'
     }`;
 
@@ -169,13 +178,23 @@ const Register = () => {
               <div className="relative">
                 <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Mínimo 6 caracteres"
-                  className={inputClass('password')}
+                  autoComplete="new-password"
+                  className={inputClass('password', true)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  disabled={isLoading}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-textMuted hover:text-textPrimary transition-colors focus:outline-none disabled:opacity-50"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? <IoEyeOffOutline className="w-5 h-5" /> : <IoEyeOutline className="w-5 h-5" />}
+                </button>
               </div>
               {errors.password && (
                 <p className="text-customRed text-sm mt-1">{errors.password}</p>
@@ -189,13 +208,23 @@ const Register = () => {
               <div className="relative">
                 <IoLockClosedSharp className="absolute left-3 top-1/2 transform -translate-y-1/2 text-textMuted" />
                 <input
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Repetí tu contraseña"
-                  className={inputClass('confirmPassword')}
+                  autoComplete="new-password"
+                  className={inputClass('confirmPassword', true)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  disabled={isLoading}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-textMuted hover:text-textPrimary transition-colors focus:outline-none disabled:opacity-50"
+                  aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showConfirmPassword ? <IoEyeOffOutline className="w-5 h-5" /> : <IoEyeOutline className="w-5 h-5" />}
+                </button>
               </div>
               {errors.confirmPassword && (
                 <p className="text-customRed text-sm mt-1">{errors.confirmPassword}</p>
