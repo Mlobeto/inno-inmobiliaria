@@ -21,8 +21,21 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const STATUSES_NEEDING_PAYMENT = ['past_due', 'canceled', 'incomplete', 'expired'];
 
 function subscriptionNeedsPayment(sub) {
+  if (!sub) return true;
   const status = sub?.status?.toLowerCase() || '';
-  return !sub || STATUSES_NEEDING_PAYMENT.includes(status);
+  const trialEnded =
+    ['trialing', 'trial'].includes(status) &&
+    sub.trialEnd &&
+    new Date(sub.trialEnd) <= new Date();
+  if (trialEnded) return true;
+  return STATUSES_NEEDING_PAYMENT.includes(status);
+}
+
+function isTrialExpired(sub) {
+  if (!sub?.trialEnd || !sub?.status) return false;
+  const status = String(sub.status).toLowerCase();
+  if (!['trialing', 'trial'].includes(status)) return false;
+  return new Date(sub.trialEnd) <= new Date();
 }
 
 const SubscriptionManager = () => {
@@ -93,14 +106,20 @@ const SubscriptionManager = () => {
       // Redirigir a MercadoPago para completar el pago
       window.location.href = response.data.subscriptionUrl;
     } catch (error) {
-      console.error('Error al crear suscripción:', error);
+      console.error(
+        'Error al crear suscripción:',
+        error?.response?.data ? JSON.stringify(error.response.data, null, 2) : error?.message || error,
+        error?.response?.status
+      );
       const data = error.response?.data;
+      const prefix = data?.code ? `[${data.code}] ` : '';
+      const hint = typeof data?.hint === 'string' ? ` ${data.hint}` : '';
       const detail = data?.fix || data?.mercadoPago?.tokenPrefix
         ? ` (servidor: ${data.mercadoPago.tokenPrefix})`
         : '';
       const mpDetail =
         data?.details && data.details !== data?.error ? ` — ${data.details}` : '';
-      toast.error((data?.error || 'Error al crear la suscripción') + detail + mpDetail, {
+      toast.error(`${prefix}${(data?.error || error.message || 'Error al crear la suscripción')}${hint}${detail}${mpDetail}`, {
         autoClose: 12000,
       });
     } finally {
@@ -206,7 +225,11 @@ const SubscriptionManager = () => {
         {/* Alerta de suscripción expirada / vencida */}
         {(() => {
           const statusNorm = subscription?.status?.toLowerCase() || '';
-          const isVencida = isExpired || ['past_due', 'canceled', 'incomplete'].includes(statusNorm);
+          const trialExpired = isTrialExpired(subscription);
+          const isVencida =
+            isExpired ||
+            trialExpired ||
+            ['past_due', 'canceled', 'incomplete'].includes(statusNorm);
           if (!isVencida) return null;
           const isPastDue = statusNorm === 'past_due';
           const isCanceled = statusNorm === 'canceled';

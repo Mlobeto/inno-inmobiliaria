@@ -322,7 +322,8 @@ class SubscriptionController {
    */
   async createSubscription(req, res) {
     try {
-      const { planId } = req.body;
+      const rawPlanId = req.body?.planId;
+      const planId = typeof rawPlanId === 'string' ? rawPlanId.trim() : rawPlanId;
       const { tenantId, email } = req.user;
       
       // Validar plan
@@ -330,7 +331,9 @@ class SubscriptionController {
       if (!plan || !plan.isActive) {
         return res.status(400).json({
           success: false,
-          error: 'Plan no válido'
+          code: 'INVALID_PLAN',
+          source: 'app',
+          error: 'Plan no válido',
         });
       }
       
@@ -354,8 +357,11 @@ class SubscriptionController {
         if (existingStatus === 'active' || trialStillActive) {
           return res.status(400).json({
             success: false,
+            source: 'app',
             code: 'SUBSCRIPTION_ALREADY_ACTIVE',
             error: 'Ya tienes una suscripción activa',
+            hint:
+              'Si querés cambiar el plan dentro del período de prueba activo, usá «Cambiar a este plan» (no iniciar nuevo checkout). Para pagar con Mercado Pago normalmente esperá que termine la prueba o contactá soporte.',
           });
         }
 
@@ -402,15 +408,60 @@ class SubscriptionController {
       if (!payerEmail) {
         return res.status(400).json({
           success: false,
+          source: 'app',
+          code: 'PAYER_EMAIL_REQUIRED',
           error:
             'Falta un email válido para la suscripción en Mercado Pago (completá el email del administrador en el perfil o usá un usuario con formato correo electrónico).',
-          code: 'PAYER_EMAIL_REQUIRED',
         });
       }
+
+      const checkoutHints = [
+        'Iniciá sesión en Mercado Pago con una cuenta distinta a la que cobra (no la del vendedor de la app).',
+        'Elegí Tarjeta → Modificar e ingresá número, vencimiento y código de seguridad (las tarjetas guardadas tipo "PROVISIONAL" no habilitan suscripciones).',
+        'Si Confirmar sigue gris, probá otro navegador o una tarjeta de crédito distinta.',
+      ];
+
+      // Evita 400 de MP si el usuario reintenta: mismo external_reference puede quedar ocupado por un checkout pendiente
+      const pendingIncomplete = await prisma.subscriptions.findFirst({
+        where: {
+          tenantId,
+          planId,
+          status: 'incomplete',
+          paymentProvider: 'mercadopago',
+          mpSubscriptionId: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (pendingIncomplete?.mpSubscriptionId) {
+        try {
+          const existingMp = await preApprovalClient.get({
+            id: pendingIncomplete.mpSubscriptionId,
+          });
+          const st = String(existingMp?.status || '').toLowerCase();
+          const url =
+            existingMp.init_point ||
+            existingMp.sandbox_init_point ||
+            existingMp.payment_url;
+          if (['pending', 'pending_user'].includes(st) && url) {
+            console.log('[subscriptions] Reutilizando preapproval pendiente:', existingMp.id);
+            return res.json({
+              success: true,
+              subscriptionUrl: url,
+              subscriptionId: pendingIncomplete.subscriptionId,
+              mpSubscriptionId: existingMp.id,
+              reusedPendingCheckout: true,
+              checkoutHints,
+            });
+          }
+        } catch (e) {
+          console.warn('[subscriptions] No se reutiliza preapproval pendiente:', e?.message || e);
+        }
+      }
+
       const preapprovalBase = {
         reason: `Suscripción ${plan.name} - Inno Inmobiliaria`,
         back_url: buildFrontendUrl('/subscription/success'),
-        external_reference: `tenant_${tenantId}_plan_${planId}`,
+        external_reference: `tenant_${tenantId}_plan_${planId}_${Date.now()}`,
         status: 'pending',
         payer_email: payerEmail,
       };
@@ -495,11 +546,7 @@ class SubscriptionController {
         subscriptionUrl: response.init_point || response.sandbox_init_point,
         subscriptionId: subscription.subscriptionId,
         mpSubscriptionId: response.id,
-        checkoutHints: [
-          'Iniciá sesión en Mercado Pago con una cuenta distinta a la que cobra (no la del vendedor de la app).',
-          'Elegí Tarjeta → Modificar e ingresá número, vencimiento y código de seguridad (las tarjetas guardadas tipo "PROVISIONAL" no habilitan suscripciones).',
-          'Si Confirmar sigue gris, probá otro navegador o una tarjeta de crédito distinta.',
-        ],
+        checkoutHints,
       });
     } catch (error) {
       const { message, status } = extractMercadoPagoError(error);
