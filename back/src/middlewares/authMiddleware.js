@@ -36,11 +36,11 @@ const authMiddleware = async (req, res, next) => {
     
     // Establecer req.user con toda la información del admin
     req.user = {
-      adminId: admin.adminId,
+      adminId: Number(admin.adminId),
       username: admin.username,
       email: resolveAdminBillingEmail(admin),
       role: admin.role,
-      tenantId: admin.tenantId,
+      tenantId: admin.tenantId != null ? Number(admin.tenantId) : null,
     };
     
     // Mantener compatibilidad con código antiguo

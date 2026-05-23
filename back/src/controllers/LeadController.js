@@ -16,6 +16,12 @@ const LEAD_INCLUDE = {
 
 const VALID_STATUSES = ['NUEVO', 'CONTACTADO', 'EN_SEGUIMIENTO', 'CERRADO_GANADO', 'CERRADO_PERDIDO'];
 
+const isAgentOnLead = (leadAgents, adminId) =>
+  (leadAgents || []).some((la) => Number(la.agentId) === Number(adminId));
+
+const canAgentAccessLead = (role, leadAgents, adminId) =>
+  role !== 'AGENT' || isAgentOnLead(leadAgents, adminId);
+
 /** Normaliza un lead para que el frontend reciba `assignedAgents: [{adminId, fullName, ...}]` */
 const normalize = (lead) => ({
   ...lead,
@@ -32,7 +38,11 @@ exports.getAllLeads = async (req, res) => {
 
     // Los agentes solo ven los leads que tienen asignados
     if (role === 'AGENT') {
-      where.agents = { some: { agentId: adminId } };
+      const agentId = Number(adminId);
+      if (!Number.isFinite(agentId)) {
+        return res.status(403).json({ success: false, message: 'Sesión de agente inválida' });
+      }
+      where.agents = { some: { agentId } };
     }
 
     const leads = await prisma.leads.findMany({
@@ -62,7 +72,7 @@ exports.getLeadById = async (req, res) => {
     if (!lead) return res.status(404).json({ success: false, message: 'Lead no encontrado' });
 
     // Agente solo puede ver leads en los que está asignado
-    if (role === 'AGENT' && !lead.agents.some((la) => la.agentId === adminId)) {
+    if (!canAgentAccessLead(role, lead.agents, adminId)) {
       return res.status(403).json({ success: false, message: 'Sin acceso a este lead' });
     }
 
@@ -130,7 +140,7 @@ exports.updateLead = async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, message: 'Lead no encontrado' });
 
     // Agente solo puede editar leads donde está asignado
-    if (role === 'AGENT' && !existing.agents.some((la) => la.agentId === adminId)) {
+    if (!canAgentAccessLead(role, existing.agents, adminId)) {
       return res.status(403).json({ success: false, message: 'Sin acceso a este lead' });
     }
 

@@ -1,4 +1,4 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore, createListenerMiddleware, isAnyOf } from "@reduxjs/toolkit";
 import rootReducer from "../Reducer/reducer"; // Reducer antiguo (se irá eliminando gradualmente)
 import toastMiddleware from "../../utils/toastMiddleware";
 
@@ -7,8 +7,18 @@ import toastMiddleware from "../../utils/toastMiddleware";
 import { 
   baseApi,
   authReducer,
-  platformAdminReducer 
+  platformAdminReducer,
+  logout,
+  setCredentials,
 } from '@shared/redux';
+
+const authListener = createListenerMiddleware();
+authListener.startListening({
+  matcher: isAnyOf(logout, setCredentials),
+  effect: (_action, listenerApi) => {
+    listenerApi.dispatch(baseApi.util.resetApiState());
+  },
+});
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +38,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware()
       .concat(baseApi.middleware) // RTK Query middleware
+      .concat(authListener.middleware)
       .concat(toastMiddleware), // Toast middleware personalizado
 });
 

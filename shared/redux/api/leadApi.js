@@ -6,9 +6,16 @@ import { baseApi } from './baseApi';
 
 const LEAD_STATUSES = ['NUEVO', 'CONTACTADO', 'EN_SEGUIMIENTO', 'CERRADO_GANADO', 'CERRADO_PERDIDO'];
 
+const patchLeadStatusInCache = (draft, id, status) => {
+  if (!Array.isArray(draft?.leads)) return;
+  const lead = draft.leads.find((l) => String(l.id) === String(id));
+  if (lead && status) lead.status = status;
+};
+
 export const leadApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
 
+    // adminId en args solo segmenta caché por usuario (no va al servidor)
     getAllLeads: builder.query({
       query: () => '/leads',
       providesTags: ['Lead'],
@@ -36,19 +43,31 @@ export const leadApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: ['Lead'],
-      async onQueryStarted({ id, status, ...rest }, { dispatch, queryFulfilled }) {
+      invalidatesTags: (result, error, { status, ...rest }) => {
+        if (error) return [];
+        const otherFields = Object.keys(rest).filter((k) => k !== 'id');
+        if (status !== undefined && otherFields.length === 0) return [];
+        return ['Lead'];
+      },
+      async onQueryStarted({ id, status, ...rest }, { dispatch, queryFulfilled, getState }) {
         if (status === undefined || Object.keys(rest).length > 0) return;
 
+        const cacheKey = getState().auth?.user?.adminId;
+        if (cacheKey == null) return;
+
         const patchResult = dispatch(
-          leadApi.util.updateQueryData('getAllLeads', undefined, (draft) => {
-            const lead = draft?.leads?.find((l) => String(l.id) === String(id));
-            if (lead) lead.status = status;
+          leadApi.util.updateQueryData('getAllLeads', cacheKey, (draft) => {
+            patchLeadStatusInCache(draft, id, status);
           }),
         );
 
         try {
-          await queryFulfilled;
+          const { data } = await queryFulfilled;
+          dispatch(
+            leadApi.util.updateQueryData('getAllLeads', cacheKey, (draft) => {
+              patchLeadStatusInCache(draft, id, data?.lead?.status || status);
+            }),
+          );
         } catch {
           patchResult.undo();
         }

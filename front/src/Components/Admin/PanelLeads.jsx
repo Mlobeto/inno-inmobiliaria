@@ -82,8 +82,12 @@ export default function PanelLeads() {
   const currentUser = useSelector(selectCurrentUser);
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   const isAgent = currentUser?.role === 'AGENT';
+  const cacheUserId = currentUser?.adminId;
 
-  const { data, isLoading, isFetching } = useGetAllLeadsQuery();
+  const { data, isLoading, isFetching, isError, error: fetchError, refetch } = useGetAllLeadsQuery(cacheUserId, {
+    skip: cacheUserId == null,
+    refetchOnMountOrArgChange: true,
+  });
   const { data: agentsRaw = [] } = useGetAgentsQuery(undefined, { skip: !isSuperAdmin });
   const [createLead] = useCreateLeadMutation();
   const [updateLead] = useUpdateLeadMutation();
@@ -91,10 +95,16 @@ export default function PanelLeads() {
   const [unassignLeadAgent] = useUnassignLeadAgentMutation();
   const [deleteLead] = useDeleteLeadMutation();
 
-  const leads = useMemo(
-    () => (data?.leads || []).map((l) => ({ ...l, status: normalizeLeadStatus(l.status) })),
-    [data?.leads],
-  );
+  const leads = useMemo(() => {
+    const myId = Number(currentUser?.adminId);
+    let list = (data?.leads || []).map((l) => ({ ...l, status: normalizeLeadStatus(l.status) }));
+    if (isAgent && Number.isFinite(myId)) {
+      list = list.filter((l) =>
+        (l.assignedAgents || []).some((a) => Number(a.adminId) === myId),
+      );
+    }
+    return list;
+  }, [data?.leads, isAgent, currentUser?.adminId]);
   const agents = Array.isArray(agentsRaw) ? agentsRaw : [];
   const orphanLeads = useMemo(
     () => leads.filter((l) => !COLUMN_KEYS.has(l.status)),
@@ -270,9 +280,25 @@ export default function PanelLeads() {
           <div className="text-center text-textMuted py-16">Cargando leads...</div>
         ) : (
           <>
-            {isFetching && (
+            {isError && (
+              <div className={`${alertError} mb-4 flex flex-wrap items-center justify-between gap-2`}>
+                <span>
+                  {fetchError?.data?.message || fetchError?.data?.error || 'No se pudieron cargar los leads.'}
+                </span>
+                <button type="button" onClick={refetch} className={btnSecondary}>
+                  Reintentar
+                </button>
+              </div>
+            )}
+            {isFetching && !isError && (
               <p className="text-xs text-textMuted mb-3">Actualizando tablero...</p>
             )}
+            {leads.length === 0 && !isFetching ? (
+              <div className="text-center text-textMuted py-16">
+                {isAgent ? 'No tenés leads asignados.' : 'No hay leads todavía. Creá el primero.'}
+              </div>
+            ) : (
+            <>
             <div className="overflow-x-auto pb-2 -mx-1 px-1">
               <div className="flex gap-4 min-w-max">
                 {COLUMNS.map((col) => {
@@ -336,6 +362,8 @@ export default function PanelLeads() {
                   ))}
                 </div>
               </div>
+            )}
+            </>
             )}
           </>
         )}
