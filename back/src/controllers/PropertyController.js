@@ -422,8 +422,8 @@ exports.togglePublishLanding = async (req, res) => {
     
     if (!tenant?.features?.landingPage) {
       return res.status(403).json({ 
-        error: 'Landing no disponible',
-        message: 'Tu plan actual no incluye landing pages. Actualiza a Plan Profesional o Empresarial.'
+        error: 'Página web no disponible',
+        message: 'Tu plan actual no incluye página web. Actualizá a Plan Profesional o GestPRO.'
       });
     }
 
@@ -446,8 +446,8 @@ exports.togglePublishLanding = async (req, res) => {
 
     res.json({
       message: isPublishedInLanding 
-        ? 'Propiedad publicada en landing' 
-        : 'Propiedad oculta de landing',
+        ? 'Propiedad publicada en la página web'
+        : 'Propiedad oculta de la página web',
       property: {
         id: property.propertyId,
         address: property.address,

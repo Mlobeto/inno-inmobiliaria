@@ -56,7 +56,7 @@ const plans = [
   {
     planId: 'professional',
     name: 'Plan Profesional',
-    description: 'Básico + Mercado Libre, CRM Leads, landing pública y portal de inquilinos',
+    description: 'Básico + Mercado Libre, CRM Leads, página web y portal de inquilinos',
     priceMonthly: 29900,
     priceYearly: 299000,
     currency: 'ARS',

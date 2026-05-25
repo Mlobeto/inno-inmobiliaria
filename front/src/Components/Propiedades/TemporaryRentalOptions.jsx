@@ -195,7 +195,7 @@ const TemporaryRentalOptions = ({ formData, handleChange, onAmenitiesChange }) =
 
           <div>
             <label className={labelClass}>
-              Publicar en Landing *
+              Publicar en la página web *
             </label>
             <select
               name="temporaryRentalIsPublished"

@@ -215,7 +215,7 @@ function LandingPlans() {
                   {plan.features.landingPage && (
                     <li className="flex items-center gap-2 text-sm">
                       <IoCheckmarkCircle className="text-indigo-500 flex-shrink-0" />
-                      <span>Landing pública</span>
+                      <span>Página web</span>
                     </li>
                   )}
                   {plan.features.portalInquilino && (

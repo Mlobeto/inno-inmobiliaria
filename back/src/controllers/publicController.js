@@ -41,8 +41,8 @@ exports.getTenantLanding = async (req, res) => {
     // 2. Verificar que tenga acceso a landing pages
     if (!tenant.features?.landingPage) {
       return res.status(403).json({ 
-        error: 'Landing no disponible',
-        message: 'Esta inmobiliaria no tiene habilitadas las landing pages públicas'
+        error: 'Página web no disponible',
+        message: 'Esta inmobiliaria no tiene habilitada su página web pública'
       });
     }
 
@@ -175,7 +175,7 @@ exports.getTenantLanding = async (req, res) => {
   } catch (error) {
     console.error('Error en getTenantLanding:', error);
     res.status(500).json({ 
-      error: 'Error al cargar landing',
+      error: 'Error al cargar la página web',
       message: 'Ocurrió un error al obtener los datos de la inmobiliaria'
     });
   }
@@ -203,7 +203,7 @@ exports.getPropertyDetail = async (req, res) => {
     // 2. Verificar acceso a landing
     if (!tenant.features?.landingPage) {
       return res.status(403).json({ 
-        error: 'Landing no disponible'
+        error: 'Página web no disponible'
       });
     }
 
@@ -299,7 +299,7 @@ exports.getPublicLoteos = async (req, res) => {
     });
 
     if (!tenant) return res.status(404).json({ error: 'Inmobiliaria no encontrada' });
-    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Landing no disponible' });
+    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Página web no disponible' });
 
     const loteos = await prisma.loteos.findMany({
       where: { tenantId: tenant.tenantId, isPublished: true },
@@ -331,7 +331,7 @@ exports.getPublicLoteoDetail = async (req, res) => {
     });
 
     if (!tenant) return res.status(404).json({ error: 'Inmobiliaria no encontrada' });
-    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Landing no disponible' });
+    if (!tenant.features?.landingPage) return res.status(403).json({ error: 'Página web no disponible' });
 
     const loteo = await prisma.loteos.findFirst({
       where: { id: Number(loteoId), tenantId: tenant.tenantId, isPublished: true },

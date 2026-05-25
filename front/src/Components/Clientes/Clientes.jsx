@@ -1,56 +1,78 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateClientMutation } from '@shared/redux';
 import { PROVINCIAS_ARGENTINA, getCiudadesByProvincia } from '@shared/constants/argentinLocations';
 import { getCountryConfig, validateDocument } from '@shared/constants/countryConfigs';
 import { toast } from 'react-toastify';
-import { 
-  IoArrowBackOutline, 
-  IoPersonAddOutline, 
+import {
+  IoPersonAddOutline,
   IoPersonOutline,
   IoMailOutline,
   IoLocationOutline,
   IoPhonePortraitOutline,
   IoCardOutline,
-  IoHomeOutline,
   IoSaveOutline,
-  IoWarningOutline
+  IoWarningOutline,
 } from 'react-icons/io5';
+import { AdminPanelLayout } from '../Admin/AdminPanelLayout';
+import {
+  alertError,
+  btnPrimary,
+  btnSecondary,
+  card,
+  inputClass,
+  labelClass,
+  selectClass,
+} from '../Admin/adminPanelTheme';
+
+const inputErr =
+  'w-full bg-bgElevated border border-customRed/50 rounded-lg px-3 py-2 text-sm text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-customRed focus:border-transparent';
 
 const initialState = {
-  cuil: "",
-  name: "",
-  email: "",
-  direccion: "",
-  ciudad: "",
-  provincia: "",
-  codigoPostal: "",
-  mobilePhone: "",
+  cuil: '',
+  name: '',
+  email: '',
+  direccion: '',
+  ciudad: '',
+  provincia: '',
+  codigoPostal: '',
+  mobilePhone: '',
 };
+
+function FieldLabel({ icon: Icon, htmlFor, children, hint }) {
+  return (
+    <label htmlFor={htmlFor} className={`${labelClass} flex items-center gap-1.5`}>
+      {Icon && <Icon className="w-3.5 h-3.5 text-brand-light shrink-0" aria-hidden />}
+      <span>{children}</span>
+      {hint && <span className="text-textMuted font-normal">({hint})</span>}
+    </label>
+  );
+}
+
+function FieldError({ message }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1 mt-1 text-customRed text-xs">
+      <IoWarningOutline className="w-3.5 h-3.5 shrink-0" aria-hidden />
+      {message}
+    </p>
+  );
+}
 
 const CreateClientForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(initialState);
   const [validationErrors, setValidationErrors] = useState({});
-  
-  // Estados para ciudades dinámicas (provincias están en la data)
   const [cities, setCities] = useState([]);
-  
-  // País del tenant (por ahora hardcodeado AR, después se obtiene del tenant en Redux)
   const [tenantCountry] = useState('AR');
   const countryConfig = getCountryConfig(tenantCountry);
-  
-  // RTK Query mutation
-  const [createClient, { isLoading, isError, error, isSuccess }] = useCreateClientMutation();
 
-  // Cargar ciudades cuando cambia la provincia
+  const [createClient, { isLoading, isError, error }] = useCreateClientMutation();
+
   useEffect(() => {
     if (formData.provincia) {
-      const provinciaObj = PROVINCIAS_ARGENTINA.find(p => p.name === formData.provincia);
-      if (provinciaObj) {
-        const ciudades = getCiudadesByProvincia(provinciaObj.id);
-        setCities(ciudades);
-      }
+      const provinciaObj = PROVINCIAS_ARGENTINA.find((p) => p.name === formData.provincia);
+      setCities(provinciaObj ? getCiudadesByProvincia(provinciaObj.id) : []);
     } else {
       setCities([]);
     }
@@ -58,86 +80,45 @@ const CreateClientForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Si cambia la provincia, resetear la ciudad
     if (name === 'provincia') {
-      setFormData({
-        ...formData,
-        provincia: value,
-        ciudad: '', // Resetear ciudad
-      });
+      setFormData({ ...formData, provincia: value, ciudad: '' });
     } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
+      setFormData({ ...formData, [name]: value });
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validar antes de enviar
-    if (Object.keys(validationErrors).length > 0) {
-      toast.error('Por favor corrige los errores antes de continuar');
-      return;
-    }
-    
-    try {
-      console.log('📤 Enviando datos del cliente:', formData);
-      const result = await createClient(formData).unwrap();
-      console.log('✅ Cliente creado exitosamente:', result);
-      toast.success('¡Cliente creado con éxito!');
-      
-      // Limpiar formulario
-      setFormData(initialState);
-      
-      // Redirigir después de 1.5 segundos
-      setTimeout(() => {
-        navigate('/panelClientes');
-      }, 1500);
-    } catch (error) {
-      console.error("❌ Error al crear el cliente:", error);
-      const errorMsg = error?.data?.details || error?.data?.error || 'Error al crear el cliente';
-      toast.error(errorMsg);
-    }
-  };
-
-  // Función para validar CUIL
   const validateCUIL = (cuil) => {
-    // Usar la validación genérica del countryConfig
     if (!countryConfig) return false;
     const documentCode = countryConfig.documentTypes.person.tax.type;
     return validateDocument(cuil, documentCode, tenantCountry);
   };
 
-  // Validar campos en tiempo real
   const handleBlur = (e) => {
     const { name, value } = e.target;
     const errors = { ...validationErrors };
-    
+
     if (name === 'cuil' && value && !validateCUIL(value)) {
       const docType = countryConfig?.documentTypes.person.tax.type || 'CUIL';
       const docFormat = countryConfig?.documentTypes.person.tax.placeholder || 'XX-XXXXXXXX-X';
-      errors.cuil = `El ${docType} debe tener el formato ${docFormat}`;
+      errors.cuil = `Formato ${docType}: ${docFormat}`;
     } else if (name === 'cuil') {
       delete errors.cuil;
     }
 
     if (name === 'email' && value && !/\S+@\S+\.\S+/.test(value)) {
-      errors.email = 'Ingrese un email válido';
+      errors.email = 'Email inválido';
     } else if (name === 'email') {
       delete errors.email;
     }
 
     if (name === 'mobilePhone' && value && !/^\d{10}$/.test(value)) {
-      errors.mobilePhone = 'El teléfono debe tener exactamente 10 dígitos';
+      errors.mobilePhone = '10 dígitos (sin 0 ni 15)';
     } else if (name === 'mobilePhone') {
       delete errors.mobilePhone;
     }
 
     if (name === 'codigoPostal' && value && !/^\d{4}$/.test(value)) {
-      errors.codigoPostal = 'El código postal debe tener 4 dígitos';
+      errors.codigoPostal = '4 dígitos';
     } else if (name === 'codigoPostal') {
       delete errors.codigoPostal;
     }
@@ -145,85 +126,52 @@ const CreateClientForm = () => {
     setValidationErrors(errors);
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (Object.keys(validationErrors).length > 0) {
+      toast.error('Corregí los errores antes de continuar');
+      return;
+    }
+
+    try {
+      await createClient(formData).unwrap();
+      toast.success('Cliente creado con éxito');
+      setFormData(initialState);
+      setTimeout(() => navigate('/panelClientes'), 1200);
+    } catch (err) {
+      const errorMsg = err?.data?.details || err?.data?.error || 'Error al crear el cliente';
+      toast.error(errorMsg);
+    }
+  };
+
+  const docLabel = countryConfig?.documentTypes.person.tax.label || 'CUIL';
+  const docPlaceholder = countryConfig?.documentTypes.person.tax.placeholder || 'XX-XXXXXXXX-X';
+  const hasErrors = Object.keys(validationErrors).length > 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header moderno */}
-      <div className="w-full bg-white/10 backdrop-blur-md border-b border-white/20 p-4 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-white hover:text-blue-300 transition-colors duration-300 flex items-center space-x-2 px-3 py-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30"
-            >
-              <IoArrowBackOutline className="w-5 h-5" />
-              <span className="hidden sm:inline">Volver</span>
-            </button>
-            
-            {/* Breadcrumb */}
-            <nav className="flex items-center space-x-2 text-slate-300">
-              <button onClick={() => navigate('/panel')} className="hover:text-white transition-colors">
-                <IoHomeOutline className="w-4 h-4" />
-              </button>
-              <span>/</span>
-              <button onClick={() => navigate('/panelClientes')} className="hover:text-white transition-colors">
-                Clientes
-              </button>
-              <span>/</span>
-              <span className="text-white font-medium">Nuevo Cliente</span>
-            </nav>
+    <AdminPanelLayout
+      backTo="/panelClientes"
+      backLabel="Clientes"
+      title="Nuevo cliente"
+      subtitle="Contacto y domicilio — el rol se asigna al vincular propiedades o contratos"
+      icon={IoPersonAddOutline}
+    >
+      <div className="max-w-5xl">
+        {isError && (
+          <div className={`${alertError} mb-3 py-2`}>
+            <IoWarningOutline className="w-4 h-4 shrink-0" />
+            {error?.data?.details || error?.data?.error || 'Error al crear el cliente'}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Contenido principal */}
-      <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Título */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="p-4 bg-emerald-500/20 rounded-full">
-              <IoPersonAddOutline className="w-12 h-12 text-emerald-400" />
-            </div>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Crear Nuevo Cliente
-          </h1>
-          <p className="text-slate-300 text-lg">
-            Completa la información del cliente
-          </p>
-        </div>
-
-        {/* Mensajes de estado */}
-        <div className="mb-6">
-          {isLoading && (
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 text-center">
-              <p className="text-blue-400">Creando cliente...</p>
-            </div>
-          )}
-          {isError && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
-              <p className="text-red-400">{error?.data?.details || error?.data?.error || 'Error al crear el cliente'}</p>
-            </div>
-          )}
-          {isSuccess && (
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 text-center">
-              <p className="text-emerald-400 mb-2">¡Cliente creado con éxito!</p>
-              <p className="text-emerald-300 text-sm">Redirigiendo al panel de clientes...</p>
-            </div>
-          )}
-        </div>
-
-        {/* Formulario */}
-        <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Grid de campos */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Campo CUIL/Documento Fiscal Dinámico */}
+        <div className={`${card} p-4 sm:p-5`}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3 gap-y-3">
               <div>
-                <label htmlFor="cuil" className="flex items-center space-x-2 text-slate-300 font-medium mb-3">
-                  <IoCardOutline className="w-4 h-4" />
-                  <span>{countryConfig?.documentTypes.person.tax.label || 'CUIL'}</span>
-                  <span className="text-slate-400 text-xs">({countryConfig?.name || 'Argentina'})</span>
-                </label>
+                <FieldLabel icon={IoCardOutline} htmlFor="cuil" hint={countryConfig?.name || 'AR'}>
+                  {docLabel}
+                </FieldLabel>
                 <input
                   type="text"
                   id="cuil"
@@ -231,49 +179,33 @@ const CreateClientForm = () => {
                   value={formData.cuil}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 backdrop-blur-sm transition-colors ${
-                    validationErrors.cuil 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50' 
-                      : 'border-white/20 focus:ring-blue-500/50 focus:border-blue-500/50'
-                  }`}
-                  placeholder={countryConfig?.documentTypes.person.tax.placeholder || 'XX-XXXXXXXX-X'}
+                  className={validationErrors.cuil ? inputErr : inputClass}
+                  placeholder={docPlaceholder}
                   required
                 />
-                {validationErrors.cuil && (
-                  <div className="flex items-center space-x-1 mt-2 text-red-400 text-sm">
-                    <IoWarningOutline className="w-4 h-4" />
-                    <span>{validationErrors.cuil}</span>
-                  </div>
-                )}
-                {countryConfig?.documentTypes.person.tax.helpText && (
-                  <p className="text-slate-400 text-xs mt-1">{countryConfig.documentTypes.person.tax.helpText}</p>
-                )}
+                <FieldError message={validationErrors.cuil} />
               </div>
 
-              {/* Campo Nombre */}
               <div>
-                <label htmlFor="name" className="flex items-center space-x-2 text-slate-300 font-medium mb-3">
-                  <IoPersonOutline className="w-4 h-4" />
-                  <span>Nombre Completo</span>
-                </label>
+                <FieldLabel icon={IoPersonOutline} htmlFor="name">
+                  Nombre completo
+                </FieldLabel>
                 <input
                   type="text"
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm"
-                  placeholder="Nombre del cliente"
+                  className={inputClass}
+                  placeholder="Apellido y nombre"
                   required
                 />
               </div>
 
-              {/* Campo Email */}
               <div>
-                <label htmlFor="email" className="flex items-center space-x-2 text-slate-300 font-medium mb-3">
-                  <IoMailOutline className="w-4 h-4" />
-                  <span>Email</span>
-                </label>
+                <FieldLabel icon={IoMailOutline} htmlFor="email">
+                  Email
+                </FieldLabel>
                 <input
                   type="email"
                   id="email"
@@ -281,27 +213,16 @@ const CreateClientForm = () => {
                   value={formData.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 backdrop-blur-sm transition-colors ${
-                    validationErrors.email 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50' 
-                      : 'border-white/20 focus:ring-blue-500/50 focus:border-blue-500/50'
-                  }`}
+                  className={validationErrors.email ? inputErr : inputClass}
                   placeholder="email@ejemplo.com"
                 />
-                {validationErrors.email && (
-                  <div className="flex items-center space-x-1 mt-2 text-red-400 text-sm">
-                    <IoWarningOutline className="w-4 h-4" />
-                    <span>{validationErrors.email}</span>
-                  </div>
-                )}
+                <FieldError message={validationErrors.email} />
               </div>
 
-              {/* Campo Teléfono */}
               <div>
-                <label htmlFor="mobilePhone" className="flex items-center space-x-2 text-slate-300 font-medium mb-3">
-                  <IoPhonePortraitOutline className="w-4 h-4" />
-                  <span>Teléfono Móvil</span>
-                </label>
+                <FieldLabel icon={IoPhonePortraitOutline} htmlFor="mobilePhone">
+                  Teléfono móvil
+                </FieldLabel>
                 <input
                   type="text"
                   id="mobilePhone"
@@ -309,85 +230,64 @@ const CreateClientForm = () => {
                   value={formData.mobilePhone}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 backdrop-blur-sm transition-colors ${
-                    validationErrors.mobilePhone 
-                      ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50' 
-                      : 'border-white/20 focus:ring-blue-500/50 focus:border-blue-500/50'
-                  }`}
-                  placeholder="10 dígitos (sin 0 ni 15)"
+                  className={validationErrors.mobilePhone ? inputErr : inputClass}
+                  placeholder="10 dígitos"
                   required
                 />
-                {validationErrors.mobilePhone && (
-                  <div className="flex items-center space-x-1 mt-2 text-red-400 text-sm">
-                    <IoWarningOutline className="w-4 h-4" />
-                    <span>{validationErrors.mobilePhone}</span>
-                  </div>
-                )}
+                <FieldError message={validationErrors.mobilePhone} />
               </div>
             </div>
 
-            {/* Campos de dirección */}
-            <div className="space-y-6">
-              <h3 className="flex items-center space-x-2 text-lg font-semibold text-white">
-                <IoLocationOutline className="w-5 h-5" />
-                <span>Información de Domicilio</span>
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Campo Provincia */}
-                <div>
-                  <label htmlFor="provincia" className="block text-slate-300 font-medium mb-3">
-                    Provincia
-                  </label>
+            <div className="border-t border-borderBase pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary flex items-center gap-1.5 mb-3">
+                <IoLocationOutline className="w-3.5 h-3.5 text-brand-light" aria-hidden />
+                Domicilio
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-12 gap-x-3 gap-y-3">
+                <div className="xl:col-span-3">
+                  <FieldLabel htmlFor="provincia">Provincia</FieldLabel>
                   <select
                     id="provincia"
                     name="provincia"
                     value={formData.provincia}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm appearance-none cursor-pointer"
+                    className={`${selectClass} w-full py-2`}
                     required
                   >
-                    <option value="" className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-                      Seleccionar provincia
-                    </option>
+                    <option value="">Seleccionar</option>
                     {PROVINCIAS_ARGENTINA.map((prov) => (
-                      <option key={prov.id} value={prov.name} className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
+                      <option key={prov.id} value={prov.name}>
                         {prov.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Campo Ciudad */}
-                <div>
-                  <label htmlFor="ciudad" className="block text-slate-300 font-medium mb-3">
-                    Ciudad
-                  </label>
+                <div className="xl:col-span-3">
+                  <FieldLabel htmlFor="ciudad">Ciudad</FieldLabel>
                   <select
                     id="ciudad"
                     name="ciudad"
                     value={formData.ciudad}
                     onChange={handleChange}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm appearance-none cursor-pointer"
+                    className={`${selectClass} w-full py-2 disabled:opacity-50`}
                     required
                     disabled={!formData.provincia}
                   >
-                    <option value="" className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
-                      {formData.provincia ? 'Seleccionar ciudad' : 'Primero seleccione provincia'}
+                    <option value="">
+                      {formData.provincia ? 'Seleccionar' : 'Elegí provincia'}
                     </option>
                     {cities.map((city, index) => (
-                      <option key={`${city}-${index}`} value={city} className="bg-slate-800" style={{ color: '#111827', backgroundColor: '#ffffff' }}>
+                      <option key={`${city}-${index}`} value={city}>
                         {city}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Campo Código Postal */}
-                <div>
-                  <label htmlFor="codigoPostal" className="block text-slate-300 font-medium mb-3">
-                    Código Postal
-                  </label>
+                <div className="xl:col-span-2">
+                  <FieldLabel htmlFor="codigoPostal">C.P.</FieldLabel>
                   <input
                     type="text"
                     id="codigoPostal"
@@ -395,77 +295,63 @@ const CreateClientForm = () => {
                     value={formData.codigoPostal}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    className={`w-full px-4 py-3 bg-white/10 border rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 backdrop-blur-sm transition-colors ${
-                      validationErrors.codigoPostal 
-                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500/50' 
-                        : 'border-white/20 focus:ring-blue-500/50 focus:border-blue-500/50'
-                    }`}
+                    className={validationErrors.codigoPostal ? inputErr : inputClass}
                     placeholder="4700"
                     required
                   />
-                  {validationErrors.codigoPostal && (
-                    <div className="flex items-center space-x-1 mt-2 text-red-400 text-sm">
-                      <IoWarningOutline className="w-4 h-4" />
-                      <span>{validationErrors.codigoPostal}</span>
-                    </div>
-                  )}
+                  <FieldError message={validationErrors.codigoPostal} />
                 </div>
-              </div>
 
-              {/* Campo Dirección - Ahora full width debajo */}
-              <div>
-                <label htmlFor="direccion" className="block text-slate-300 font-medium mb-3">
-                  Dirección Completa
-                </label>
-                <input
-                  type="text"
-                  id="direccion"
-                  name="direccion"
-                  value={formData.direccion}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 backdrop-blur-sm"
-                  placeholder="Calle, número, piso, depto"
-                  required
-                />
+                <div className="sm:col-span-2 xl:col-span-4">
+                  <FieldLabel htmlFor="direccion">Dirección</FieldLabel>
+                  <input
+                    type="text"
+                    id="direccion"
+                    name="direccion"
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="Calle, número, piso, depto"
+                    required
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Botón de envío */}
-            <div className="pt-6">
-              {/* Mostrar errores de validación antes del botón */}
-              {Object.keys(validationErrors).length > 0 && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-4">
-                  <div className="flex items-center space-x-2 text-red-400 text-sm">
-                    <IoWarningOutline className="w-4 h-4" />
-                    <span>Por favor, corrige los errores antes de continuar</span>
-                  </div>
-                </div>
+            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-borderBase">
+              {hasErrors ? (
+                <p className="text-customRed text-xs flex items-center gap-1">
+                  <IoWarningOutline className="w-3.5 h-3.5" aria-hidden />
+                  Revisá los campos marcados
+                </p>
+              ) : (
+                <p className="text-xs text-textMuted hidden sm:block">
+                  Podés editar estos datos después desde el listado
+                </p>
               )}
-              
-              <button
-                type="submit"
-                className={`w-full flex items-center justify-center space-x-2 py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 ${
-                  isLoading || Object.keys(validationErrors).length > 0
-                    ? "bg-slate-600 cursor-not-allowed text-slate-400"
-                    : "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white hover:scale-105 shadow-lg hover:shadow-emerald-500/25"
-                }`}
-                disabled={isLoading || Object.keys(validationErrors).length > 0}
-              >
-                <IoSaveOutline className="w-5 h-5" />
-                <span>
-                  {isLoading 
-                    ? "Creando..." 
-                    : Object.keys(validationErrors).length > 0 
-                      ? "Corrige los errores"
-                      : "Crear Cliente"
-                  }
-                </span>
-              </button>
+
+              <div className="flex gap-2 sm:ml-auto">
+                <button
+                  type="button"
+                  onClick={() => navigate('/panelClientes')}
+                  className={btnSecondary}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading || hasErrors}
+                  className={`${btnPrimary} px-5`}
+                >
+                  <IoSaveOutline className="w-4 h-4" />
+                  {isLoading ? 'Guardando…' : hasErrors ? 'Revisar datos' : 'Crear cliente'}
+                </button>
+              </div>
             </div>
           </form>
         </div>
       </div>
-    </div>
+    </AdminPanelLayout>
   );
 };
 

@@ -274,7 +274,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
   const handleTogglePublish = async (propertyId, currentStatus) => {
     if (!tenantHasLanding) {
-      toast.warning('Tu plan actual no incluye landing pages. Actualiza a Plan Profesional o Empresarial.');
+      toast.warning('Tu plan actual no incluye página web. Actualizá a Plan Profesional o GestPRO.');
       return;
     }
 
@@ -286,8 +286,8 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       
       toast.success(
         !currentStatus 
-          ? '✅ Propiedad publicada en landing' 
-          : '🚫 Propiedad oculta de landing'
+          ? '✅ Propiedad publicada en la página web'
+          : '🚫 Propiedad oculta de la página web'
       );
     } catch (error) {
       console.error('Error al cambiar publicación:', error);
@@ -394,7 +394,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
           element: '.tour-images-btn',
           popover: {
             title: '🖼️ Gestionar Imágenes',
-            description: 'Subí, ordená y eliminá las fotos de la propiedad. Las imágenes se usan en la ficha PDF, WhatsApp y la landing page.',
+            description: 'Subí, ordená y eliminá las fotos de la propiedad. Las imágenes se usan en la ficha PDF, WhatsApp y la página web.',
             side: 'bottom',
           },
         },
@@ -409,7 +409,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
         {
           element: '.tour-landing-toggle',
           popover: {
-            title: '🌐 Publicar en Landing Page',
+            title: '🌐 Publicar en la página web',
             description: 'Activá este interruptor para que la propiedad aparezca en tu sitio web público. Desactivalo para ocultarla sin eliminarla.',
             side: 'top',
           },
@@ -734,12 +734,12 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                     <IoGlobeOutline className={`w-5 h-5 ${property.isPublishedInLanding ? 'text-brand-light' : 'text-textMuted'}`} aria-hidden />
                     <div>
                       <p className={`text-sm font-medium ${property.isPublishedInLanding ? 'text-brand-light' : 'text-textSecondary'}`}>
-                        Landing Page
+                        Página web
                       </p>
                       <p className="text-xs text-textMuted">
                         {tenantHasLanding
                           ? (property.isPublishedInLanding ? 'Visible en tu sitio' : 'Oculta del sitio')
-                          : 'Plan sin landing pages'
+                          : 'Plan sin página web'
                         }
                       </p>
                     </div>

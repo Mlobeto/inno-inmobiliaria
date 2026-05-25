@@ -500,7 +500,7 @@ export default function PanelLoteos() {
                       <button
                         onClick={() => handleTogglePublish(loteo.id, loteo.isPublished)}
                         className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors"
-                        title={loteo.isPublished ? 'Despublicar' : 'Publicar en landing'}
+                        title={loteo.isPublished ? 'Despublicar' : 'Publicar en la página web'}
                       >
                         {loteo.isPublished ? <IoEyeOffOutline className="w-5 h-5" /> : <IoEyeOutline className="w-5 h-5" />}
                       </button>

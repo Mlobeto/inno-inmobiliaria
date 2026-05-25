@@ -14,7 +14,7 @@ const FEATURES = [
   'Contratos y PDF automático',
   'Propiedades, clientes y cobros',
   'Leads y Mercado Libre',
-  'Landing propia de tu inmobiliaria',
+  'Página web propia de tu inmobiliaria',
   'Alertas de vencimientos',
   'Facturación electrónica AFIP',
 ];

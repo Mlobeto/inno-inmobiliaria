@@ -31,7 +31,7 @@ const COMPARE_ROWS = [
   { label: 'Clientes',             key: 'maxClients',             render: v => v === -1 ? 'Ilimitados' : v },
   { label: 'Usuarios',             key: 'maxUsers',               render: v => v },
   { label: 'Almacenamiento',       key: 'maxStorageGB',           render: v => `${v} GB` },
-  { label: 'Landing Page',         key: 'landingPage',            render: v => v },
+  { label: 'Página web',         key: 'landingPage',            render: v => v },
   { label: 'Portal inquilinos',    key: 'portalInquilino',        render: v => v },
   { label: 'MercadoLibre',         key: 'mercadoLibreIntegration',render: v => v },
   { label: 'WhatsApp',             key: 'whatsappIntegration',    render: v => v },
@@ -214,7 +214,7 @@ const PlanSelector = () => {
                     {/* Features flags */}
                     <div className="space-y-1.5 mb-6 text-sm flex-1">
                       {[
-                        { key: 'landingPage',             label: 'Landing Page',          icon: <IoGlobeOutline /> },
+                        { key: 'landingPage',             label: 'Página web',          icon: <IoGlobeOutline /> },
                         { key: 'portalInquilino',         label: 'Portal inquilinos',     icon: <IoKeyOutline /> },
                         { key: 'mercadoLibreIntegration', label: 'MercadoLibre',           icon: <IoStorefrontOutline /> },
                         { key: 'leads',                   label: 'CRM Leads',             icon: <IoFunnelOutline /> },

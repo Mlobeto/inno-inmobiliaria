@@ -13,7 +13,7 @@ const FEATURES = [
   'Contratos de alquiler y venta con PDF automático',
   'Gestión de propiedades, clientes y cobros',
   'Alertas de vencimientos y actualizaciones',
-  'Landing page propia para publicar propiedades',
+  'Página web propia para publicar propiedades',
   'Facturación electrónica (AFIP/ARCA)',
 ];
 

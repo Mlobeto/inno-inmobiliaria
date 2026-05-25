@@ -909,7 +909,7 @@ const CompanySettings = () => {
               Subdominio
               {!tenantInfo.hasLanding && (
                 <span className="ml-2 text-xs bg-customYellowMuted text-customYellow border border-customYellow/30 px-2 py-0.5 rounded-full">
-                  Requiere Plan con Landing
+                  Requiere plan con página web
                 </span>
               )}
               {checkingSubdomain && (
@@ -942,7 +942,7 @@ const CompanySettings = () => {
               {tenantInfo.hasLanding ? (
                 <>
                   <p className="text-sm text-brand-light">
-                    <strong>✓ Landing activado:</strong> Tu página estará disponible en{' '}
+                    <strong>✓ Página web activada:</strong> Tu página estará disponible en{' '}
                     <strong>gestprop.com.ar/{tenantInfo.subdomain || 'tu-nombre'}</strong>
                   </p>
                   <p className="text-xs text-textSecondary mt-2">
@@ -952,7 +952,7 @@ const CompanySettings = () => {
               ) : (
                 <>
                   <p className="text-sm text-customBlue">
-                    <strong>ℹ️ URL personalizada:</strong> Con un plan que incluya Landing, podrás publicar tus propiedades en <strong>gestprop.com.ar/tu-nombre</strong>.
+                    <strong>ℹ️ URL personalizada:</strong> Con un plan que incluya página web, podrás publicar tus propiedades en <strong>gestprop.com.ar/tu-nombre</strong>.
                   </p>
                   <p className="text-xs text-textSecondary mt-2">
                     💡 Actualizá tu plan desde "Mi Plan" en el menú para desbloquear esta función.
@@ -1018,7 +1018,7 @@ const CompanySettings = () => {
               WhatsApp de Contacto
               {tenantInfo.hasLanding && (
                 <span className="ml-2 text-xs bg-brand-muted text-brand-light border border-borderStrong px-2 py-0.5 rounded-full">
-                  Se mostrará en tu Landing
+                  Se mostrará en tu página web
                 </span>
               )}
             </label>
@@ -1031,7 +1031,7 @@ const CompanySettings = () => {
               placeholder="+5491112345678 (con código de país)"
             />
             <p className="text-xs text-textMuted mt-1">
-              💡 Los visitantes de tu landing podrán contactarte por WhatsApp. Incluye código de país (ej: +549).
+              💡 Los visitantes de tu página web podrán contactarte por WhatsApp. Incluye código de país (ej: +549).
             </p>
           </div>
 
@@ -1298,7 +1298,7 @@ const CompanySettings = () => {
                   </button>
                 </div>
                 <p className="text-sm text-textSecondary mb-4">
-                  Este mensaje se usa cuando un cliente consulta por una propiedad (panel admin y landing).
+                  Este mensaje se usa cuando un cliente consulta por una propiedad (panel admin y página web).
                   Las variables se reemplazan automáticamente con los datos reales de la propiedad.
                 </p>
                 <div className={`${card} p-4 mb-4 bg-brand-subtle/30`}>

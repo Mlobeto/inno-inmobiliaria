@@ -293,10 +293,10 @@ const Panel = () => {
                 to={`/${tenantSubdomain}`}
                 target="_blank"
                 className={navBtn}
-                title="Ver mi landing pública"
+                title="Ver mi página web"
               >
                 <IoGlobeOutline className="w-4 h-4 shrink-0 text-brand-light" />
-                <span className="hidden xl:inline">Mi landing</span>
+                <span className="hidden xl:inline">Mi página web</span>
               </Link>
             )}
             <Link to="/company-settings" className={navBtn} title="Configuración">
