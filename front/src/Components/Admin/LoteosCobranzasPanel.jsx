@@ -14,6 +14,7 @@ import {
   IoCashOutline,
   IoGridOutline,
 } from 'react-icons/io5';
+import LoteoCuotaReciboPdf from '../PdfTemplates/LoteoCuotaReciboPdf';
 import {
   btnGhost,
   btnPrimary,
@@ -251,6 +252,26 @@ export default function LoteosCobranzasPanel({ onOpenPlan }) {
                       >
                         <IoReceiptOutline className="w-4 h-4" />
                       </button>
+                      {item.pagado && (
+                        <LoteoCuotaReciboPdf
+                          cuota={{
+                            id: item.cuotaId,
+                            numeroCuota: item.numeroCuota,
+                            monto: item.monto,
+                            fechaPago: item.fechaPago,
+                            fechaVencimiento: item.fechaVencimiento,
+                          }}
+                          venta={{
+                            id: item.ventaId,
+                            clienteNombre: item.clienteNombre,
+                            clienteTelefono: item.clienteTelefono,
+                            cantidadCuotas: item.cantidadCuotas,
+                          }}
+                          lote={{ number: item.loteNumber }}
+                          loteo={{ name: item.loteoNombre }}
+                          iconOnly
+                        />
+                      )}
                       <button
                         type="button"
                         disabled={paying}

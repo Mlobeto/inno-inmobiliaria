@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import LoteoVentaPdf from '../PdfTemplates/LoteoVentaPdf';
+import LoteoPresupuestoPdf from '../PdfTemplates/LoteoPresupuestoPdf';
+import LoteoCuotaReciboPdf from '../PdfTemplates/LoteoCuotaReciboPdf';
 import { useDolarRate } from '../hooks/useDolarRate';
 import {
   useGetLoteosQuery,
@@ -1161,6 +1163,7 @@ export default function PanelLoteos() {
                           <th className="px-3 py-2 text-right">Monto</th>
                           <th className="px-3 py-2 text-center">Estado</th>
                           <th className="px-3 py-2 text-center">Acción</th>
+                          <th className="px-3 py-2 text-center hidden sm:table-cell">Recibo</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1198,6 +1201,17 @@ export default function PanelLoteos() {
                               >
                                 {c.pagado ? 'Desmarcar' : 'Pagar'}
                               </button>
+                            </td>
+                            <td className="px-3 py-2 text-center hidden sm:table-cell">
+                              {c.pagado && (
+                                <LoteoCuotaReciboPdf
+                                  cuota={c}
+                                  venta={venta}
+                                  lote={selectedLoteForVenta}
+                                  loteo={loteoDetail}
+                                  iconOnly
+                                />
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1591,17 +1605,22 @@ export default function PanelLoteos() {
                 </div>
 
                 {/* Botones */}
-                <div className="flex space-x-3 pt-2 border-t border-borderBase">
+                <div className="flex flex-wrap gap-3 pt-2 border-t border-borderBase">
                   <button
                     onClick={closeVentaModal}
-                    className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
+                    className="flex-1 min-w-[120px] py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
                   >
                     Cancelar
                   </button>
+                  <LoteoPresupuestoPdf
+                    ventaForm={ventaForm}
+                    lote={selectedLoteForVenta}
+                    loteo={loteoDetail}
+                  />
                   <button
                     onClick={saveVenta}
                     disabled={savingVenta}
-                    className="flex-1 py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-textWhite rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
+                    className="flex-1 min-w-[140px] py-2 bg-brand hover:bg-brand-dark disabled:opacity-50 text-textWhite rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
                   >
                     <IoReceiptOutline className="w-5 h-5" />
                     <span>{savingVenta ? 'Guardando...' : 'Registrar venta'}</span>
