@@ -1041,7 +1041,7 @@ model loteos {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  tenants     tenants           @relation(fields: [tenantId], references: [tenantId])
+  tenants     tenants           @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
   lotes       lotes[]
 
   @@index([tenantId], map: "idx_loteos_tenant")
@@ -1090,7 +1090,7 @@ model lote_ventas {
   updatedAt        DateTime  @updatedAt
 
   lote        lotes         @relation(fields: [loteId], references: [id], onDelete: Cascade)
-  tenants     tenants       @relation(fields: [tenantId], references: [tenantId])
+  tenants     tenants       @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
   cuotas      lote_cuotas[]
   comisiones  commissions[]
 

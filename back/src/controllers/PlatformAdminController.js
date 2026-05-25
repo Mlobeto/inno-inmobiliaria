@@ -471,14 +471,25 @@ exports.deleteTenant = async (req, res) => {
       });
     }
 
-    await prisma.tenants.delete({ where: { tenantId } });
+    await prisma.$transaction(async (tx) => {
+      // loteos y lote_ventas tienen FK RESTRICT hacia tenants en la BD actual
+      await tx.lote_ventas.deleteMany({ where: { tenantId } });
+      await tx.loteos.deleteMany({ where: { tenantId } });
+      await tx.tenants.delete({ where: { tenantId } });
+    });
+
+    await invalidateTenantCache(tenant.tenantId, tenant.subdomain, null);
 
     res.status(200).json({
       success: true,
       message: 'Tenant eliminado exitosamente',
     });
   } catch (error) {
-    logger.error('Error eliminando tenant', { tenantId: req.params.tenantId, error: error.message });
+    logger.error('Error eliminando tenant', {
+      tenantId: req.params.tenantId,
+      error: error.message,
+      code: error.code,
+    });
     res.status(500).json({
       success: false,
       message: 'Error al eliminar tenant',
