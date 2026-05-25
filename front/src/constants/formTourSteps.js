@@ -5,7 +5,7 @@ export function getClientesFormTourSteps() {
       element: '#tour-cliente-identidad',
       popover: {
         title: 'Identificación del cliente',
-        description: 'Completá CUIL/DNI, nombre, email y teléfono. Estos datos se usan en contratos y recibos.',
+        description: 'Completá CUIL/DNI, nombre y teléfono. No podés avanzar hasta tenerlos listos.',
         side: 'bottom',
         align: 'start',
       },
@@ -14,7 +14,7 @@ export function getClientesFormTourSteps() {
       element: '#tour-cliente-domicilio',
       popover: {
         title: 'Domicilio',
-        description: 'Provincia, ciudad, código postal y dirección. Necesarios para documentos legales.',
+        description: 'Provincia, ciudad, CP y dirección. Completalos para seguir.',
         side: 'top',
       },
     },
@@ -37,7 +37,7 @@ export function getPropiedadesFormTourSteps() {
       element: '#tour-prop-cliente',
       popover: {
         title: 'Propietario',
-        description: 'Elegí el cliente propietario. Si no existe, podés crearlo desde acá sin salir del formulario.',
+        description: 'Elegí el propietario antes de continuar. Podés crear uno nuevo con +.',
         side: 'bottom',
       },
     },
@@ -109,7 +109,7 @@ export function getContratosFormTourSteps() {
       element: '#tour-contrato-inquilino',
       popover: {
         title: 'Inquilino',
-        description: 'Buscá un cliente existente o creá uno nuevo con el botón +.',
+        description: 'Buscá un inquilino o creá uno con +. Es obligatorio para seguir.',
         side: 'bottom',
       },
     },
@@ -117,7 +117,7 @@ export function getContratosFormTourSteps() {
       element: '#tour-contrato-condiciones',
       popover: {
         title: 'Condiciones del alquiler',
-        description: 'Fecha de inicio, monto, actualización por IPC, honorarios y duración en meses.',
+        description: 'Completá fecha, monto, frecuencia IPC y duración antes de avanzar.',
         side: 'top',
       },
     },

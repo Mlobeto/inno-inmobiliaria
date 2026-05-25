@@ -550,6 +550,13 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                     <div id="tour-contrato-condiciones" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Inquilino */}
                       <div id="tour-contrato-inquilino" className="space-y-1 sm:col-span-2">
+                        <input
+                          type="hidden"
+                          id="tour-contrato-locatarioId"
+                          value={formData.locatarioId || ''}
+                          readOnly
+                          aria-hidden
+                        />
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoPersonOutline className="w-3.5 h-3.5 text-brand-light" />
                           Inquilino *

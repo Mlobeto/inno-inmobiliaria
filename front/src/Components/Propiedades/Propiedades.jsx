@@ -567,6 +567,7 @@ const CreateProperty = () => {
                 <IoPersonOutline className="w-6 h-6 text-brand-light" />
                 Información del Cliente
               </h3>
+              <input type="hidden" id="tour-prop-idClient" value={formData.idClient || ''} readOnly aria-hidden />
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div>
                   <label htmlFor="client" className={`${labelClass} font-medium mb-2`}>

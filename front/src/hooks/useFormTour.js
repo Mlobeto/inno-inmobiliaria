@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
 import { selectCurrentUser } from '@shared/redux';
 import { isFormTourDone, markFormTourDone } from '../constants/onboardingStorage';
-import { runDriverTour } from '../utils/driverTour';
+import { runValidatedFormTour } from '../utils/driverTour';
 
 function getTenantId(storeUser) {
   if (storeUser?.tenantId) return storeUser.tenantId;
@@ -15,10 +16,7 @@ function getTenantId(storeUser) {
 
 /**
  * Tour contextual la primera vez que el tenant abre un formulario.
- * @param {string} tourKey — 'clientes' | 'propiedades' | 'contratos'
- * @param {() => import('driver.js').DriveStep[]} getSteps
- * @param {unknown[]} deps — dependencias para re-evaluar (ej. formData.propertyId)
- * @param {{ enabled?: boolean, delay?: number }} options
+ * No avanza de paso hasta completar los campos de la sección actual.
  */
 export function useFormTour(tourKey, getSteps, deps = [], { enabled = true, delay = 650 } = {}) {
   const started = useRef(false);
@@ -33,8 +31,12 @@ export function useFormTour(tourKey, getSteps, deps = [], { enabled = true, dela
     started.current = true;
     const timer = setTimeout(() => {
       const steps = getSteps();
-      runDriverTour(steps, {
+      runValidatedFormTour(steps, {
+        tourKey,
         onComplete: () => markFormTourDone(tourKey, tenantId),
+        onValidationError: (message) => {
+          toast.warn(message, { autoClose: 3500, toastId: `form-tour-${tourKey}` });
+        },
       });
     }, delay);
 
