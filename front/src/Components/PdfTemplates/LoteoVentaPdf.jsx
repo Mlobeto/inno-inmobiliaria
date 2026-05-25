@@ -50,6 +50,7 @@ const LoteoVentaPdf = ({ venta, lote, loteo }) => {
     TRIMESTRAL: 'trimestral',
     SEMESTRAL: 'semestral',
     ANUAL: 'anual',
+    PERSONALIZADO: 'fechas acordadas',
   };
 
   const generatePdf = () => {
@@ -255,10 +256,10 @@ const LoteoVentaPdf = ({ venta, lote, loteo }) => {
       }
 
       doc.setFontSize(8);
-      text(String(c.numeroCuota), margin + 2, y);
+      text(c.numeroCuota === 0 ? 'Anticipo' : String(c.numeroCuota), margin + 2, y);
       text(fmtDate(c.fechaVencimiento), margin + 15, y);
       text(fmt(c.monto, cur), margin + 55, y);
-      text(c.pagado ? 'Pagada' : 'Pendiente', margin + 90, y);
+      text(c.pagado ? (c.numeroCuota === 0 ? 'Cobrada' : 'Pagada') : 'Pendiente', margin + 90, y);
       text(c.pagado && c.fechaPago ? fmtDate(c.fechaPago) : '—', margin + 125, y);
       y += 6;
     });

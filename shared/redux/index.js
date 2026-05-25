@@ -171,6 +171,7 @@ export {
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,
+  useGetCobranzasLoteosQuery,
   useGetVentaLoteQuery,
   useCreateVentaLoteMutation,
   useUpdateVentaLoteMutation,

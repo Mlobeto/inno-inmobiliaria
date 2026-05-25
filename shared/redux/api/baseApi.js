@@ -108,6 +108,7 @@ export const baseApi = createApi({
     // Loteos
     'Loteo',
     'LoteVenta',
+    'LoteoCobranzas',
 
     // Agentes y Comisiones
     'Agent',

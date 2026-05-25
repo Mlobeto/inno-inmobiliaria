@@ -38,7 +38,7 @@ import {
   tableWrap,
 } from './adminPanelTheme';
 
-const EMPTY_FORM = { username: '', password: '', fullName: '', email: '' };
+const EMPTY_FORM = { username: '', password: '', fullName: '' };
 
 const formatCurrency = (n) =>
   new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n || 0);
@@ -65,7 +65,7 @@ export default function PanelAgentes() {
 
   const openEdit = (agent) => {
     setEditingAgent(agent);
-    setForm({ username: agent.username, password: '', fullName: agent.fullName || '', email: agent.email || '' });
+    setForm({ username: agent.username, password: '', fullName: agent.fullName || '' });
     setError('');
     setShowModal(true);
   };
@@ -82,7 +82,7 @@ export default function PanelAgentes() {
     setError('');
     try {
       if (editingAgent) {
-        const payload = { agentId: editingAgent.adminId, fullName: form.fullName, email: form.email };
+        const payload = { agentId: editingAgent.adminId, fullName: form.fullName };
         if (form.password) payload.password = form.password;
         await updateAgent(payload).unwrap();
         setSuccess('Agente actualizado correctamente');
@@ -91,7 +91,11 @@ export default function PanelAgentes() {
           setError('Usuario y contraseña son obligatorios');
           return;
         }
-        await createAgent(form).unwrap();
+        await createAgent({
+          username: form.username.trim(),
+          password: form.password,
+          fullName: form.fullName,
+        }).unwrap();
         setSuccess('Agente creado correctamente');
       }
       closeModal();
@@ -210,7 +214,7 @@ export default function PanelAgentes() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-textSecondary text-sm hidden md:table-cell">
-                    {agent.email || <span className="text-textMuted italic">Sin email</span>}
+                    {agent.email || agent.username}
                   </td>
                   <td className="px-4 py-3 text-right hidden sm:table-cell">
                     <span className="text-brand-light font-medium text-sm">{formatCurrency(agent.totalCommissions)}</span>
@@ -264,8 +268,16 @@ export default function PanelAgentes() {
 
               {!editingAgent && (
                 <div>
-                  <label className={labelClass}>Usuario *</label>
-                  <input type="text" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="ej: juan.perez" className={inputClass} required />
+                  <label className={labelClass}>Email (usuario de acceso) *</label>
+                  <input
+                    type="email"
+                    value={form.username}
+                    onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    placeholder="agente@inmobiliaria.com"
+                    className={inputClass}
+                    required
+                    autoComplete="username"
+                  />
                 </div>
               )}
 
@@ -282,11 +294,6 @@ export default function PanelAgentes() {
               <div>
                 <label className={labelClass}>Nombre completo</label>
                 <input type="text" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Juan Pérez" className={inputClass} />
-              </div>
-
-              <div>
-                <label className={labelClass}>Email</label>
-                <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="juan@inmobiliaria.com" className={inputClass} />
               </div>
 
               <div className="flex gap-3 pt-2">

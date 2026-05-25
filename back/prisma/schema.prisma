@@ -1085,6 +1085,8 @@ model lote_ventas {
   montoCuota       Float
   interes          Float?
   periodicidad     String    @default("MENSUAL") @db.VarChar(20)
+  diaVencimiento   Int?      @default(10)
+  modoPlan         String?   @default("PERIODICO") @db.VarChar(20)
   notas            String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt

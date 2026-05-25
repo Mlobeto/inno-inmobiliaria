@@ -1,4 +1,9 @@
 const prisma = require('../utils/prismaClient');
+const {
+  buildPeriodicCuotas,
+  buildCustomCuotas,
+  calcFinancingTotals,
+} = require('../../../shared/src/utils/loteCuotasSchedule');
 
 // ─────────────────────────────────────────────
 // LOTEOS — CRUD del loteo completo
@@ -271,6 +276,7 @@ exports.createVentaLote = async (req, res) => {
       fechaVenta, precioTotal, currency,
       anticipo, cantidadCuotas, interes, periodicidad, notas,
       comisionPercent,
+      modoPlan, diaVencimiento, cuotasCustom,
     } = req.body;
 
     if (!clienteNombre?.trim()) {
@@ -279,8 +285,17 @@ exports.createVentaLote = async (req, res) => {
     if (!precioTotal || precioTotal <= 0) {
       return res.status(400).json({ success: false, message: 'El precio total es obligatorio' });
     }
-    if (!cantidadCuotas || cantidadCuotas <= 0) {
+
+    const planMode = (modoPlan === 'PERSONALIZADO' || periodicidad === 'PERSONALIZADO')
+      ? 'PERSONALIZADO'
+      : 'PERIODICO';
+    const isCustom = planMode === 'PERSONALIZADO';
+
+    if (!isCustom && (!cantidadCuotas || cantidadCuotas <= 0)) {
       return res.status(400).json({ success: false, message: 'La cantidad de cuotas es obligatoria' });
+    }
+    if (isCustom && (!Array.isArray(cuotasCustom) || cuotasCustom.length === 0)) {
+      return res.status(400).json({ success: false, message: 'Definí al menos una cuota con fecha de vencimiento' });
     }
 
     const loteo = await prisma.loteos.findFirst({ where: { id: Number(loteoId), tenantId } });
@@ -294,30 +309,50 @@ exports.createVentaLote = async (req, res) => {
     if (existing) return res.status(409).json({ success: false, message: 'Este lote ya tiene un plan de venta registrado' });
 
     const saldo = Number(precioTotal) - Number(anticipo || 0);
-    const interesDecimal = interes ? Number(interes) / 100 : 0;
-    // Cálculo con interés simple sobre saldo
-    const montoConInteres = interesDecimal > 0 ? saldo * (1 + interesDecimal) : saldo;
-    const montoCuota = Math.ceil(montoConInteres / Number(cantidadCuotas));
+    const cuotasCount = isCustom ? cuotasCustom.length : Number(cantidadCuotas);
+    const { montoConInteres, montoCuota } = calcFinancingTotals(
+      precioTotal,
+      anticipo,
+      interes,
+      cuotasCount,
+    );
 
     // Comisión inmobiliaria sobre precio total
     const comisionPct = comisionPercent ? Number(comisionPercent) : null;
     const comisionMonto = comisionPct ? Math.round((Number(precioTotal) * comisionPct) / 100) : null;
 
-    // Generar cuotas
     const fechaBase = fechaVenta ? new Date(fechaVenta) : new Date();
-    const MESES_POR_PERIODO = { MENSUAL: 1, BIMESTRAL: 2, TRIMESTRAL: 3, SEMESTRAL: 6, ANUAL: 12 };
-    const mesesPeriodo = MESES_POR_PERIODO[periodicidad] || 1;
+    fechaBase.setHours(12, 0, 0, 0);
+    const diaVenc = Math.min(31, Math.max(1, Number(diaVencimiento) || 10));
 
-    const cuotasData = Array.from({ length: Number(cantidadCuotas) }, (_, i) => {
-      const fecha = new Date(fechaBase);
-      fecha.setMonth(fecha.getMonth() + (i + 1) * mesesPeriodo);
-      return {
-        numeroCuota: i + 1,
-        fechaVencimiento: fecha,
-        monto: montoCuota,
-        pagado: false,
-      };
-    });
+    let cuotasData;
+    if (isCustom) {
+      for (const row of cuotasCustom) {
+        if (!row.fechaVencimiento) {
+          return res.status(400).json({ success: false, message: 'Cada cuota debe tener fecha de vencimiento' });
+        }
+      }
+      cuotasData = buildCustomCuotas({
+        cuotasCustom,
+        montoConInteres,
+        anticipo: Number(anticipo || 0),
+        fechaBase,
+      });
+      if (cuotasData.length === 0) {
+        return res.status(400).json({ success: false, message: 'No se pudieron generar las cuotas' });
+      }
+    } else {
+      cuotasData = buildPeriodicCuotas({
+        fechaBase,
+        cantidadCuotas: cuotasCount,
+        periodicidad: periodicidad || 'MENSUAL',
+        diaVencimiento: diaVenc,
+        montoCuota,
+        anticipo: Number(anticipo || 0),
+      });
+    }
+
+    const resolvedPeriodicidad = isCustom ? 'PERSONALIZADO' : (periodicidad || 'MENSUAL');
 
     const venta = await prisma.lote_ventas.create({
       data: {
@@ -331,10 +366,12 @@ exports.createVentaLote = async (req, res) => {
         currency: currency || 'ARS',
         anticipo: Number(anticipo || 0),
         saldo,
-        cantidadCuotas: Number(cantidadCuotas),
+        cantidadCuotas: cuotasCount,
         montoCuota,
         interes: interes ? Number(interes) : null,
-        periodicidad: periodicidad || 'MENSUAL',
+        periodicidad: resolvedPeriodicidad,
+        diaVencimiento: isCustom ? null : diaVenc,
+        modoPlan: planMode,
         notas: notas?.trim() || null,
         comisionPercent: comisionPct,
         comisionMonto,
@@ -414,6 +451,122 @@ exports.updateVentaLote = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────
+// COBRANZAS — todas las cuotas del tenant
+// ─────────────────────────────────────────────
+
+exports.getCobranzasLoteos = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { filter = 'pendiente', loteoId, search } = req.query;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const ventaWhere = {
+      tenantId,
+      ...(loteoId && { lote: { loteoId: Number(loteoId) } }),
+      ...(search?.trim() && {
+        OR: [
+          { clienteNombre: { contains: search.trim(), mode: 'insensitive' } },
+          { clienteCuil: { contains: search.trim(), mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    const cuotaWhere = { venta: ventaWhere };
+    if (filter === 'pagada') {
+      cuotaWhere.pagado = true;
+    } else if (filter === 'vencida') {
+      cuotaWhere.pagado = false;
+      cuotaWhere.fechaVencimiento = { lt: now };
+    } else if (filter === 'pendiente') {
+      cuotaWhere.pagado = false;
+      cuotaWhere.fechaVencimiento = { gte: now };
+    }
+
+    const [cuotas, allUnpaid, pagadasMes, ventasActivas] = await Promise.all([
+      prisma.lote_cuotas.findMany({
+        where: cuotaWhere,
+        include: {
+          venta: {
+            include: {
+              lote: {
+                select: {
+                  id: true,
+                  number: true,
+                  parcela: true,
+                  loteo: { select: { id: true, name: true } },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ pagado: 'asc' }, { fechaVencimiento: 'asc' }],
+        take: 300,
+      }),
+      prisma.lote_cuotas.findMany({
+        where: { pagado: false, venta: { tenantId } },
+        select: { monto: true, fechaVencimiento: true },
+      }),
+      prisma.lote_cuotas.count({
+        where: {
+          pagado: true,
+          fechaPago: { gte: startOfMonth },
+          venta: { tenantId },
+        },
+      }),
+      prisma.lote_ventas.count({ where: { tenantId } }),
+    ]);
+
+    const vencidas = allUnpaid.filter((c) => new Date(c.fechaVencimiento) < now);
+    const pendientes = allUnpaid.filter((c) => new Date(c.fechaVencimiento) >= now);
+
+    const items = cuotas.map((c) => {
+      const venc = new Date(c.fechaVencimiento);
+      let estado = 'pendiente';
+      if (c.pagado) estado = 'pagada';
+      else if (venc < now) estado = 'vencida';
+
+      return {
+        cuotaId: c.id,
+        numeroCuota: c.numeroCuota,
+        fechaVencimiento: c.fechaVencimiento,
+        fechaPago: c.fechaPago,
+        monto: c.monto,
+        pagado: c.pagado,
+        notas: c.notas,
+        ventaId: c.venta.id,
+        loteoId: c.venta.lote.loteo.id,
+        loteoNombre: c.venta.lote.loteo.name,
+        loteId: c.venta.lote.id,
+        loteNumber: c.venta.lote.number,
+        loteParcela: c.venta.lote.parcela,
+        clienteNombre: c.venta.clienteNombre,
+        clienteTelefono: c.venta.clienteTelefono,
+        currency: c.venta.currency,
+        cantidadCuotas: c.venta.cantidadCuotas,
+        estado,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      stats: {
+        ventasActivas,
+        vencidasCount: vencidas.length,
+        vencidasMonto: vencidas.reduce((s, c) => s + c.monto, 0),
+        pendientesCount: pendientes.length,
+        pendientesMonto: pendientes.reduce((s, c) => s + c.monto, 0),
+        pagadasMes,
+      },
+      cuotas: items,
+    });
+  } catch (error) {
+    console.error('Error en getCobranzasLoteos:', error);
+    return res.status(500).json({ success: false, message: 'Error al obtener cobranzas' });
+  }
+};
+
 exports.pagarCuota = async (req, res) => {
   try {
     const { tenantId } = req.user;
@@ -422,6 +575,20 @@ exports.pagarCuota = async (req, res) => {
 
     const loteo = await prisma.loteos.findFirst({ where: { id: Number(loteoId), tenantId } });
     if (!loteo) return res.status(404).json({ success: false, message: 'Loteo no encontrado' });
+
+    const existing = await prisma.lote_cuotas.findFirst({
+      where: {
+        id: Number(cuotaId),
+        venta: {
+          tenantId,
+          loteId: Number(loteId),
+          lote: { loteoId: Number(loteoId) },
+        },
+      },
+    });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Cuota no encontrada' });
+    }
 
     const cuota = await prisma.lote_cuotas.update({
       where: { id: Number(cuotaId) },

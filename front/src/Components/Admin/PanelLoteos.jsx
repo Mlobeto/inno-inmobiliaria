@@ -33,10 +33,13 @@ import {
   IoTimeOutline,
   IoCashOutline,
   IoAlertCircleOutline,
+  IoCalendarOutline,
 } from 'react-icons/io5';
 import { AdminPanelLayout } from './AdminPanelLayout';
-import { btnPrimary, btnSecondary, card, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass } from './adminPanelTheme';
+import LoteosCobranzasPanel from './LoteosCobranzasPanel';
+import { btnPrimary, btnSecondary, card, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass, tabActive, tabInactive } from './adminPanelTheme';
 import { uploadMultipleFiles } from '../../utils/azureUpload';
+import { previewCuotasSchedule, PERIODICIDAD_LABELS, formatCuotaLabel } from '@shared/utils/loteCuotasSchedule';
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 
@@ -81,6 +84,13 @@ const EMPTY_VENTA = {
   cantidadCuotas: '12',
   interes: '',
   periodicidad: 'MENSUAL',
+  modoPlan: 'periodico',
+  diaVencimiento: '10',
+  cuotasPersonalizadas: [
+    { fecha: '', monto: '' },
+    { fecha: '', monto: '' },
+    { fecha: '', monto: '' },
+  ],
   comisionPercent: '',
   notas: '',
 };
@@ -141,6 +151,8 @@ export default function PanelLoteos() {
 
   // Vista principal: null = lista, string = id del loteo seleccionado
   const [selectedLoteoId, setSelectedLoteoId] = useState(null);
+  const [mainView, setMainView] = useState('loteos');
+  const [modalLoteoId, setModalLoteoId] = useState(null);
 
   // Modal loteo
   const [showLoteoModal, setShowLoteoModal]   = useState(false);
@@ -173,8 +185,8 @@ export default function PanelLoteos() {
 
   // Venta del lote seleccionado para el modal
   const { data: ventaData, isLoading: loadingVenta } = useGetVentaLoteQuery(
-    { loteoId: selectedLoteoId, loteId: selectedLoteForVenta?.id },
-    { skip: !showVentaModal || !selectedLoteForVenta }
+    { loteoId: modalLoteoId, loteId: selectedLoteForVenta?.id },
+    { skip: !showVentaModal || !selectedLoteForVenta || !modalLoteoId }
   );
   const venta = ventaData?.venta || null;
 
@@ -244,6 +256,7 @@ export default function PanelLoteos() {
   // ── Modal Venta / Financiación ─────────────────────────────────────────────
 
   const openVentaModal = (lote) => {
+    setModalLoteoId(selectedLoteoId);
     setSelectedLoteForVenta(lote);
     setVentaForm({
       ...EMPTY_VENTA,
@@ -254,28 +267,71 @@ export default function PanelLoteos() {
     setShowVentaModal(true);
   };
 
+  const openVentaFromCobranza = (item) => {
+    setModalLoteoId(item.loteoId);
+    setSelectedLoteForVenta({
+      id: item.loteId,
+      number: item.loteNumber,
+      parcela: item.loteParcela,
+      currency: item.currency,
+    });
+    setVentaError('');
+    setShowVentaModal(true);
+  };
+
   const closeVentaModal = () => {
     setShowVentaModal(false);
     setSelectedLoteForVenta(null);
+    setModalLoteoId(null);
   };
 
   const saveVenta = async () => {
     if (!ventaForm.clienteNombre.trim()) { setVentaError('El nombre del comprador es obligatorio'); return; }
     if (!ventaForm.precioTotal || Number(ventaForm.precioTotal) <= 0) { setVentaError('El precio total es obligatorio'); return; }
-    if (!ventaForm.cantidadCuotas || Number(ventaForm.cantidadCuotas) <= 0) { setVentaError('La cantidad de cuotas es obligatoria'); return; }
+    if (ventaForm.modoPlan === 'periodico' && (!ventaForm.cantidadCuotas || Number(ventaForm.cantidadCuotas) <= 0)) {
+      setVentaError('La cantidad de cuotas es obligatoria');
+      return;
+    }
+    if (ventaForm.modoPlan === 'personalizado') {
+      const conFecha = ventaForm.cuotasPersonalizadas.filter((c) => c.fecha);
+      if (conFecha.length === 0) {
+        setVentaError('Agregá al menos una cuota con fecha de vencimiento');
+        return;
+      }
+    }
     setSavingVenta(true);
     setVentaError('');
     try {
-      await createVentaLote({
-        loteoId: selectedLoteoId,
-        loteId:  selectedLoteForVenta.id,
-        ...ventaForm,
-        precioTotal:     parseFloat(ventaForm.precioTotal),
-        anticipo:        parseFloat(ventaForm.anticipo || 0),
-        cantidadCuotas:  parseInt(ventaForm.cantidadCuotas, 10),
-        interes:         ventaForm.interes ? parseFloat(ventaForm.interes) : null,
+      const payload = {
+        loteoId: modalLoteoId,
+        loteId: selectedLoteForVenta.id,
+        clienteNombre: ventaForm.clienteNombre,
+        clienteCuil: ventaForm.clienteCuil,
+        clienteTelefono: ventaForm.clienteTelefono,
+        fechaVenta: ventaForm.fechaVenta,
+        precioTotal: parseFloat(ventaForm.precioTotal),
+        currency: ventaForm.currency,
+        anticipo: parseFloat(ventaForm.anticipo || 0),
+        interes: ventaForm.interes ? parseFloat(ventaForm.interes) : null,
         comisionPercent: ventaForm.comisionPercent ? parseFloat(ventaForm.comisionPercent) : null,
-      }).unwrap();
+        notas: ventaForm.notas,
+        modoPlan: ventaForm.modoPlan === 'personalizado' ? 'PERSONALIZADO' : 'PERIODICO',
+        diaVencimiento: parseInt(ventaForm.diaVencimiento, 10) || 10,
+        periodicidad: ventaForm.modoPlan === 'personalizado' ? 'PERSONALIZADO' : ventaForm.periodicidad,
+      };
+
+      if (ventaForm.modoPlan === 'personalizado') {
+        payload.cuotasCustom = ventaForm.cuotasPersonalizadas
+          .filter((c) => c.fecha)
+          .map((c) => ({
+            fechaVencimiento: c.fecha,
+            ...(c.monto ? { monto: parseFloat(c.monto) } : {}),
+          }));
+      } else {
+        payload.cantidadCuotas = parseInt(ventaForm.cantidadCuotas, 10);
+      }
+
+      await createVentaLote(payload).unwrap();
     } catch (err) {
       setVentaError(err?.data?.message || 'Error al registrar la venta');
     } finally {
@@ -286,7 +342,7 @@ export default function PanelLoteos() {
   const handlePagarCuota = async (cuotaId, pagado) => {
     try {
       await pagarCuota({
-        loteoId: selectedLoteoId,
+        loteoId: modalLoteoId,
         loteId:  selectedLoteForVenta.id,
         cuotaId,
         pagado,
@@ -299,7 +355,7 @@ export default function PanelLoteos() {
   const handleDeleteVenta = async () => {
     if (!window.confirm('¿Anular la venta y volver el lote a DISPONIBLE?')) return;
     try {
-      await deleteVentaLote({ loteoId: selectedLoteoId, loteId: selectedLoteForVenta.id }).unwrap();
+      await deleteVentaLote({ loteoId: modalLoteoId, loteId: selectedLoteForVenta.id }).unwrap();
       closeVentaModal();
     } catch {
       alert('Error al anular la venta');
@@ -431,8 +487,39 @@ export default function PanelLoteos() {
       }
     >
 
-        {/* ── Vista: Lista de Loteos ── */}
+        {/* Tabs: Loteos | Cobranzas */}
         {!selectedLoteoId && (
+          <div className="flex gap-1 p-1 rounded-lg bg-bgElevated border border-borderBase w-fit mb-5">
+            <button
+              type="button"
+              onClick={() => setMainView('loteos')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                mainView === 'loteos' ? tabActive : tabInactive
+              }`}
+            >
+              <IoGridOutline className="w-4 h-4" />
+              Loteos
+            </button>
+            <button
+              type="button"
+              onClick={() => setMainView('cobranzas')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                mainView === 'cobranzas' ? tabActive : tabInactive
+              }`}
+            >
+              <IoCashOutline className="w-4 h-4" />
+              Cobranzas
+            </button>
+          </div>
+        )}
+
+        {/* ── Vista: Cobranzas ── */}
+        {!selectedLoteoId && mainView === 'cobranzas' && (
+          <LoteosCobranzasPanel onOpenPlan={openVentaFromCobranza} />
+        )}
+
+        {/* ── Vista: Lista de Loteos ── */}
+        {!selectedLoteoId && mainView === 'loteos' && (
           <>
             {isLoading ? (
               <div className="text-textPrimary text-center py-12">Cargando loteos...</div>
@@ -611,10 +698,11 @@ export default function PanelLoteos() {
                         <div className="flex space-x-1 pt-1">
                           <button
                             onClick={() => openVentaModal(lote)}
-                            className="flex-1 py-1 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded text-xs transition-colors"
+                            className="flex-1 py-1.5 px-1 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded text-xs transition-colors flex items-center justify-center gap-1"
                             title="Plan de venta / financiación"
                           >
-                            <IoReceiptOutline className="w-3.5 h-3.5 mx-auto" />
+                            <IoReceiptOutline className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">Plan</span>
                           </button>
                           <button
                             onClick={() => openEditLote(lote)}
@@ -1040,8 +1128,13 @@ export default function PanelLoteos() {
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-textMuted">Periodicidad:</span>
-                      <span className="text-textPrimary">{venta.periodicidad}</span>
+                      <span className="text-textMuted">Plan:</span>
+                      <span className="text-textPrimary">
+                        {PERIODICIDAD_LABELS[venta.periodicidad] || venta.periodicidad}
+                        {venta.diaVencimiento && venta.periodicidad !== 'PERSONALIZADO' && (
+                          <span className="text-textMuted text-xs ml-1">(día {venta.diaVencimiento})</span>
+                        )}
+                      </span>
                     </div>
                     {venta.comisionPercent > 0 && (
                       <div className="flex justify-between border-t border-borderBase pt-1 mt-1">
@@ -1073,7 +1166,9 @@ export default function PanelLoteos() {
                       <tbody>
                         {(venta.cuotas || []).map(c => (
                           <tr key={c.id} className={`border-t border-borderBase/50 ${c.pagado ? 'opacity-60' : ''}`}>
-                            <td className="px-3 py-2 text-textSecondary">{c.numeroCuota}</td>
+                            <td className="px-3 py-2 text-textSecondary">
+                              {formatCuotaLabel(c.numeroCuota)}
+                            </td>
                             <td className="px-3 py-2 text-textSecondary">
                               {new Date(c.fechaVencimiento).toLocaleDateString('es-AR')}
                             </td>
@@ -1083,7 +1178,8 @@ export default function PanelLoteos() {
                             <td className="px-3 py-2 text-center">
                               {c.pagado ? (
                                 <span className="inline-flex items-center gap-1 text-brand-light text-xs">
-                                  <IoCheckmarkCircleOutline className="w-4 h-4" /> Pagada
+                                  <IoCheckmarkCircleOutline className="w-4 h-4" />
+                                  {c.numeroCuota === 0 ? 'Cobrada' : 'Pagada'}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 text-amber-400 text-xs">
@@ -1245,79 +1341,241 @@ export default function PanelLoteos() {
                 {/* Sección: Plan de financiación */}
                 <div>
                   <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Plan de financiación</h3>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-textSecondary text-sm mb-1">Cant. cuotas *</label>
-                        <input
-                          type="number"
-                          min="1"
-                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
-                          value={ventaForm.cantidadCuotas}
-                          onChange={e => setVentaForm(f => ({ ...f, cantidadCuotas: e.target.value }))}
-                        />
+
+                  {/* Modo de plan */}
+                  <div className="flex gap-1 p-1 rounded-lg bg-bgElevated border border-borderBase mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setVentaForm((f) => ({ ...f, modoPlan: 'periodico' }))}
+                      className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                        ventaForm.modoPlan === 'periodico'
+                          ? 'bg-brand text-textWhite'
+                          : 'text-textSecondary hover:text-textPrimary'
+                      }`}
+                    >
+                      Periódico
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setVentaForm((f) => ({ ...f, modoPlan: 'personalizado' }))}
+                      className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-colors ${
+                        ventaForm.modoPlan === 'personalizado'
+                          ? 'bg-brand text-textWhite'
+                          : 'text-textSecondary hover:text-textPrimary'
+                      }`}
+                    >
+                      Fechas personalizadas
+                    </button>
+                  </div>
+
+                  {ventaForm.modoPlan === 'periodico' ? (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-textSecondary text-sm mb-1">Cant. cuotas *</label>
+                          <input
+                            type="number"
+                            min="1"
+                            className={inputClass}
+                            value={ventaForm.cantidadCuotas}
+                            onChange={(e) => setVentaForm((f) => ({ ...f, cantidadCuotas: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-textSecondary text-sm mb-1">Interés (%)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            className={inputClass}
+                            value={ventaForm.interes}
+                            onChange={(e) => setVentaForm((f) => ({ ...f, interes: e.target.value }))}
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-textSecondary text-sm mb-1">Periodicidad</label>
+                          <select
+                            className={`${selectClass} w-full py-2`}
+                            value={ventaForm.periodicidad}
+                            onChange={(e) => setVentaForm((f) => ({ ...f, periodicidad: e.target.value }))}
+                          >
+                            {PERIODICIDAD_OPTS.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-textSecondary text-sm mb-1">Vence día</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="31"
+                            className={inputClass}
+                            value={ventaForm.diaVencimiento}
+                            onChange={(e) => setVentaForm((f) => ({ ...f, diaVencimiento: e.target.value }))}
+                            placeholder="10"
+                          />
+                        </div>
                       </div>
+                      <p className="text-textMuted text-xs flex items-center gap-1">
+                        <IoCalendarOutline className="w-3.5 h-3.5" />
+                        Cada cuota vence el día {ventaForm.diaVencimiento || 10} del mes según la periodicidad elegida.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-textMuted text-xs">
+                        Definí cada pago con su fecha. El monto es opcional: si lo dejás vacío, se reparte el saldo en partes iguales.
+                        Ej: anticipo hoy, otra cuota a 3 meses y la última a 10 meses.
+                      </p>
+                      <div className="space-y-2">
+                        {ventaForm.cuotasPersonalizadas.map((row, idx) => (
+                          <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                            <div>
+                              {idx === 0 && <label className="block text-textSecondary text-xs mb-1">Vencimiento *</label>}
+                              <input
+                                type="date"
+                                className={inputClass}
+                                value={row.fecha}
+                                onChange={(e) => {
+                                  const next = [...ventaForm.cuotasPersonalizadas];
+                                  next[idx] = { ...next[idx], fecha: e.target.value };
+                                  setVentaForm((f) => ({ ...f, cuotasPersonalizadas: next }));
+                                }}
+                              />
+                            </div>
+                            <div>
+                              {idx === 0 && <label className="block text-textSecondary text-xs mb-1">Monto (opcional)</label>}
+                              <input
+                                type="number"
+                                min="0"
+                                className={inputClass}
+                                value={row.monto}
+                                onChange={(e) => {
+                                  const next = [...ventaForm.cuotasPersonalizadas];
+                                  next[idx] = { ...next[idx], monto: e.target.value };
+                                  setVentaForm((f) => ({ ...f, cuotasPersonalizadas: next }));
+                                }}
+                                placeholder="Auto"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (ventaForm.cuotasPersonalizadas.length <= 1) return;
+                                setVentaForm((f) => ({
+                                  ...f,
+                                  cuotasPersonalizadas: f.cuotasPersonalizadas.filter((_, i) => i !== idx),
+                                }));
+                              }}
+                              className="p-2 text-textMuted hover:text-customRed disabled:opacity-30"
+                              disabled={ventaForm.cuotasPersonalizadas.length <= 1}
+                              title="Quitar cuota"
+                            >
+                              <IoTrashOutline className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setVentaForm((f) => ({
+                          ...f,
+                          cuotasPersonalizadas: [...f.cuotasPersonalizadas, { fecha: '', monto: '' }],
+                        }))}
+                        className={`${btnSecondary} text-xs`}
+                      >
+                        <IoAdd className="w-4 h-4" />
+                        Agregar cuota
+                      </button>
                       <div>
-                        <label className="block text-textSecondary text-sm mb-1">Interés (%)</label>
+                        <label className="block text-textSecondary text-sm mb-1">Interés sobre saldo (%)</label>
                         <input
                           type="number"
                           min="0"
                           step="0.1"
-                          className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
+                          className={`${inputClass} max-w-[140px]`}
                           value={ventaForm.interes}
-                          onChange={e => setVentaForm(f => ({ ...f, interes: e.target.value }))}
+                          onChange={(e) => setVentaForm((f) => ({ ...f, interes: e.target.value }))}
                           placeholder="0"
                         />
                       </div>
-                      <div>
-                        <label className="block text-textSecondary text-sm mb-1">Periodicidad</label>
-                        <select
-                          className="w-full bg-bgElevated border border-borderBase rounded-lg px-3 py-2 text-textPrimary focus:outline-none focus:ring-2 focus:ring-brand"
-                          value={ventaForm.periodicidad}
-                          onChange={e => setVentaForm(f => ({ ...f, periodicidad: e.target.value }))}
-                        >
-                          {PERIODICIDAD_OPTS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
-                      </div>
                     </div>
+                  )}
 
-                    {/* Preview en tiempo real */}
-                    {ventaForm.precioTotal && ventaForm.cantidadCuotas && (() => {
-                      const precio    = parseFloat(ventaForm.precioTotal) || 0;
-                      const anticipo  = parseFloat(ventaForm.anticipo) || 0;
-                      const interes   = parseFloat(ventaForm.interes) || 0;
-                      const cuotas    = parseInt(ventaForm.cantidadCuotas, 10) || 1;
-                      const saldo     = precio - anticipo;
-                      const total     = saldo * (1 + interes / 100);
-                      const cuotaMonto = total / cuotas;
-                      return (
-                        <div className="p-3 bg-brand-muted border border-borderStrong rounded-lg space-y-1 text-sm">
-                          <div className="flex justify-between text-textSecondary">
-                            <span>Saldo a financiar:</span>
-                            <span className="text-textPrimary font-semibold">{formatCurrency(saldo, ventaForm.currency)}</span>
-                          </div>
-                          {interes > 0 && (
-                            <div className="flex justify-between text-textSecondary">
-                              <span>Total con interés ({interes}%):</span>
-                              <span className="text-amber-300 font-semibold">{formatCurrency(total, ventaForm.currency)}</span>
-                            </div>
+                  {/* Preview cronograma */}
+                  {ventaForm.precioTotal && (() => {
+                    const preview = previewCuotasSchedule({
+                      modoPlan: ventaForm.modoPlan,
+                      fechaVenta: ventaForm.fechaVenta,
+                      precioTotal: parseFloat(ventaForm.precioTotal) || 0,
+                      anticipo: parseFloat(ventaForm.anticipo) || 0,
+                      interes: parseFloat(ventaForm.interes) || 0,
+                      cantidadCuotas: parseInt(ventaForm.cantidadCuotas, 10) || 1,
+                      periodicidad: ventaForm.periodicidad,
+                      diaVencimiento: parseInt(ventaForm.diaVencimiento, 10) || 10,
+                      cuotasCustom: ventaForm.cuotasPersonalizadas,
+                    });
+
+                    if (preview.cuotas.length === 0) return null;
+
+                    return (
+                      <div className="mt-4 p-3 bg-brand-muted border border-borderStrong rounded-lg space-y-3 text-sm">
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 text-textSecondary">
+                          <span>Saldo: <strong className="text-textPrimary">{formatCurrency(preview.saldo, ventaForm.currency)}</strong></span>
+                          {parseFloat(ventaForm.interes) > 0 && (
+                            <span>Total c/ interés: <strong className="text-customYellow">{formatCurrency(preview.montoConInteres, ventaForm.currency)}</strong></span>
                           )}
-                          <div className="flex justify-between text-textSecondary border-t border-borderStrong pt-1 mt-1">
-                            <span>Valor de cada cuota:</span>
-                            <span className="text-brand-light font-bold text-base">{formatCurrency(cuotaMonto, ventaForm.currency)}</span>
-                          </div>
-                          {ventaForm.comisionPercent && parseFloat(ventaForm.comisionPercent) > 0 && (
-                            <div className="flex justify-between text-textSecondary border-t border-borderStrong pt-1 mt-1">
-                              <span className="flex items-center gap-1"><IoCashOutline className="w-3.5 h-3.5 text-orange-400" /> Comisión inmob. ({ventaForm.comisionPercent}%):</span>
-                              <span className="text-orange-300 font-semibold">{formatCurrency(precio * parseFloat(ventaForm.comisionPercent) / 100, ventaForm.currency)}</span>
-                            </div>
+                          {parseFloat(ventaForm.anticipo) > 0 && (
+                            <span className="text-textMuted text-xs">
+                              El anticipo aparece como cuota 0 (fecha de venta, ya cobrada).
+                            </span>
                           )}
                         </div>
-                      );
-                    })()}
-                  </div>
+                        <div className="overflow-x-auto rounded-lg border border-borderBase">
+                          <table className="w-full text-xs">
+                            <thead className="bg-brand-subtle/40 text-textMuted">
+                              <tr>
+                                <th className="px-2 py-1.5 text-left">Cuota</th>
+                                <th className="px-2 py-1.5 text-left">Vencimiento</th>
+                                <th className="px-2 py-1.5 text-right">Monto</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {preview.cuotas.map((c) => (
+                                <tr key={`cuota-${c.numeroCuota}`} className="border-t border-borderBase/50">
+                                  <td className="px-2 py-1.5 text-textSecondary">
+                                    {formatCuotaLabel(c.numeroCuota)}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-textPrimary">
+                                    {new Date(c.fechaVencimiento).toLocaleDateString('es-AR')}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right text-brand-light font-medium">
+                                    {formatCurrency(c.monto, ventaForm.currency)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {ventaForm.comisionPercent && parseFloat(ventaForm.comisionPercent) > 0 && (
+                          <div className="flex justify-between text-textSecondary border-t border-borderStrong pt-2">
+                            <span className="flex items-center gap-1">
+                              <IoCashOutline className="w-3.5 h-3.5 text-customYellow" />
+                              Comisión inmob. ({ventaForm.comisionPercent}%)
+                            </span>
+                            <span className="text-customYellow font-semibold">
+                              {formatCurrency(
+                                parseFloat(ventaForm.precioTotal) * parseFloat(ventaForm.comisionPercent) / 100,
+                                ventaForm.currency,
+                              )}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Notas */}

@@ -5,6 +5,7 @@ const ctrl = require('../controllers/LoteoController');
 // todos los endpoints ya reciben authMiddleware + requireTenantScope + tenancyMiddleware desde index.js
 
 // ── Loteos ──────────────────────────────────
+router.get('/cobranzas', ctrl.getCobranzasLoteos);
 router.get('/', ctrl.getLoteos);
 router.get('/:loteoId', ctrl.getLoteoById);
 router.post('/', ctrl.createLoteo);

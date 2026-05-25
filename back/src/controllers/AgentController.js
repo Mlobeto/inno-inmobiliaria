@@ -186,14 +186,16 @@ exports.createAgent = async (req, res) => {
       return res.status(409).json({ success: false, message: 'El nombre de usuario ya está en uso' });
     }
 
+    const loginId = username.trim();
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const agent = await prisma.admins.create({
       data: {
-        username: username.trim(),
+        username: loginId,
         password: hashedPassword,
         fullName: fullName?.trim() || null,
-        email: email?.trim() || null,
+        email: email?.trim() || loginId,
         role: 'AGENT',
         tenantId,
       },

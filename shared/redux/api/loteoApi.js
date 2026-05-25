@@ -107,6 +107,20 @@ export const loteoApi = baseApi.injectEndpoints({
       ],
     }),
 
+    // ========== COBRANZAS (todas las cuotas del tenant) ==========
+
+    getCobranzasLoteos: builder.query({
+      query: ({ filter = 'pendiente', loteoId, search } = {}) => {
+        const params = new URLSearchParams();
+        if (filter) params.set('filter', filter);
+        if (loteoId) params.set('loteoId', String(loteoId));
+        if (search?.trim()) params.set('search', search.trim());
+        const qs = params.toString();
+        return `/loteos/cobranzas${qs ? `?${qs}` : ''}`;
+      },
+      providesTags: ['LoteoCobranzas'],
+    }),
+
     // ========== VENTA Y FINANCIACIÓN ==========
 
     // Obtener venta/plan de financiación de un lote
@@ -126,6 +140,7 @@ export const loteoApi = baseApi.injectEndpoints({
         { type: 'Loteo', id: loteoId },
         { type: 'LoteVenta', id: loteId },
         'Loteo',
+        'LoteoCobranzas',
       ],
     }),
 
@@ -136,7 +151,10 @@ export const loteoApi = baseApi.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { loteId }) => [{ type: 'LoteVenta', id: loteId }],
+      invalidatesTags: (result, error, { loteId }) => [
+        { type: 'LoteVenta', id: loteId },
+        'LoteoCobranzas',
+      ],
     }),
 
     // Eliminar venta (vuelve el lote a DISPONIBLE)
@@ -149,6 +167,7 @@ export const loteoApi = baseApi.injectEndpoints({
         { type: 'Loteo', id: loteoId },
         { type: 'LoteVenta', id: loteId },
         'Loteo',
+        'LoteoCobranzas',
       ],
     }),
 
@@ -159,7 +178,10 @@ export const loteoApi = baseApi.injectEndpoints({
         method: 'PATCH',
         body: data,
       }),
-      invalidatesTags: (result, error, { loteId }) => [{ type: 'LoteVenta', id: loteId }],
+      invalidatesTags: (result, error, { loteId }) => [
+        { type: 'LoteVenta', id: loteId },
+        'LoteoCobranzas',
+      ],
     }),
   }),
 });
@@ -174,6 +196,7 @@ export const {
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,
+  useGetCobranzasLoteosQuery,
   useGetVentaLoteQuery,
   useCreateVentaLoteMutation,
   useUpdateVentaLoteMutation,
