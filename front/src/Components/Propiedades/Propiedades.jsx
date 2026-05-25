@@ -53,6 +53,8 @@ import {
   alertSuccess,
   alertError,
 } from './propiedadesTheme.js';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getPropiedadesFormTourSteps } from '../../constants/formTourSteps';
 
 const PLANTILLA_TRADICIONAL = `REQUISITOS PARA ALQUILAR
 
@@ -112,8 +114,11 @@ const CreateProperty = () => {
   const { data: clients = [], isLoading: clientsLoading, error: clientsError, refetch: refetchClients } = useGetAllClientsQuery();
   const [createProperty, { isLoading: isSubmitting }] = useCreatePropertyMutation();
   const [createClient, { isLoading: isCreatingClient }] = useCreateClientMutation();
-  // Cotización del dólar
   const { dolar, loading: dolarLoading } = useDolarRate();
+
+  useFormTour('propiedades', getPropiedadesFormTourSteps, [], {
+    enabled: !clientsLoading && !clientsError,
+  });
   
   const [formData, setFormData] = useState({
     address: "",
@@ -557,7 +562,7 @@ const CreateProperty = () => {
         <div className={`${formCard} shadow-brandGlow`}>
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Sección Cliente y Propietario */}
-            <div className={formSection}>
+            <div id="tour-prop-cliente" className={formSection}>
               <h3 className={formSectionTitle}>
                 <IoPersonOutline className="w-6 h-6 text-brand-light" />
                 Información del Cliente
@@ -671,8 +676,7 @@ const CreateProperty = () => {
               </div>
             </div>
 
-            {/* Sección Ubicación */}
-            <div className={formSection}>
+            <div id="tour-prop-ubicacion" className={formSection}>
               <h3 className={formSectionTitle}>
                 <IoLocationOutline className="w-6 h-6 text-brand-light" />
                 Ubicación de la Propiedad
@@ -771,8 +775,7 @@ const CreateProperty = () => {
               </div>
             </div>
 
-            {/* Sección Tipo de Propiedad */}
-            <div className={formSection}>
+            <div id="tour-prop-caracteristicas" className={formSection}>
               <h3 className={formSectionTitle}>
                 <IoLayersOutline className="w-6 h-6 text-brand-light" />
                 Tipo y Características
@@ -912,8 +915,7 @@ const CreateProperty = () => {
               )}
             </div>
 
-            {/* Sección Detalles y Precios */}
-            <div className={formSection}>
+            <div id="tour-prop-precio" className={formSection}>
               <h3 className={formSectionTitle}>
                 <IoPricetagOutline className="w-6 h-6 text-brand-light" />
                 Detalles y Precios
@@ -1320,8 +1322,7 @@ const CreateProperty = () => {
               </div>
             )}
 
-            {/* Sección de Imágenes */}
-            <div className={formSection}>
+            <div id="tour-prop-imagenes" className={formSection}>
               <h3 className={formSectionTitle}>
                 <IoCloudUploadOutline className="w-6 h-6 text-brand-light" />
                 Imágenes de la Propiedad
@@ -1446,8 +1447,7 @@ const CreateProperty = () => {
               </div>
             )}
 
-            {/* Botón de envío */}
-            <div className="flex justify-center pt-8">
+            <div id="tour-prop-guardar" className="flex justify-center pt-8">
               <button
                 type="submit"
                 disabled={isSubmitting}

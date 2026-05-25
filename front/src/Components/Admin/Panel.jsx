@@ -1,4 +1,4 @@
-import  { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -35,11 +35,18 @@ import {
 import Logo from '../Logo';
 import UpcomingExpiryPopup from '../Contratos/UpcomingExpiryPopup';
 import TipsModal from '../TipsModal';
+import { startPanelWelcomeTour } from '../../utils/panelWelcomeTour';
+import {
+  clearPanelTourPending,
+  markPanelTourDone,
+  shouldStartPanelTour,
+} from '../../constants/onboardingStorage';
 
 const Panel = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showTipsModal, setShowTipsModal] = useState(false);
+  const panelTourStarted = useRef(false);
 
   const currentUser = useSelector(selectCurrentUser);
 
@@ -98,13 +105,21 @@ const Panel = () => {
   };
 
   useEffect(() => {
-    const hideTips = localStorage.getItem('hideTipsModal');
-    if (!hideTips && currentUser) {
-      localStorage.setItem('hideTipsModal', 'true');
-      const timer = setTimeout(() => setShowTipsModal(true), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentUser]);
+    const tenantId = currentUser?.tenantId;
+    if (!tenantId || panelTourStarted.current || loadingSubscription) return;
+    if (!shouldStartPanelTour(tenantId)) return;
+
+    panelTourStarted.current = true;
+    const timer = setTimeout(() => {
+      startPanelWelcomeTour({
+        onComplete: () => {
+          markPanelTourDone(tenantId);
+          clearPanelTourPending(tenantId);
+        },
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [currentUser?.tenantId, loadingSubscription]);
 
   const subscription = subscriptionData?.subscription;
 
@@ -158,6 +173,7 @@ const Panel = () => {
     {
       title: 'Clientes',
       path: '/panelClientes',
+      tourId: 'clientes',
       icon: IoPeopleOutline,
       iconBg: 'bg-brand-muted',
       iconColor: 'text-brand-light',
@@ -166,6 +182,7 @@ const Panel = () => {
     {
       title: 'Propiedades',
       path: '/panelPropiedades',
+      tourId: 'propiedades',
       icon: IoHomeOutline,
       iconBg: 'bg-brand-muted',
       iconColor: 'text-brand-light',
@@ -174,6 +191,7 @@ const Panel = () => {
     {
       title: 'Contratos',
       path: '/panelContratos',
+      tourId: 'contratos',
       icon: IoDocumentTextOutline,
       iconBg: 'bg-customYellowMuted',
       iconColor: 'text-customYellow',
@@ -182,6 +200,7 @@ const Panel = () => {
     {
       title: 'Recibos',
       path: '/create-payment',
+      tourId: 'recibos',
       icon: IoReceiptOutline,
       iconBg: 'bg-brand-subtle',
       iconColor: 'text-brand',
@@ -299,7 +318,7 @@ const Panel = () => {
                 <span className="hidden xl:inline">Mi página web</span>
               </Link>
             )}
-            <Link to="/company-settings" className={navBtn} title="Configuración">
+            <Link id="panel-tour-config" to="/company-settings" className={navBtn} title="Configuración">
               <IoSettingsOutline className="w-4 h-4 shrink-0 text-brand-light" />
               <span className="hidden lg:inline">Config</span>
             </Link>
@@ -313,7 +332,7 @@ const Panel = () => {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-5 sm:py-6">
         {/* Bienvenida + stats en fila */}
-        <div className="mb-5 sm:mb-6">
+        <div id="panel-tour-welcome" className="mb-5 sm:mb-6">
           <h1 className="text-xl sm:text-2xl font-bold text-textPrimary">
             Bienvenido, {currentUser?.username || 'Usuario'}
           </h1>
@@ -322,7 +341,7 @@ const Panel = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-5 sm:mb-6">
+        <div id="panel-tour-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-5 sm:mb-6">
           {quickStats.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -342,7 +361,7 @@ const Panel = () => {
 
         {/* Suscripción — barra compacta */}
         {currentUser?.tenantId && (
-          <div className="mb-5 sm:mb-6">
+          <div id="panel-tour-subscription" className="mb-5 sm:mb-6">
             {loadingSubscription ? (
               <div className="rounded-xl border border-borderBase bg-bgSurface p-4 animate-pulse h-16" />
             ) : subscription ? (
@@ -413,7 +432,7 @@ const Panel = () => {
         )}
 
         {/* Módulos */}
-        <section>
+        <section id="panel-tour-modules">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-textMuted mb-3">
             Módulos
           </h2>
@@ -424,6 +443,7 @@ const Panel = () => {
                 <Link
                   key={item.path}
                   to={item.path}
+                  data-tour-module={item.tourId || undefined}
                   className="group flex flex-col items-center text-center rounded-xl border border-borderBase bg-bgSurface hover:border-borderStrong hover:bg-brand-subtle/60 p-3 sm:p-4 transition-all"
                 >
                   <div className={`rounded-xl p-2.5 mb-2 ${item.iconBg} group-hover:scale-105 transition-transform`}>

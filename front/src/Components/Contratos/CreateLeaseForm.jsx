@@ -42,6 +42,8 @@ import {
   alertSuccess,
   spinner,
 } from '../Propiedades/propiedadesTheme';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getContratosFormTourSteps } from '../../constants/formTourSteps';
 
 const fieldClass = `${inputClass} py-1.5 text-sm rounded-lg`;
 const fieldSelect = `${selectClass} py-1.5 text-sm rounded-lg w-full`;
@@ -88,6 +90,10 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
 
   const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
   const token = localStorage.getItem("token");
+
+  useFormTour('contratos', getContratosFormTourSteps, [formData.propertyId, step], {
+    enabled: Boolean(formData.propertyId) && step === 1 && !leaseCreated,
+  });
 
   const [formData, setFormData] = useState({
     propertyId: "",
@@ -501,13 +507,13 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
               {!leaseCreated ? (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Propiedad + pasos */}
-                  <div className={`${formSectionAccent} py-2 px-3 flex flex-wrap items-center justify-between gap-2 text-sm`}>
+                  <div id="tour-contrato-propiedad" className={`${formSectionAccent} py-2 px-3 flex flex-wrap items-center justify-between gap-2 text-sm`}>
                     <div className="flex items-center gap-2 text-textSecondary">
                       <IoBusinessOutline className="w-4 h-4 text-brand-light shrink-0" />
                       <span className="text-textPrimary font-medium">#{formData.propertyId}</span>
                       <span className="text-textMuted">· {formData.locador || 'Sin propietario'}</span>
                     </div>
-                    <div className="flex gap-1">
+                    <div id="tour-contrato-pasos" className="flex gap-1">
                       {['Datos', 'Garantía'].map((label, i) => {
                         const n = i + 1;
                         const active = step === n;
@@ -541,9 +547,9 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                   {step === 1 && (
                   <div className="space-y-3">
                     <h3 className={sectionTitle}>Información del contrato</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div id="tour-contrato-condiciones" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* Inquilino */}
-                      <div className="space-y-1">
+                      <div id="tour-contrato-inquilino" className="space-y-1 sm:col-span-2">
                         <label className={`${labelClass} flex items-center gap-1.5`}>
                           <IoPersonOutline className="w-3.5 h-3.5 text-brand-light" />
                           Inquilino *
@@ -751,7 +757,7 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
                         placeholder="Inventario (opcional)..."
                       />
                     </div>
-                    <button type="button" onClick={handleNextStep} className={`${btnPrimary} w-full py-2 text-sm`}>
+                    <button id="tour-contrato-siguiente" type="button" onClick={handleNextStep} className={`${btnPrimary} w-full py-2 text-sm`}>
                       Siguiente: Garantía →
                     </button>
                   </div>

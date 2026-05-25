@@ -24,6 +24,8 @@ import {
   labelClass,
   selectClass,
 } from '../Admin/adminPanelTheme';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getClientesFormTourSteps } from '../../constants/formTourSteps';
 
 const inputErr =
   'w-full bg-bgElevated border border-customRed/50 rounded-lg px-3 py-2 text-sm text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-customRed focus:border-transparent';
@@ -68,6 +70,8 @@ const CreateClientForm = () => {
   const countryConfig = getCountryConfig(tenantCountry);
 
   const [createClient, { isLoading, isError, error }] = useCreateClientMutation();
+
+  useFormTour('clientes', getClientesFormTourSteps);
 
   useEffect(() => {
     if (formData.provincia) {
@@ -167,7 +171,7 @@ const CreateClientForm = () => {
 
         <div className={`${card} p-4 sm:p-5`}>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3 gap-y-3">
+            <div id="tour-cliente-identidad" className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-3 gap-y-3">
               <div>
                 <FieldLabel icon={IoCardOutline} htmlFor="cuil" hint={countryConfig?.name || 'AR'}>
                   {docLabel}
@@ -238,7 +242,7 @@ const CreateClientForm = () => {
               </div>
             </div>
 
-            <div className="border-t border-borderBase pt-3">
+            <div id="tour-cliente-domicilio" className="border-t border-borderBase pt-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-textSecondary flex items-center gap-1.5 mb-3">
                 <IoLocationOutline className="w-3.5 h-3.5 text-brand-light" aria-hidden />
                 Domicilio
@@ -318,7 +322,7 @@ const CreateClientForm = () => {
               </div>
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-borderBase">
+            <div id="tour-cliente-guardar" className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-borderBase">
               {hasErrors ? (
                 <p className="text-customRed text-xs flex items-center gap-1">
                   <IoWarningOutline className="w-3.5 h-3.5" aria-hidden />

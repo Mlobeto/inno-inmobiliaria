@@ -27,6 +27,7 @@ import {
 import { uploadFile } from '../../utils/azureUpload';
 import { validateCUIT, formatCUIT } from '../../utils/cuitValidator';
 import { isTenantProfileComplete } from '../../constants/onboardingFields';
+import { markPanelTourPending } from '../../constants/onboardingStorage';
 import TenantOnboardingTour from './TenantOnboardingTour';
 import PdfTemplateManager from './PdfTemplateManager';
 import MercadoLibreIntegration from './MercadoLibreIntegration';
@@ -174,6 +175,7 @@ const CompanySettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [tenantInfo, setTenantInfo] = useState({
     subdomain: '',
@@ -462,7 +464,29 @@ const CompanySettings = () => {
 
     if (redirectAfterSave) {
       setShowOnboarding(false);
+      try {
+        const tenantId = JSON.parse(localStorage.getItem('user') || '{}')?.tenantId;
+        markPanelTourPending(tenantId);
+      } catch {
+        /* ignore */
+      }
       navigate('/panel', { replace: true });
+    }
+  };
+
+  const handleOnboardingLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingLogo(true);
+    try {
+      const url = await uploadFile(file, 'logos');
+      setSettings((prev) => ({ ...prev, company_logo_url: url }));
+      toast.success('Logo subido');
+    } catch (err) {
+      console.error('Error al subir logo:', err);
+      toast.error('Error al subir el logo');
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -541,6 +565,8 @@ const CompanySettings = () => {
         <TenantOnboardingTour
           settings={settings}
           onFieldChange={handleOnboardingFieldChange}
+          onLogoUpload={handleOnboardingLogoUpload}
+          isUploadingLogo={isUploadingLogo}
           onComplete={handleOnboardingComplete}
           isSaving={isSaving}
           showIntro={isWelcome}

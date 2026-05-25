@@ -19,3 +19,59 @@
 .animate-slide-up {
   animation: slide-up 0.5s ease-out;
 }
+
+/* Tour del panel — tema sage GestProp */
+.gestprop-driver-popover.driver-popover {
+  background-color: #141916;
+  color: #e8ebe9;
+  border: 1px solid #2d3b32;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  max-width: 320px;
+}
+
+.gestprop-driver-popover .driver-popover-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f0f2f1;
+}
+
+.gestprop-driver-popover .driver-popover-description {
+  font-size: 0.875rem;
+  color: #9ca89f;
+  line-height: 1.5;
+}
+
+.gestprop-driver-popover .driver-popover-progress-text {
+  color: #7fb99a;
+  font-size: 0.75rem;
+}
+
+.gestprop-driver-popover .driver-popover-navigation-btns button {
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  text-shadow: none;
+}
+
+.gestprop-driver-popover .driver-popover-next-btn,
+.gestprop-driver-popover .driver-popover-done-btn {
+  background-color: #5a8c72 !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.gestprop-driver-popover .driver-popover-prev-btn {
+  background: transparent !important;
+  color: #9ca89f !important;
+  border: 1px solid #2d3b32 !important;
+}
+
+.gestprop-driver-popover .driver-popover-arrow-side-left.driver-popover-arrow,
+.gestprop-driver-popover .driver-popover-arrow-side-right.driver-popover-arrow,
+.gestprop-driver-popover .driver-popover-arrow-side-top.driver-popover-arrow,
+.gestprop-driver-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-color: #141916;
+}
+
