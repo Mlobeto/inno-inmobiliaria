@@ -103,6 +103,120 @@ export const FORM_TOUR_VALIDATORS = {
       return failed || ok();
     },
   },
+
+  compraventa: {
+    'tour-venta-propiedad': INFO_OK,
+    'tour-venta-comprador': (container) => {
+      const id = fieldValue(container, '#tour-venta-compradorId');
+      if (!id) return fail('Seleccioná el comprador de la lista');
+      return ok();
+    },
+    'tour-venta-precio': (container) => {
+      const price = fieldValue(container, '[name="salePrice"]');
+      if (!price || Number(price) <= 0) return fail('Ingresá el precio de venta');
+      return ok();
+    },
+    'tour-venta-guardar': INFO_OK,
+  },
+
+  recibos: {
+    'tour-pago-contrato': INFO_OK,
+    'tour-pago-monto': (container) => {
+      if (!fieldValue(container, '[name="paymentDate"]')) return fail('Ingresá la fecha del pago');
+      const amount = fieldValue(container, '[name="amount"]');
+      if (!amount || Number(amount) <= 0) return fail('Ingresá un monto válido');
+      return ok();
+    },
+    'tour-pago-detalle': (container) => {
+      const type = fieldValue(container, '#tour-pago-type') || fieldValue(container, '[name="type"]');
+      if (!type) return fail('Seleccioná el tipo de pago');
+      if (type === 'installment') {
+        const cuota = fieldValue(container, '#tour-pago-installmentNumber');
+        const period = fieldValue(container, '[name="period"]');
+        if (!cuota && !period) return fail('Seleccioná la cuota a pagar');
+      } else if (type !== 'initial' && !fieldValue(container, '[name="period"]')) {
+        return fail('Ingresá el período del pago');
+      }
+      return ok();
+    },
+    'tour-pago-guardar': INFO_OK,
+  },
+
+  'seleccion-alquiler': {
+    'tour-listado-intro': INFO_OK,
+    'tour-listado-seleccion': INFO_OK,
+  },
+
+  'seleccion-venta': {
+    'tour-listado-intro': INFO_OK,
+    'tour-listado-seleccion': INFO_OK,
+  },
+
+  'seleccion-contrato': {
+    'tour-contratos-intro': INFO_OK,
+    'tour-contratos-seleccion': INFO_OK,
+  },
+
+  'loteos-intro': {
+    'tour-loteos-tabs': INFO_OK,
+    'tour-loteos-nuevo-btn': INFO_OK,
+    'tour-loteos-ver': INFO_OK,
+  },
+
+  'loteos-detalle': {
+    'tour-loteos-detalle-info': INFO_OK,
+    'tour-loteos-plan-btn': INFO_OK,
+  },
+
+  'loteos-proyecto': {
+    'tour-loteo-identidad': (container) => {
+      const name = fieldValue(container, '#tour-loteo-name');
+      if (!name) return fail('Ingresá el nombre del loteo');
+      return ok();
+    },
+    'tour-loteo-ubicacion': INFO_OK,
+    'tour-loteo-guardar': INFO_OK,
+  },
+
+  'loteos-lote': {
+    'tour-lote-identificacion': (container) => {
+      const num = fieldValue(container, '#tour-lote-number');
+      if (!num || Number(num) <= 0) return fail('Ingresá el número de lote');
+      return ok();
+    },
+    'tour-lote-precio': INFO_OK,
+    'tour-lote-guardar': INFO_OK,
+  },
+
+  'loteos-venta': {
+    'tour-venta-lote-comprador': (container) => {
+      const name = fieldValue(container, '#tour-venta-lote-clienteNombre');
+      if (!name) return fail('Ingresá el nombre del comprador');
+      return ok();
+    },
+    'tour-venta-lote-condiciones': (container) => {
+      const price = fieldValue(container, '#tour-venta-lote-precioTotal');
+      if (!price || Number(price) <= 0) return fail('Ingresá el precio total');
+      return ok();
+    },
+    'tour-venta-lote-plan': (container) => {
+      const modo = fieldValue(container, '#tour-venta-lote-modoPlan');
+      if (modo === 'personalizado') {
+        const count = fieldValue(container, '#tour-venta-lote-customCount');
+        if (!count || Number(count) === 0) return fail('Agregá al menos una cuota con fecha');
+      } else {
+        const cuotas = fieldValue(container, '#tour-venta-lote-cantidadCuotas');
+        if (!cuotas || Number(cuotas) <= 0) return fail('Ingresá la cantidad de cuotas');
+      }
+      return ok();
+    },
+    'tour-venta-lote-guardar': INFO_OK,
+  },
+
+  'loteos-cobranzas': {
+    'tour-cobranzas-resumen': INFO_OK,
+    'tour-cobranzas-tabla': INFO_OK,
+  },
 };
 
 export function validateFormTourStep(tourKey, stepElementId, container) {

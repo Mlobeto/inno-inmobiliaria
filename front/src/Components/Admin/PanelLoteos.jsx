@@ -42,6 +42,14 @@ import LoteosCobranzasPanel from './LoteosCobranzasPanel';
 import { btnPrimary, btnSecondary, card, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass, tabActive, tabInactive } from './adminPanelTheme';
 import { uploadMultipleFiles } from '../../utils/azureUpload';
 import { previewCuotasSchedule, PERIODICIDAD_LABELS, formatCuotaLabel } from '@shared/utils/loteCuotasSchedule';
+import { useFormTour } from '../../hooks/useFormTour';
+import {
+  getLoteosIntroTourSteps,
+  getLoteosDetalleTourSteps,
+  getLoteosProyectoTourSteps,
+  getLoteosLoteTourSteps,
+  getLoteosVentaTourSteps,
+} from '../../constants/formTourSteps';
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 
@@ -191,6 +199,28 @@ export default function PanelLoteos() {
     { skip: !showVentaModal || !selectedLoteForVenta || !modalLoteoId }
   );
   const venta = ventaData?.venta || null;
+
+  useFormTour('loteos-intro', getLoteosIntroTourSteps, [loteos.length, mainView], {
+    enabled: !selectedLoteoId && mainView === 'loteos' && !isLoading && loteos.length > 0,
+  });
+
+  useFormTour('loteos-detalle', getLoteosDetalleTourSteps, [selectedLoteoId, loteoDetail?.lotes?.length], {
+    enabled: Boolean(selectedLoteoId) && !loadingDetail && Boolean(loteoDetail) && (loteoDetail?.lotes?.length ?? 0) > 0,
+    delay: 800,
+  });
+
+  useFormTour('loteos-proyecto', getLoteosProyectoTourSteps, [showLoteoModal], {
+    enabled: showLoteoModal && !editingLoteo,
+  });
+
+  useFormTour('loteos-lote', getLoteosLoteTourSteps, [showLoteModal], {
+    enabled: showLoteModal && !editingLote && Boolean(selectedLoteoId),
+  });
+
+  useFormTour('loteos-venta', getLoteosVentaTourSteps, [showVentaModal, venta, loadingVenta], {
+    enabled: showVentaModal && !loadingVenta && !venta,
+    delay: 750,
+  });
 
   // ── Modal Loteo ────────────────────────────────────────────────────────────
 
@@ -480,6 +510,7 @@ export default function PanelLoteos() {
       actions={
         <button
           type="button"
+          id={selectedLoteoId ? undefined : 'tour-loteos-nuevo-btn'}
           onClick={selectedLoteoId ? openCreateLote : openCreateLoteo}
           className={btnPrimary}
         >
@@ -491,7 +522,7 @@ export default function PanelLoteos() {
 
         {/* Tabs: Loteos | Cobranzas */}
         {!selectedLoteoId && (
-          <div className="flex gap-1 p-1 rounded-lg bg-bgElevated border border-borderBase w-fit mb-5">
+          <div id="tour-loteos-tabs" className="flex gap-1 p-1 rounded-lg bg-bgElevated border border-borderBase w-fit mb-5">
             <button
               type="button"
               onClick={() => setMainView('loteos')}
@@ -538,7 +569,7 @@ export default function PanelLoteos() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {loteos.map((loteo) => (
+                {loteos.map((loteo, loteoIndex) => (
                   <div
                     key={loteo.id}
                     className="bg-bgSurface border border-borderBase rounded-2xl p-5 flex flex-col space-y-3 hover:bg-brand-subtle/50 transition-colors"
@@ -581,6 +612,7 @@ export default function PanelLoteos() {
                     {/* Acciones */}
                     <div className="flex items-center space-x-2 pt-1">
                       <button
+                        id={loteoIndex === 0 ? 'tour-loteos-ver' : undefined}
                         onClick={() => setSelectedLoteoId(loteo.id)}
                         className="flex-1 py-2 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded-lg text-sm font-medium transition-colors"
                       >
@@ -623,7 +655,7 @@ export default function PanelLoteos() {
             ) : (
               <>
                 {/* Info del loteo */}
-                <div className="bg-bgSurface border border-borderBase rounded-2xl p-5 mb-6">
+                <div id="tour-loteos-detalle-info" className="bg-bgSurface border border-borderBase rounded-2xl p-5 mb-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       {loteoDetail.description && (
@@ -667,7 +699,7 @@ export default function PanelLoteos() {
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {loteoDetail.lotes?.map((lote) => (
+                    {loteoDetail.lotes?.map((lote, loteIndex) => (
                       <div
                         key={lote.id}
                         className="bg-bgSurface border border-borderBase rounded-xl p-3 flex flex-col space-y-2"
@@ -699,6 +731,7 @@ export default function PanelLoteos() {
 
                         <div className="flex space-x-1 pt-1">
                           <button
+                            id={loteIndex === 0 ? 'tour-loteos-plan-btn' : undefined}
                             onClick={() => openVentaModal(lote)}
                             className="flex-1 py-1.5 px-1 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded text-xs transition-colors flex items-center justify-center gap-1"
                             title="Plan de venta / financiación"
@@ -747,9 +780,10 @@ export default function PanelLoteos() {
                 <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</p>
               )}
 
-              <div>
+              <div id="tour-loteo-identidad">
                 <label className="block text-textSecondary text-sm mb-1">Nombre *</label>
                 <input
+                  id="tour-loteo-name"
                   className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                   value={loteoForm.name}
                   onChange={e => setLoteoForm(f => ({ ...f, name: e.target.value }))}
@@ -768,6 +802,7 @@ export default function PanelLoteos() {
                 />
               </div>
 
+              <div id="tour-loteo-ubicacion">
               <div>
                 <label className="block text-textSecondary text-sm mb-1">Dirección</label>
                 <input
@@ -797,6 +832,7 @@ export default function PanelLoteos() {
                     placeholder="Provincia"
                   />
                 </div>
+              </div>
               </div>
 
               {/* Cantidad de lotes y precio base */}
@@ -847,7 +883,7 @@ export default function PanelLoteos() {
               </div>
             </div>
 
-            <div className="flex space-x-3 p-5 border-t border-borderBase">
+            <div id="tour-loteo-guardar" className="flex space-x-3 p-5 border-t border-borderBase">
               <button
                 onClick={() => setShowLoteoModal(false)}
                 className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
@@ -885,7 +921,7 @@ export default function PanelLoteos() {
                 <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</p>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div id="tour-lote-identificacion" className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-textSecondary text-sm mb-1">Parcela</label>
                   <input
@@ -899,6 +935,7 @@ export default function PanelLoteos() {
                 <div>
                   <label className="block text-textSecondary text-sm mb-1">Número de lote *</label>
                   <input
+                    id="tour-lote-number"
                     type="number"
                     min="1"
                     className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
@@ -922,7 +959,7 @@ export default function PanelLoteos() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div id="tour-lote-precio" className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-textSecondary text-sm mb-1">Precio</label>
                   <input
@@ -1045,7 +1082,7 @@ export default function PanelLoteos() {
               </div>
             </div>
 
-            <div className="flex space-x-3 p-5 border-t border-borderBase">
+            <div id="tour-lote-guardar" className="flex space-x-3 p-5 border-t border-borderBase">
               <button
                 onClick={() => setShowLoteModal(false)}
                 className="flex-1 py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"
@@ -1252,12 +1289,13 @@ export default function PanelLoteos() {
                 )}
 
                 {/* Sección: Datos del comprador */}
-                <div>
+                <div id="tour-venta-lote-comprador">
                   <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Datos del comprador</h3>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-textSecondary text-sm mb-1">Nombre completo *</label>
                       <input
+                        id="tour-venta-lote-clienteNombre"
                         className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
                         value={ventaForm.clienteNombre}
                         onChange={e => setVentaForm(f => ({ ...f, clienteNombre: e.target.value }))}
@@ -1288,13 +1326,14 @@ export default function PanelLoteos() {
                 </div>
 
                 {/* Sección: Condiciones de venta */}
-                <div>
+                <div id="tour-venta-lote-condiciones">
                   <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Condiciones de venta</h3>
                   <div className="space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2">
                         <label className="block text-textSecondary text-sm mb-1">Precio total *</label>
                         <input
+                          id="tour-venta-lote-precioTotal"
                           type="number"
                           min="0"
                           className="w-full bg-bgSurface border border-borderBase rounded-lg px-3 py-2 text-textPrimary placeholder-textMuted focus:outline-none focus:ring-2 focus:ring-brand"
@@ -1353,7 +1392,23 @@ export default function PanelLoteos() {
                 </div>
 
                 {/* Sección: Plan de financiación */}
-                <div>
+                <div id="tour-venta-lote-plan">
+                  <input
+                    type="hidden"
+                    id="tour-venta-lote-modoPlan"
+                    value={ventaForm.modoPlan}
+                    readOnly
+                    tabIndex={-1}
+                    aria-hidden
+                  />
+                  <input
+                    type="hidden"
+                    id="tour-venta-lote-customCount"
+                    value={ventaForm.cuotasPersonalizadas.filter((c) => c.fecha).length}
+                    readOnly
+                    tabIndex={-1}
+                    aria-hidden
+                  />
                   <h3 className="text-textMuted text-xs font-semibold uppercase tracking-wider mb-3">Plan de financiación</h3>
 
                   {/* Modo de plan */}
@@ -1388,6 +1443,7 @@ export default function PanelLoteos() {
                         <div>
                           <label className="block text-textSecondary text-sm mb-1">Cant. cuotas *</label>
                           <input
+                            id="tour-venta-lote-cantidadCuotas"
                             type="number"
                             min="1"
                             className={inputClass}
@@ -1605,7 +1661,7 @@ export default function PanelLoteos() {
                 </div>
 
                 {/* Botones */}
-                <div className="flex flex-wrap gap-3 pt-2 border-t border-borderBase">
+                <div id="tour-venta-lote-guardar" className="flex flex-wrap gap-3 pt-2 border-t border-borderBase">
                   <button
                     onClick={closeVentaModal}
                     className="flex-1 min-w-[120px] py-2 bg-brand-subtle/40 hover:bg-brand-subtle text-textSecondary rounded-lg transition-colors"

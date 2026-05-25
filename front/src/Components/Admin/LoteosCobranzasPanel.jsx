@@ -15,6 +15,8 @@ import {
   IoGridOutline,
 } from 'react-icons/io5';
 import LoteoCuotaReciboPdf from '../PdfTemplates/LoteoCuotaReciboPdf';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getLoteosCobranzasTourSteps } from '../../constants/formTourSteps';
 import {
   btnGhost,
   btnPrimary,
@@ -71,6 +73,10 @@ export default function LoteosCobranzasPanel({ onOpenPlan }) {
   const stats = data?.stats;
   const cuotas = data?.cuotas || [];
 
+  useFormTour('loteos-cobranzas', getLoteosCobranzasTourSteps, [cuotas.length], {
+    enabled: !isLoading && Boolean(stats),
+  });
+
   const handleSearch = (e) => {
     e.preventDefault();
     setSearchDebounced(search);
@@ -100,7 +106,7 @@ export default function LoteosCobranzasPanel({ onOpenPlan }) {
   return (
     <div className="space-y-4">
       {/* Resumen */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div id="tour-cobranzas-resumen" className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={statCard}>
           <p className="text-textMuted text-xs">Ventas activas</p>
           <p className="text-xl font-bold text-textPrimary">{stats?.ventasActivas ?? '—'}</p>
@@ -194,7 +200,7 @@ export default function LoteosCobranzasPanel({ onOpenPlan }) {
           )}
         </div>
       ) : (
-        <div className={`${tableWrap} ${isFetching ? 'opacity-70' : ''}`}>
+        <div id="tour-cobranzas-tabla" className={`${tableWrap} ${isFetching ? 'opacity-70' : ''}`}>
           <table className="w-full text-sm">
             <thead>
               <tr className={tableHeadRow}>

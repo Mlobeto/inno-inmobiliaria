@@ -226,6 +226,7 @@ const Panel = () => {
     {
       title: 'Loteos',
       path: '/panelLoteos',
+      tourId: 'loteos',
       icon: IoMapOutline,
       iconBg: 'bg-brand-muted',
       iconColor: 'text-brand-light',

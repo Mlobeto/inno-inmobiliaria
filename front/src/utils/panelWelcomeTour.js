@@ -52,6 +52,14 @@ function buildPanelSteps() {
       },
     },
     {
+      element: '[data-tour-module="loteos"]',
+      popover: {
+        title: 'Loteos',
+        description: 'Gestioná proyectos de lotes, planes de financiación y cobranzas de cuotas.',
+        side: 'bottom',
+      },
+    },
+    {
       element: '#panel-tour-config',
       popover: {
         title: 'Configuración',
@@ -71,6 +79,10 @@ function buildPanelSteps() {
         side: 'bottom',
       },
     });
+  }
+
+  if (!document.querySelector('[data-tour-module="loteos"]')) {
+    return steps.filter((s) => s.element !== '[data-tour-module="loteos"]');
   }
 
   return steps;

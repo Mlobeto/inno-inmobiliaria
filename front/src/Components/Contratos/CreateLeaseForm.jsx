@@ -91,10 +91,6 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const apiUrl = import.meta.env?.VITE_API_URL || 'http://localhost:3001/api';
   const token = localStorage.getItem("token");
 
-  useFormTour('contratos', getContratosFormTourSteps, [formData.propertyId, step], {
-    enabled: Boolean(formData.propertyId) && step === 1 && !leaseCreated,
-  });
-
   const [formData, setFormData] = useState({
     propertyId: "",
     landlordId: "",
@@ -130,6 +126,9 @@ const CreateLeaseForm = ({ preselectedProperty, isModal, onClose } = {}) => {
     guarantor2CertificationEntity: "",
   });
 
+  useFormTour('contratos', getContratosFormTourSteps, [formData.propertyId, step], {
+    enabled: Boolean(formData.propertyId) && step === 1 && !leaseCreated,
+  });
 
   const filteredActiveLeases = (leases) => {
     return leases.filter((lease) => {

@@ -7,6 +7,8 @@ import ReciboPdf from "../PdfTemplates/ReciboPdf";
 import InstallmentSelector from "./InstallmentSelector";
 import { useDolarRate } from '../hooks/useDolarRate';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getRecibosFormTourSteps } from '../../constants/formTourSteps';
 import {
   IoDocumentTextOutline,
   IoReceiptOutline,
@@ -47,6 +49,10 @@ const PaymentForm = () => {
     type: "installment",
     installmentNumber: null,
     totalInstallments: "",
+  });
+
+  useFormTour('recibos', getRecibosFormTourSteps, [showPaymentForm, paymentCreated], {
+    enabled: showPaymentForm && !paymentCreated,
   });
 
   // Fallback: detectar éxito desde Redux si handleSubmit no lo detectó
@@ -214,8 +220,7 @@ const PaymentForm = () => {
             <div className="p-6">
               {!paymentCreated ? (
                 <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* Información del contrato seleccionado */}
-                  <div className="bg-emerald-500/10 border border-emerald-400/20 rounded-xl p-4 mb-6">
+                  <div id="tour-pago-contrato" className="bg-emerald-500/10 border border-emerald-400/20 rounded-xl p-4 mb-6">
                     <h3 className="text-lg font-semibold text-emerald-300 mb-2 flex items-center">
                       <IoDocumentTextOutline className="w-5 h-5 mr-2" />
                       Contrato Seleccionado
@@ -234,7 +239,7 @@ const PaymentForm = () => {
                       Información del Pago
                     </h3>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="tour-pago-monto" className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Fecha del pago */}
                       <div className="space-y-2">
                         <label className="flex items-center text-sm font-medium text-slate-300">
@@ -309,7 +314,25 @@ const PaymentForm = () => {
                           </div>
                         )}
                       </div>
+                    </div>
 
+                    <div id="tour-pago-detalle" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <input
+                      type="hidden"
+                      id="tour-pago-type"
+                      value={formData.type}
+                      readOnly
+                      tabIndex={-1}
+                      aria-hidden
+                    />
+                    <input
+                      type="hidden"
+                      id="tour-pago-installmentNumber"
+                      value={formData.installmentNumber ?? ''}
+                      readOnly
+                      tabIndex={-1}
+                      aria-hidden
+                    />
                     {/* Selector de cuota (solo para installment) */}
                     {formData.type === 'installment' && (
                       <div className="col-span-1 md:col-span-2 space-y-2">
@@ -408,7 +431,7 @@ const PaymentForm = () => {
                   </div>
 
                   {/* Botón de envío */}
-                  <div className="pt-6">
+                  <div id="tour-pago-guardar" className="pt-6">
                     <button
                       type="submit"
                       disabled={isLoading}

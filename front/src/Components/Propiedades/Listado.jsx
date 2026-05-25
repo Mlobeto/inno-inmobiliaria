@@ -14,6 +14,8 @@ import RequisitoButton from './RequisitoButton';
 import ImageManager from './ImageManager';
 import EditPropertyModal from './EditPropertyModal';
 import AutorizacionVentaPdf from '../PdfTemplates/AutorizacionVentaPdf';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getSeleccionAlquilerTourSteps, getSeleccionVentaTourSteps } from '../../constants/formTourSteps';
 import {
   panelShell,
   pageHeaderBar,
@@ -193,6 +195,14 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
   }, [filteredProperties, currentPage, propertiesPerPage]);
 
   const { totalPages, paginatedProperties } = paginationData;
+
+  useFormTour('seleccion-alquiler', getSeleccionAlquilerTourSteps, [paginatedProperties.length], {
+    enabled: mode === 'lease' && !onSelectProperty && !isLoading && paginatedProperties.length > 0,
+  });
+
+  useFormTour('seleccion-venta', getSeleccionVentaTourSteps, [paginatedProperties.length], {
+    enabled: mode === 'sale' && !onSelectProperty && !isLoading && paginatedProperties.length > 0,
+  });
 
   const handlePageChange = (direction) => {
     if (direction === "next" && currentPage < totalPages) {
@@ -492,7 +502,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Title Section */}
-        <div className="text-center mb-8">
+        <div id="tour-listado-intro" className="text-center mb-8">
           <div className="flex justify-center mb-4">
             <div className={heroIconWrap}>
               <IoBusinessOutline className="w-12 h-12 text-brand-light" aria-hidden />
@@ -548,7 +558,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
 
         {/* Properties Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {paginatedProperties.map((property) => (
+          {paginatedProperties.map((property, propertyIndex) => (
             <div
               key={property.propertyId}
               className={`${propertyCard} p-5 ${
@@ -772,6 +782,7 @@ const Listado = ({ mode = "default", onSelectProperty }) => {
                 {mode !== "default" && (
                   <button
                     type="button"
+                    id={propertyIndex === 0 ? 'tour-listado-seleccion' : undefined}
                     onClick={() => {
                       console.log("=== Click en botón de selección ===");
                       console.log("onSelectProperty definido:", !!onSelectProperty);

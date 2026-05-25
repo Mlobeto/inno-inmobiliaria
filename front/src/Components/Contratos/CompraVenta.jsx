@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { useDispatch, useSelector } from 'react-redux';
 import { addPropertyToClientWithRole, getAllClients } from '../../redux/Actions/actions';
 import Listado from '../Propiedades/Listado';
 import Swal from 'sweetalert2';
 import { useDolarRate } from '../hooks/useDolarRate';
 import { formatCurrency, calcularComision } from '../../utils/formatCurrency';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getCompraventaFormTourSteps } from '../../constants/formTourSteps';
 import {
   IoDocumentTextOutline,
   IoBusinessOutline,
@@ -15,7 +18,20 @@ import {
   IoCheckmarkCircleOutline,
 } from 'react-icons/io5';
 
-const CreateSaleContractForm = () => {
+function buildFormFromProperty(propertySelected) {
+  const seller = propertySelected.Clients?.find(
+    (client) => client.ClientProperty.role === 'propietario' || client.ClientProperty.role === 'vendedor'
+  );
+  return {
+    propertyId: propertySelected.propertyId,
+    vendedor: seller?.name || '',
+    salePrice: propertySelected.price || '',
+    commission: propertySelected.comision || '',
+    propertyCurrency: propertySelected.currency || 'ARS',
+  };
+}
+
+const CreateSaleContractForm = ({ preselectedProperty, isModal, onClose } = {}) => {
   const dispatch = useDispatch();
   const clients = useSelector(state => state.clients);
   const { dolar, loading: dolarLoading } = useDolarRate();
@@ -40,6 +56,28 @@ const CreateSaleContractForm = () => {
   useEffect(() => {
     dispatch(getAllClients());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (preselectedProperty?.propertyId) {
+      setFormData((prev) => ({
+        ...prev,
+        ...buildFormFromProperty(preselectedProperty),
+      }));
+    }
+  }, [preselectedProperty]);
+
+  useFormTour('compraventa', getCompraventaFormTourSteps, [formData.propertyId, saleCompleted], {
+    enabled: Boolean(formData.propertyId) && !saleCompleted,
+  });
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+      return;
+    }
+    setFormData((prev) => ({ ...prev, propertyId: '' }));
+    setSaleCompleted(false);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -86,18 +124,9 @@ const CreateSaleContractForm = () => {
       return;
     }
 
-    // Buscar el vendedor de la propiedad
-    const seller = propertySelected.Clients?.find(client => 
-      client.ClientProperty.role === 'propietario' || client.ClientProperty.role === 'vendedor'
-    );
-
-    setFormData(prevData => ({
+    setFormData((prevData) => ({
       ...prevData,
-      propertyId: propertySelected.propertyId,
-      vendedor: seller?.name || '',
-      salePrice: propertySelected.price || '',
-      commission: propertySelected.comision || '',
-      propertyCurrency: propertySelected.currency || 'ARS',
+      ...buildFormFromProperty(propertySelected),
     }));
   };
 
@@ -144,40 +173,11 @@ const CreateSaleContractForm = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen">
-      {/* Mostrar Listado si no hay propiedad seleccionada */}
-      {!formData.propertyId ? (
-        <Listado mode="sale" onSelectProperty={handlePropertySelect} />
-      ) : (
-        /* Modal overlay con formulario */
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Header del modal */}
-            <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-6 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <IoDocumentTextOutline className="w-6 h-6 text-blue-400" />
-                <h2 className="text-2xl font-bold text-white">
-                  Asignar Rol de Comprador
-                </h2>
-              </div>
-              <button
-                onClick={() => {
-                  setFormData(prev => ({ ...prev, propertyId: "" }));
-                  setSaleCompleted(false);
-                }}
-                className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
-              >
-                <IoCloseOutline className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Contenido del modal */}
-            <div className="p-6">
-              {!saleCompleted ? (
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  {/* Información de la propiedad seleccionada */}
-                  <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-4 mb-6">
+  const saleForm = (
+    <div className={isModal ? 'p-2' : 'p-6'}>
+      {!saleCompleted ? (
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div id="tour-venta-propiedad" className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-4 mb-6">
                     <h3 className="text-lg font-semibold text-blue-300 mb-2 flex items-center">
                       <IoBusinessOutline className="w-5 h-5 mr-2" />
                       Propiedad Seleccionada
@@ -259,8 +259,15 @@ const CreateSaleContractForm = () => {
                     </h3>
                     
                     <div className="grid grid-cols-1 gap-6">
-                      {/* Comprador */}
-                      <div className="space-y-2 relative">
+                      <div id="tour-venta-comprador" className="space-y-2 relative">
+                        <input
+                          type="hidden"
+                          id="tour-venta-compradorId"
+                          value={formData.compradorId || ''}
+                          readOnly
+                          tabIndex={-1}
+                          aria-hidden
+                        />
                         <label className="flex items-center text-sm font-medium text-slate-300">
                           <IoPersonOutline className="w-4 h-4 mr-2 text-green-400" />
                           Comprador
@@ -290,6 +297,7 @@ const CreateSaleContractForm = () => {
                         )}
                       </div>
 
+                      <div id="tour-venta-precio" className="space-y-6">
                       {/* Precio de venta */}
                       <div className="space-y-2">
                         <label className="flex items-center text-sm font-medium text-slate-300">
@@ -322,11 +330,11 @@ const CreateSaleContractForm = () => {
                           placeholder="Comisión..."
                         />
                       </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Botón de envío */}
-                  <div className="pt-6">
+                  <div id="tour-venta-guardar" className="pt-6">
                     <button
                       type="submit"
                       disabled={isLoading}
@@ -393,12 +401,47 @@ const CreateSaleContractForm = () => {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
+
+  if (!formData.propertyId) {
+    return <Listado mode="sale" onSelectProperty={handlePropertySelect} />;
+  }
+
+  if (isModal) {
+    return saleForm;
+  }
+
+  return (
+    <div className="min-h-screen">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white/10 backdrop-blur-xl border-b border-white/20 p-6 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <IoDocumentTextOutline className="w-6 h-6 text-blue-400" />
+              <h2 className="text-2xl font-bold text-white">
+                Asignar Rol de Comprador
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="text-white/70 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+            >
+              <IoCloseOutline className="w-6 h-6" />
+            </button>
+          </div>
+          {saleForm}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+CreateSaleContractForm.propTypes = {
+  preselectedProperty: PropTypes.object,
+  isModal: PropTypes.bool,
+  onClose: PropTypes.func,
 };
 
 export default CreateSaleContractForm;

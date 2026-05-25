@@ -9,6 +9,8 @@ import CompraVenta from "./CompraVenta";
 import ContratoAlquiler from "../PdfTemplates/ContratoAlquiler";
 import ContratoEditor from "./ContratoEditor";
 import Swal from 'sweetalert2';
+import { useFormTour } from '../../hooks/useFormTour';
+import { getSeleccionContratoTourSteps } from '../../constants/formTourSteps';
 import {
   IoArrowBackOutline,
   IoHomeOutline,
@@ -46,6 +48,10 @@ import {
   // Detectar el contexto basado en la URL
   const isLeaseContext = location.pathname === '/contratoAlquiler';
   const isSaleContext = location.pathname === '/sale';
+
+  useFormTour('seleccion-contrato', getSeleccionContratoTourSteps, [leases.length], {
+    enabled: Boolean(onLeaseSelect) && !loading && leases.length > 0,
+  });
 
   useEffect(() => {
     console.log("=== ESTADO CONTRATOS DEBUG ===");
@@ -194,7 +200,7 @@ import {
       <div className="relative overflow-hidden bg-gradient-to-r from-slate-900/50 to-slate-800/50 backdrop-blur-sm border-b border-white/10">
         <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]" />
         <div className="relative max-w-7xl mx-auto px-6 py-8">
-          <div className="text-center">
+          <div id="tour-contratos-intro" className="text-center">
             <div className="flex items-center justify-center mb-4">
               <IoDocumentTextOutline className="w-8 h-8 text-blue-400 mr-3" />
               <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
@@ -226,7 +232,7 @@ import {
             </div>
             
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {leases.map((lease) => {
+              {leases.map((lease, leaseIndex) => {
                 const isEditing = editingLeaseId === (lease.leaseId || lease.id);
                 const displayLease = isEditing ? editedLease : lease;
                 
@@ -465,6 +471,8 @@ import {
                     {onLeaseSelect && (
                       <div className="mt-6 pt-4 border-t border-white/10">
                         <button
+                          type="button"
+                          id={leaseIndex === 0 ? 'tour-contratos-seleccion' : undefined}
                           onClick={() => onLeaseSelect(lease)}
                           className="w-full flex items-center justify-center px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-xl font-medium transition-all duration-300 hover:scale-[1.02]"
                         >
