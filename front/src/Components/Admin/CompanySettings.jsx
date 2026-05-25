@@ -12,8 +12,6 @@ import {
   IoSaveOutline,
   IoImageOutline,
   IoArrowBackOutline,
-  IoCheckmarkCircleOutline,
-  IoCloseOutline,
   IoInformationCircleOutline,
   IoWarningOutline,
   IoCloudUploadOutline,
@@ -28,6 +26,8 @@ import {
 } from 'react-icons/io5';
 import { uploadFile } from '../../utils/azureUpload';
 import { validateCUIT, formatCUIT } from '../../utils/cuitValidator';
+import { isTenantProfileComplete } from '../../constants/onboardingFields';
+import TenantOnboardingTour from './TenantOnboardingTour';
 import PdfTemplateManager from './PdfTemplateManager';
 import MercadoLibreIntegration from './MercadoLibreIntegration';
 import ElectronicInvoicingIntegration from './ElectronicInvoicingIntegration';
@@ -149,7 +149,6 @@ const CompanySettings = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('general');
-  const isIncomplete = searchParams.get('incomplete') === 'true';
   const [settings, setSettings] = useState({
     company_name: '',
     company_address: '',
@@ -174,7 +173,7 @@ const CompanySettings = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [tenantInfo, setTenantInfo] = useState({
     subdomain: '',
@@ -241,11 +240,6 @@ const CompanySettings = () => {
   useEffect(() => {
     loadSettings();
     
-    // Verificar si viene del registro
-    if (searchParams.get('welcome') === 'true') {
-      setShowWelcome(true);
-    }
-    
     // Verificar tab en URL (integrations + ml_* → pestaña Mercado Libre)
     const tabParam = searchParams.get('tab');
     const hasMlCallback = searchParams.get('ml_success') || searchParams.get('ml_error');
@@ -308,6 +302,7 @@ const CompanySettings = () => {
         loadedSettings.whatsapp_template = DEFAULT_WHATSAPP_TEMPLATE;
       }
       setSettings(loadedSettings);
+      setShowOnboarding(!isTenantProfileComplete(loadedSettings));
 
       // Cargar información del tenant (subdomain, plan, status)
       try {
@@ -436,6 +431,54 @@ const CompanySettings = () => {
     toast.info('Logo eliminado');
   };
 
+  const handleOnboardingFieldChange = (name, value) => {
+    if (name === 'company_cuit') {
+      setSettings((prev) => ({ ...prev, company_cuit: formatCUIT(value) }));
+    } else {
+      setSettings((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const saveSettings = async ({ redirectAfterSave = false } = {}) => {
+    const token = localStorage.getItem('token');
+
+    await axios.put(`${API_URL}/admin/settings`, settings, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (tenantInfo.hasLanding && tenantInfo.subdomain) {
+      try {
+        await axios.put(
+          `${API_URL}/tenant/subdomain`,
+          { subdomain: tenantInfo.subdomain },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+      } catch (subdomainError) {
+        console.error('Error al actualizar subdominio:', subdomainError);
+        toast.error('Configuración guardada, pero hubo un error al actualizar el subdominio');
+        throw subdomainError;
+      }
+    }
+
+    if (redirectAfterSave) {
+      setShowOnboarding(false);
+      navigate('/panel', { replace: true });
+    }
+  };
+
+  const handleOnboardingComplete = async () => {
+    setIsSaving(true);
+    try {
+      await saveSettings({ redirectAfterSave: true });
+      toast.success('¡Listo! Ya podés usar GestProp');
+    } catch (error) {
+      console.error('Error al guardar onboarding:', error);
+      toast.error('Error al guardar. Revisá los datos e intentá de nuevo.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -465,37 +508,9 @@ const CompanySettings = () => {
 
     setIsSaving(true);
     try {
-      const token = localStorage.getItem('token');
-      
-      // Guardar configuración de empresa
-      await axios.put(`${API_URL}/admin/settings`, settings, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Si el tenant tiene landing y cambió el subdominio, actualizarlo
-      if (tenantInfo.hasLanding && tenantInfo.subdomain) {
-        try {
-          await axios.put(
-            `${API_URL}/tenant/subdomain`,
-            { subdomain: tenantInfo.subdomain },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-        } catch (subdomainError) {
-          console.error('Error al actualizar subdominio:', subdomainError);
-          toast.error('Configuración guardada, pero hubo un error al actualizar el subdominio');
-          setIsSaving(false);
-          return;
-        }
-      }
-      
+      await saveSettings();
       toast.success('✅ Configuración guardada exitosamente');
-      
-      // Si es un nuevo usuario (viene del registro), redirigir a SubscriptionDashboard
-      if (searchParams.get('welcome') === 'true') {
-        setTimeout(() => {
-          navigate('/subscription');
-        }, 1500);
-      }
+      setShowOnboarding(false);
     } catch (error) {
       console.error('Error al guardar:', error);
       toast.error('Error al guardar la configuración');
@@ -503,6 +518,8 @@ const CompanySettings = () => {
       setIsSaving(false);
     }
   };
+
+  const isWelcome = searchParams.get('welcome') === 'true';
 
   if (isLoading) {
     return (
@@ -520,6 +537,16 @@ const CompanySettings = () => {
 
   return (
     <div className={panelShell}>
+      {showOnboarding && (
+        <TenantOnboardingTour
+          settings={settings}
+          onFieldChange={handleOnboardingFieldChange}
+          onComplete={handleOnboardingComplete}
+          isSaving={isSaving}
+          showIntro={isWelcome}
+          trialDays={7}
+        />
+      )}
       {/* Navbar */}
       <nav className="bg-bgSurface shadow-brandGlow border-b border-borderBase sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-3">
@@ -528,14 +555,14 @@ const CompanySettings = () => {
               <h1 className="text-sm sm:text-xl font-bold text-textPrimary truncate">
                 {settings.company_name || 'GestProp'}
               </h1>
-              {isIncomplete && (
+              {showOnboarding && (
                 <span className="hidden xs:inline-flex px-2 py-0.5 bg-customYellowMuted text-customYellow border border-customYellow/30 text-xs font-medium rounded-full whitespace-nowrap">
-                  Configuración incompleta
+                  Configuración pendiente
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-              {!isIncomplete && (
+              {!showOnboarding && (
                 <>
                   <button
                     type="button"
@@ -569,160 +596,6 @@ const CompanySettings = () => {
       </nav>
 
       <div className="max-w-6xl mx-auto p-6">
-        
-        {/* Aviso de configuración pendiente */}
-        {isIncomplete && (
-          <div className={`${alertSuccess} mb-6`}>
-            <div className="flex items-start gap-4">
-              <div className="bg-brand-muted rounded-full p-3 flex-shrink-0">
-                <IoInformationCircleOutline className="text-brand-light text-2xl" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-brand-light mb-1">
-                  ¡Casi listo! Completá los datos de tu inmobiliaria
-                </h3>
-                <p className="text-textSecondary text-sm mb-3">
-                  Para empezar a usar el panel necesitás completar los <strong>Datos Generales</strong>. Solo te llevará unos minutos.
-                </p>
-                <div className={`${card} p-3`}>
-                  <p className="text-xs text-brand-light font-medium mb-2">📋 Campos requeridos:</p>
-                  <ul className="text-xs text-textSecondary grid grid-cols-2 gap-x-4 gap-y-1">
-                    <li>• Nombre de la inmobiliaria</li>
-                    <li>• CUIT</li>
-                    <li>• Matrícula profesional</li>
-                    <li>• Dirección</li>
-                    <li>• Teléfono</li>
-                    <li>• Email</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Onboarding Welcome Banner */}
-        {showWelcome && (
-          <div className="bg-gradient-to-r from-brand-dark to-brand rounded-xl shadow-brandGlow p-8 mb-6 text-textWhite relative overflow-hidden border border-borderStrong">
-            <button
-              type="button"
-              onClick={() => setShowWelcome(false)}
-              className="absolute top-4 right-4 text-textWhite/80 hover:text-textWhite transition-colors"
-            >
-              <IoCloseOutline className="w-6 h-6" />
-            </button>
-            
-            <div className="flex items-start space-x-4">
-              <div className="flex-shrink-0">
-                <div className="bg-brand-muted/50 backdrop-blur-sm rounded-full p-3">
-                  <IoCheckmarkCircleOutline className="w-8 h-8" />
-                </div>
-              </div>
-              
-              <div className="flex-1">
-                <h2 className="text-2xl font-bold mb-3">
-                  ¡Bienvenido a GestProp! 🎉
-                </h2>
-                <p className="text-textWhite/80 mb-4 text-lg">
-                  Tu cuenta ha sido creada exitosamente con un período de prueba de <strong>7 días</strong>.
-                </p>
-                
-                <div className="bg-bgSurface/20 backdrop-blur-sm rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-2 mb-2">
-                    <IoInformationCircleOutline className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold mb-2">¿Por qué es importante completar estos datos?</p>
-                      <p className="text-sm text-textWhite/80">
-                        La información que proporciones se utilizará automáticamente en todos los documentos generados por el sistema:
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-2 ml-7 text-sm">
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>Contratos de alquiler y venta</strong> - Datos legales de tu inmobiliaria</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>Autorizaciones de venta</strong> - Información de contacto y matrícula profesional</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>PDF de propiedades</strong> - Logo, teléfono y datos de contacto</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>Recibos de pago</strong> - Datos fiscales y de facturación</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-bgSurface/20 backdrop-blur-sm rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-2 mb-2">
-                    <IoDocumentTextOutline className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold mb-2">Plantillas PDF Personalizables</p>
-                      <p className="text-sm text-textWhite/80 mb-2">
-                        En la pestaña <strong>"Plantillas PDF"</strong> podrás personalizar todos los documentos:
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-2 ml-7 text-sm">
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span>Editar el HTML de cada tipo de documento</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span>Personalizar estilos CSS, encabezados y pies de página</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span>Crear múltiples plantillas por tipo (estándar, premium, etc.)</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span>Usar variables dinámicas como {`{{tenant.name}}`} o {`{{property.address}}`}</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="bg-bgSurface/20 backdrop-blur-sm rounded-lg p-4 mb-4">
-                  <div className="flex items-start space-x-2 mb-2">
-                    <IoMailOutline className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold mb-2">Mensajes Personalizables</p>
-                      <p className="text-sm text-textWhite/80 mb-2">
-                        En la pestaña <strong>"Mensajes"</strong> podrás personalizar los textos que usas con clientes:
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-2 ml-7 text-sm">
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>WhatsApp:</strong> Mensaje que se copia al compartir propiedades</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span><strong>Requisitos:</strong> Lista de documentos necesarios para alquilar</span>
-                    </li>
-                    <li className="flex items-center space-x-2">
-                      <span className="w-1.5 h-1.5 bg-brand-light rounded-full"></span>
-                      <span>Usa variables como {`{precio}`} o {`{direccion}`} para datos dinámicos</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex items-center space-x-2 text-customYellow text-sm">
-                  <IoInformationCircleOutline className="w-4 h-4" />
-                  <span>Asegúrate de completar especialmente el <strong>nombre, CUIT y matrícula</strong> para cumplir con requisitos legales.</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Header */}
         <div className={`${csCardPad} mb-6`}>

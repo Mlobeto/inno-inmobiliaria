@@ -78,8 +78,6 @@ const Register = () => {
       localStorage.setItem('token', result.token);
       localStorage.setItem('user', JSON.stringify(result.user));
 
-      alert(`¡Cuenta creada exitosamente! Bienvenido ${formData.fullName}`);
-
       navigate('/admin/company-settings?welcome=true');
     } catch (error) {
       console.error('Error en registro:', error);

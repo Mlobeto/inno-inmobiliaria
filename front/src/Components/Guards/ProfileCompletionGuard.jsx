@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '@shared/redux';
+import { isTenantProfileComplete } from '../../constants/onboardingFields';
 import { panelShell, spinner } from '../Admin/adminPanelTheme';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -89,17 +90,7 @@ const ProfileCompletionGuard = ({ children }) => {
         return;
       }
 
-      const requiredFields = [
-        'company_name',
-        'company_cuit',
-        'company_address',
-        'company_phone',
-        'company_email',
-      ];
-
-      const isProfileComplete = requiredFields.every(
-        (field) => settings[field] && settings[field].trim() !== '',
-      );
+      const isProfileComplete = isTenantProfileComplete(settings);
 
       setIsComplete(isProfileComplete);
 
