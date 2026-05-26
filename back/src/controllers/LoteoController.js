@@ -3,7 +3,7 @@ const {
   buildPeriodicCuotas,
   buildCustomCuotas,
   calcFinancingTotals,
-} = require('../../../shared/src/utils/loteCuotasSchedule');
+} = require('../utils/loteCuotasSchedule');
 
 // ─────────────────────────────────────────────
 // LOTEOS — CRUD del loteo completo
