@@ -165,7 +165,8 @@ export const FORM_TOUR_VALIDATORS = {
 
   'loteos-detalle': {
     'tour-loteos-detalle-info': INFO_OK,
-    'tour-loteos-plan-btn': INFO_OK,
+    'tour-loteos-plano-map': INFO_OK,
+    'tour-loteos-venta-plan': INFO_OK,
   },
 
   'loteos-proyecto': {

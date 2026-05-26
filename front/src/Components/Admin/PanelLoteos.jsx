@@ -501,7 +501,7 @@ export default function PanelLoteos() {
     <AdminPanelLayout
       wide
       backTo="/panel"
-      backOnClick={selectedLoteoId ? () => setSelectedLoteoId(null) : undefined}
+      backOnClick={selectedLoteoId ? () => { setSelectedLoteoId(null); setShowPlanEditor(false); } : undefined}
       backLabel={selectedLoteoId ? 'Loteos' : 'Panel'}
       title={
         selectedLoteoId
@@ -510,15 +510,37 @@ export default function PanelLoteos() {
       }
       icon={IoMapOutline}
       actions={
-        <button
-          type="button"
-          id={selectedLoteoId ? undefined : 'tour-loteos-nuevo-btn'}
-          onClick={selectedLoteoId ? openCreateLote : openCreateLoteo}
-          className={btnPrimary}
-        >
-          <IoAdd className="w-5 h-5" />
-          {selectedLoteoId ? 'Nuevo Lote' : 'Nuevo Loteo'}
-        </button>
+        selectedLoteoId ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              id="tour-loteos-plano-map"
+              onClick={() => setShowPlanEditor(true)}
+              className={`${btnSecondary} shrink-0`}
+            >
+              <IoMapOutline className="w-5 h-5" />
+              Plano interactivo
+            </button>
+            <button
+              type="button"
+              onClick={openCreateLote}
+              className={btnPrimary}
+            >
+              <IoAdd className="w-5 h-5" />
+              Nuevo Lote
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            id="tour-loteos-nuevo-btn"
+            onClick={openCreateLoteo}
+            className={btnPrimary}
+          >
+            <IoAdd className="w-5 h-5" />
+            Nuevo Loteo
+          </button>
+        )
       }
     >
 
@@ -621,6 +643,13 @@ export default function PanelLoteos() {
                         Ver Lotes
                       </button>
                       <button
+                        onClick={() => { setSelectedLoteoId(loteo.id); setShowPlanEditor(true); }}
+                        className="p-2 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded-lg transition-colors"
+                        title="Plano interactivo"
+                      >
+                        <IoMapOutline className="w-5 h-5" />
+                      </button>
+                      <button
                         onClick={() => handleTogglePublish(loteo.id, loteo.isPublished)}
                         className="p-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg transition-colors"
                         title={loteo.isPublished ? 'Despublicar' : 'Publicar en la página web'}
@@ -656,6 +685,28 @@ export default function PanelLoteos() {
               <div className="text-textPrimary text-center py-12">No se encontró el loteo.</div>
             ) : (
               <>
+                {!loteoDetail.planImageUrl && (loteoDetail.photos?.length > 0 || loteoDetail.lotes?.length > 0) && (
+                  <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-brand-muted/30 border border-brand/30">
+                    <div className="flex items-start gap-3">
+                      <IoMapOutline className="w-6 h-6 text-brand-light shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-textPrimary font-medium text-sm">Configurá el plano interactivo</p>
+                        <p className="text-textMuted text-xs mt-0.5">
+                          Ubicá cada lote sobre una foto del proyecto. Se verá en tu página web con colores según disponibilidad.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlanEditor(true)}
+                      className={`${btnPrimary} shrink-0 w-full sm:w-auto`}
+                    >
+                      <IoMapOutline className="w-5 h-5" />
+                      Abrir editor
+                    </button>
+                  </div>
+                )}
+
                 {/* Info del loteo */}
                 <div id="tour-loteos-detalle-info" className="bg-bgSurface border border-borderBase rounded-2xl p-5 mb-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -674,14 +725,6 @@ export default function PanelLoteos() {
                           Publicado
                         </span>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setShowPlanEditor(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded-lg text-sm font-medium transition-colors"
-                      >
-                        <IoMapOutline className="w-4 h-4" />
-                        Plano interactivo
-                      </button>
                       <button
                         type="button"
                         onClick={() => openEditLoteo(loteoDetail)}
@@ -742,7 +785,7 @@ export default function PanelLoteos() {
 
                         <div className="flex space-x-1 pt-1">
                           <button
-                            id={loteIndex === 0 ? 'tour-loteos-plan-btn' : undefined}
+                            id={loteIndex === 0 ? 'tour-loteos-venta-plan' : undefined}
                             onClick={() => openVentaModal(lote)}
                             className="flex-1 py-1.5 px-1 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded text-xs transition-colors flex items-center justify-center gap-1"
                             title="Plan de venta / financiación"

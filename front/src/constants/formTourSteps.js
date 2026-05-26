@@ -318,7 +318,15 @@ export function getLoteosDetalleTourSteps() {
       },
     },
     {
-      element: '#tour-loteos-plan-btn',
+      element: '#tour-loteos-plano-map',
+      popover: {
+        title: 'Plano interactivo',
+        description: 'Elegí una foto del loteo y arrastrá cada lote al lugar correcto. En la web se verá con colores: verde disponible, amarillo reservado, rojo vendido.',
+        side: 'bottom',
+      },
+    },
+    {
+      element: '#tour-loteos-venta-plan',
       popover: {
         title: 'Plan de venta',
         description: 'En cada lote podés registrar comprador, financiación y cuotas. También generar presupuesto PDF.',
