@@ -73,6 +73,56 @@ const LoteoDetail = () => {
     return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
   };
 
+  const renderLoteDetailCard = (lote, compact = false) => (
+    <div className={`${landingCard} border-brand/40 shadow-xl ${compact ? 'p-3' : 'p-5'}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <h3 className="text-textPrimary font-bold text-sm sm:text-base">Lote {lote.number}</h3>
+        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium shrink-0 ${LOTE_STATUS_STYLES[lote.status]}`}>
+          {LOTE_STATUS_LABELS[lote.status]}
+        </span>
+      </div>
+
+      {!compact && lote.photos?.[0] && (
+        <img
+          src={lote.photos[0]}
+          alt={`Lote ${lote.number}`}
+          className="w-full h-24 object-cover rounded-lg mb-2"
+        />
+      )}
+
+      <div className={`grid gap-2 mb-2 ${compact ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        {lote.surface && (
+          <div className="bg-bgElevated rounded-lg p-2 text-center">
+            <p className="text-textMuted text-xs">Superficie</p>
+            <p className="text-textPrimary font-semibold text-sm">{lote.surface} m²</p>
+          </div>
+        )}
+        {lote.price && (
+          <div className="bg-bgElevated rounded-lg p-2 text-center">
+            <p className="text-textMuted text-xs">Precio</p>
+            <p className="text-brand-light font-bold text-sm">{formatPrice(lote.price, lote.currency)}</p>
+          </div>
+        )}
+      </div>
+
+      {!compact && lote.description && (
+        <p className="text-textSecondary text-xs mb-3 line-clamp-3">{lote.description}</p>
+      )}
+
+      {data?.tenant?.contact?.whatsapp && lote.status === 'DISPONIBLE' && (
+        <a
+          href={generateWhatsApp(lote)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${landingBtnWa} w-full justify-center px-3 py-2 rounded-lg font-semibold text-xs sm:text-sm`}
+        >
+          <IoLogoWhatsapp className="w-4 h-4" />
+          Consultar
+        </a>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className={`${landingShell} flex items-center justify-center`}>
@@ -194,7 +244,8 @@ const LoteoDetail = () => {
               lotes={loteo.lotes || []}
               mode="view"
               selectedLoteId={selectedLote?.id}
-              onLoteSelect={(lote) => setSelectedLote(lote)}
+              onLoteSelect={(lote) => setSelectedLote(lote.id === selectedLote?.id ? null : lote)}
+              renderSelectedDetail={(lote) => renderLoteDetailCard(lote, true)}
             />
           </section>
         )}
@@ -278,61 +329,10 @@ const LoteoDetail = () => {
           )}
         </div>
 
-        {/* Panel detalle del lote seleccionado */}
-        {selectedLote && (
-          <div className={`mt-6 ${landingCard} border-brand/40 p-5`}>
-            <div className="flex flex-col sm:flex-row gap-5">
-              {/* Fotos del lote */}
-              {selectedLote.photos?.length > 0 && (
-                <div className="sm:w-56 flex-shrink-0">
-                  <img
-                    src={selectedLote.photos[0]}
-                    alt={`Lote ${selectedLote.number}`}
-                    className="w-full h-36 object-cover rounded-xl"
-                  />
-                  {selectedLote.photos.length > 1 && (
-                    <div className="flex gap-1 mt-1 overflow-x-auto">
-                      {selectedLote.photos.slice(1).map((url, i) => (
-                        <img key={i} src={url} alt="" className="w-14 h-10 object-cover rounded-lg flex-shrink-0" />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info */}
-              <div className="flex-1">
-                <h3 className="text-textPrimary text-xl font-bold mb-2">Lote {selectedLote.number}</h3>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  {selectedLote.surface && (
-                    <div className="bg-bgElevated rounded-lg p-2 text-center">
-                      <p className="text-textMuted text-xs">Superficie</p>
-                      <p className="text-textPrimary font-semibold">{selectedLote.surface} m²</p>
-                    </div>
-                  )}
-                  {selectedLote.price && (
-                    <div className="bg-bgElevated rounded-lg p-2 text-center">
-                      <p className="text-textMuted text-xs">Precio</p>
-                      <p className="text-brand-light font-bold">{formatPrice(selectedLote.price, selectedLote.currency)}</p>
-                    </div>
-                  )}
-                </div>
-                {selectedLote.description && (
-                  <p className="text-textSecondary text-sm mb-4">{selectedLote.description}</p>
-                )}
-                {tenant.contact?.whatsapp && selectedLote.status === 'DISPONIBLE' && (
-                  <a
-                    href={generateWhatsApp(selectedLote)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`${landingBtnWa} px-5 py-2.5 rounded-xl font-semibold`}
-                  >
-                    <IoLogoWhatsapp className="w-5 h-5" />
-                    Consultar por este lote
-                  </a>
-                )}
-              </div>
-            </div>
+        {/* Panel detalle del lote seleccionado (solo sin plano interactivo) */}
+        {selectedLote && !loteo.planImageUrl && (
+          <div className="mt-6">
+            {renderLoteDetailCard(selectedLote)}
           </div>
         )}
       </main>

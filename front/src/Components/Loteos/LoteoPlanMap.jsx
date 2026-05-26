@@ -21,6 +21,7 @@ export default function LoteoPlanMap({
   onPositionsChange,
   positionsOverride = null,
   showLegend = true,
+  renderSelectedDetail = null,
   className = '',
 }) {
   const canvasRef = useRef(null);
@@ -113,18 +114,20 @@ export default function LoteoPlanMap({
 
       <div
         ref={canvasRef}
-        className={`relative w-full rounded-xl overflow-hidden border border-borderBase bg-bgElevated select-none ${
+        className={`relative w-full rounded-xl border border-borderBase bg-bgElevated select-none overflow-visible ${
           mode === 'edit' ? 'cursor-crosshair' : ''
         }`}
         onDragOver={(e) => mode === 'edit' && e.preventDefault()}
         onDrop={handleCanvasDrop}
       >
-        <img
-          src={planImageUrl}
-          alt="Plano del loteo"
-          className="w-full h-auto block pointer-events-none"
-          draggable={false}
-        />
+        <div className="overflow-hidden rounded-xl">
+          <img
+            src={planImageUrl}
+            alt="Plano del loteo"
+            className="w-full h-auto block pointer-events-none"
+            draggable={false}
+          />
+        </div>
 
         {placedLotes.map((lote) => {
           const { planX, planY } = getPosition(lote);
@@ -153,6 +156,34 @@ export default function LoteoPlanMap({
             </button>
           );
         })}
+
+        {mode === 'view' && selectedLoteId && renderSelectedDetail && (() => {
+          const lote = placedLotes.find((l) => l.id === selectedLoteId);
+          if (!lote) return null;
+          const { planX, planY } = getPosition(lote);
+          const placeOnLeft = planX > 0.55;
+          const placeAbove = planY > 0.72;
+
+          return (
+            <div
+              className="absolute z-30 w-52 sm:w-56 pointer-events-auto"
+              style={{
+                left: `${planX * 100}%`,
+                top: `${planY * 100}%`,
+                transform: placeAbove
+                  ? placeOnLeft
+                    ? 'translate(calc(-100% - 14px), calc(-100% - 14px))'
+                    : 'translate(14px, calc(-100% - 14px))'
+                  : placeOnLeft
+                    ? 'translate(calc(-100% - 14px), -50%)'
+                    : 'translate(14px, -50%)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {renderSelectedDetail(lote)}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -167,6 +198,7 @@ LoteoPlanMap.propTypes = {
   onPositionsChange: PropTypes.func,
   positionsOverride: PropTypes.object,
   showLegend: PropTypes.bool,
+  renderSelectedDetail: PropTypes.func,
   className: PropTypes.string,
 };
 
