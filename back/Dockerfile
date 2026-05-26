@@ -1,3 +1,4 @@
+# Build context: raíz del monorepo (az acr build -f back/Dockerfile .)
 # ---- Build stage ----
 FROM node:20-alpine AS builder
 
@@ -7,8 +8,8 @@ WORKDIR /app
 RUN apk add --no-cache vips-dev fftw-dev gcc g++ make python3
 
 # Copiar manifests primero para aprovechar caché de capas
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY back/package*.json ./
+COPY back/prisma ./prisma/
 
 # Evitar que Puppeteer descargue su propio Chromium (usaremos el del sistema)
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -44,8 +45,9 @@ RUN apk add --no-cache \
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
-# Copiar código fuente
-COPY . .
+# Código del backend + utilidades compartidas (LoteoController → shared/src/utils)
+COPY back/ .
+COPY shared /shared
 
 # Exponer el puerto que usa Express (Railway/Azure usan PORT env var)
 EXPOSE 3001

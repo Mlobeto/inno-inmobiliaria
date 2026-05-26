@@ -1,0 +1,15 @@
+# Contexto Docker del backend (build desde raíz del monorepo)
+front/
+mobile/
+.git/
+.github/
+agent-transcripts/
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/*.log
+**/coverage
+**/__tests__
+**/*.test.js
+**/*.spec.js

@@ -11,8 +11,10 @@ on:
     branches: [main]
     paths:
       - 'back/**'
+      - 'shared/**'
       - 'infra/**'
       - '.github/workflows/deploy-backend.yml'
+      - '.dockerignore'
 
 env:
   AZURE_RESOURCE_GROUP: inno-prod-rg
@@ -51,7 +53,8 @@ jobs:
             --registry ${{ env.ACR_NAME }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.IMAGE_NAME }}:latest \
-            ./back
+            -f back/Dockerfile \
+            .
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       # Registrar/actualizar los secretos en el Container App desde GitHub Secrets.
