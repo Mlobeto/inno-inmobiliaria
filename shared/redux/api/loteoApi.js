@@ -67,6 +67,18 @@ export const loteoApi = baseApi.injectEndpoints({
       ],
     }),
 
+    saveLoteoPlan: builder.mutation({
+      query: ({ loteoId, planImageUrl, positions }) => ({
+        url: `/loteos/${loteoId}/plan`,
+        method: 'PUT',
+        body: { planImageUrl, positions },
+      }),
+      invalidatesTags: (result, error, { loteoId }) => [
+        { type: 'Loteo', id: loteoId },
+        'Loteo',
+      ],
+    }),
+
     // ========== LOTES ==========
 
     // Crear lote dentro de un loteo
@@ -193,6 +205,7 @@ export const {
   useUpdateLoteoMutation,
   useDeleteLoteoMutation,
   useTogglePublishLoteoMutation,
+  useSaveLoteoPlanMutation,
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,

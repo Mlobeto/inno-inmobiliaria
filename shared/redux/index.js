@@ -168,6 +168,7 @@ export {
   useUpdateLoteoMutation,
   useDeleteLoteoMutation,
   useTogglePublishLoteoMutation,
+  useSaveLoteoPlanMutation,
   useCreateLoteMutation,
   useUpdateLoteMutation,
   useDeleteLoteMutation,

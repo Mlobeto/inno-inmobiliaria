@@ -46,7 +46,7 @@ exports.getLoteoById = async (req, res) => {
 exports.createLoteo = async (req, res) => {
   try {
     const { tenantId } = req.user;
-    const { name, description, address, city, province, photos, isPublished, precioBase, totalLotes } = req.body;
+    const { name, description, address, city, province, photos, isPublished, precioBase, totalLotes, planImageUrl } = req.body;
 
     if (!name?.trim()) {
       return res.status(400).json({ success: false, message: 'El nombre del loteo es obligatorio' });
@@ -61,6 +61,7 @@ exports.createLoteo = async (req, res) => {
         city: city?.trim() || null,
         province: province?.trim() || null,
         photos: photos || [],
+        planImageUrl: planImageUrl?.trim() || null,
         isPublished: isPublished ?? false,
         precioBase: precioBase ? Number(precioBase) : null,
         totalLotes: totalLotes ? Number(totalLotes) : 0,
@@ -79,7 +80,7 @@ exports.updateLoteo = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { loteoId } = req.params;
-    const { name, description, address, city, province, photos, status, isPublished, precioBase, totalLotes } = req.body;
+    const { name, description, address, city, province, photos, status, isPublished, precioBase, totalLotes, planImageUrl } = req.body;
 
     const exists = await prisma.loteos.findFirst({ where: { id: Number(loteoId), tenantId } });
     if (!exists) return res.status(404).json({ success: false, message: 'Loteo no encontrado' });
@@ -93,6 +94,7 @@ exports.updateLoteo = async (req, res) => {
         ...(city !== undefined && { city: city?.trim() || null }),
         ...(province !== undefined && { province: province?.trim() || null }),
         ...(photos !== undefined && { photos }),
+        ...(planImageUrl !== undefined && { planImageUrl: planImageUrl?.trim() || null }),
         ...(status && { status }),
         ...(isPublished !== undefined && { isPublished }),
         ...(precioBase !== undefined && { precioBase: precioBase ? Number(precioBase) : null }),
@@ -145,6 +147,63 @@ exports.togglePublishLoteo = async (req, res) => {
   }
 };
 
+/** Guardar plano interactivo: imagen + posiciones de lotes (planX/planY en 0–1) */
+exports.saveLoteoPlan = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { loteoId } = req.params;
+    const { planImageUrl, positions } = req.body;
+
+    const loteo = await prisma.loteos.findFirst({
+      where: { id: Number(loteoId), tenantId },
+      include: { lotes: { select: { id: true } } },
+    });
+    if (!loteo) return res.status(404).json({ success: false, message: 'Loteo no encontrado' });
+
+    const validLoteIds = new Set(loteo.lotes.map((l) => l.id));
+
+    await prisma.$transaction(async (tx) => {
+      if (planImageUrl !== undefined) {
+        await tx.loteos.update({
+          where: { id: Number(loteoId) },
+          data: { planImageUrl: planImageUrl?.trim() || null },
+        });
+      }
+
+      if (Array.isArray(positions)) {
+        for (const pos of positions) {
+          const id = Number(pos.loteId);
+          if (!validLoteIds.has(id)) continue;
+
+          const hasCoords = pos.planX != null && pos.planY != null
+            && !Number.isNaN(Number(pos.planX))
+            && !Number.isNaN(Number(pos.planY));
+
+          await tx.lotes.update({
+            where: { id },
+            data: hasCoords
+              ? {
+                  planX: Math.min(1, Math.max(0, Number(pos.planX))),
+                  planY: Math.min(1, Math.max(0, Number(pos.planY))),
+                }
+              : { planX: null, planY: null },
+          });
+        }
+      }
+    });
+
+    const updated = await prisma.loteos.findFirst({
+      where: { id: Number(loteoId), tenantId },
+      include: { lotes: { orderBy: { number: 'asc' } } },
+    });
+
+    return res.status(200).json({ success: true, loteo: updated });
+  } catch (error) {
+    console.error('Error en saveLoteoPlan:', error);
+    return res.status(500).json({ success: false, message: 'Error al guardar el plano' });
+  }
+};
+
 // ─────────────────────────────────────────────
 // LOTES — CRUD de lotes individuales
 // ─────────────────────────────────────────────
@@ -153,7 +212,7 @@ exports.createLote = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { loteoId } = req.params;
-    const { number, parcela, surface, price, currency, status, description, photos } = req.body;
+    const { number, parcela, surface, price, currency, status, description, photos, planX, planY } = req.body;
 
     if (!number?.toString().trim()) {
       return res.status(400).json({ success: false, message: 'El número de lote es obligatorio' });
@@ -194,7 +253,7 @@ exports.updateLote = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { loteoId, loteId } = req.params;
-    const { number, parcela, surface, price, currency, status, description, photos } = req.body;
+    const { number, parcela, surface, price, currency, status, description, photos, planX, planY } = req.body;
 
     // Verificar que el loteo pertenece al tenant
     const loteo = await prisma.loteos.findFirst({ where: { id: Number(loteoId), tenantId } });
@@ -211,6 +270,12 @@ exports.updateLote = async (req, res) => {
         ...(status && { status }),
         ...(description !== undefined && { description: description?.trim() || null }),
         ...(photos !== undefined && { photos }),
+        ...(planX !== undefined && {
+          planX: planX != null ? Math.min(1, Math.max(0, Number(planX))) : null,
+        }),
+        ...(planY !== undefined && {
+          planY: planY != null ? Math.min(1, Math.max(0, Number(planY))) : null,
+        }),
       },
     });
 

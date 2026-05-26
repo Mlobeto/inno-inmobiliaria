@@ -39,6 +39,7 @@ import {
 } from 'react-icons/io5';
 import { AdminPanelLayout } from './AdminPanelLayout';
 import LoteosCobranzasPanel from './LoteosCobranzasPanel';
+import LoteoPlanEditor from './LoteoPlanEditor';
 import { btnPrimary, btnSecondary, card, inputClass, labelClass, modalBox, modalHeader, modalOverlay, selectClass, tabActive, tabInactive } from './adminPanelTheme';
 import { uploadMultipleFiles } from '../../utils/azureUpload';
 import { previewCuotasSchedule, PERIODICIDAD_LABELS, formatCuotaLabel } from '@shared/utils/loteCuotasSchedule';
@@ -178,6 +179,7 @@ export default function PanelLoteos() {
 
   // Modal venta / plan de financiación
   const [showVentaModal, setShowVentaModal]   = useState(false);
+  const [showPlanEditor, setShowPlanEditor]   = useState(false);
   const [selectedLoteForVenta, setSelectedLoteForVenta] = useState(null);
   const [ventaForm, setVentaForm]             = useState(EMPTY_VENTA);
   const [savingVenta, setSavingVenta]         = useState(false);
@@ -665,7 +667,7 @@ export default function PanelLoteos() {
                         <p className="text-textMuted text-sm">{loteoDetail.address}</p>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       <StatusBadge status={loteoDetail.status} />
                       {loteoDetail.isPublished && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30">
@@ -673,6 +675,15 @@ export default function PanelLoteos() {
                         </span>
                       )}
                       <button
+                        type="button"
+                        onClick={() => setShowPlanEditor(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-muted hover:bg-brand-subtle text-brand-light rounded-lg text-sm font-medium transition-colors"
+                      >
+                        <IoMapOutline className="w-4 h-4" />
+                        Plano interactivo
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => openEditLoteo(loteoDetail)}
                         className="p-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg transition-colors"
                       >
@@ -1687,6 +1698,12 @@ export default function PanelLoteos() {
           </div>
         </div>
       )}
+
+      <LoteoPlanEditor
+        loteo={loteoDetail}
+        open={showPlanEditor && Boolean(loteoDetail)}
+        onClose={() => setShowPlanEditor(false)}
+      />
     </>
   );
 }

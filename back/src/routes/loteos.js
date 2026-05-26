@@ -11,6 +11,7 @@ router.get('/:loteoId', ctrl.getLoteoById);
 router.post('/', ctrl.createLoteo);
 router.put('/:loteoId', ctrl.updateLoteo);
 router.delete('/:loteoId', ctrl.deleteLoteo);
+router.put('/:loteoId/plan', ctrl.saveLoteoPlan);
 router.patch('/:loteoId/publish', ctrl.togglePublishLoteo);
 
 // ── Lotes dentro de un loteo ─────────────────

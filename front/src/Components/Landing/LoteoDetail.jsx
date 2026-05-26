@@ -8,10 +8,10 @@ import {
   IoMapOutline,
   IoGridOutline,
   IoExpandOutline,
-
   IoChevronBackOutline,
   IoChevronForwardOutline,
 } from 'react-icons/io5';
+import LoteoPlanMap from '../Loteos/LoteoPlanMap';
 import {
   landingShell,
   landingHeader,
@@ -101,8 +101,11 @@ const LoteoDetail = () => {
 
   const { tenant, loteo } = data;
   const photos = loteo.photos || [];
-  const prevImage = () => setCurrentImageIndex(i => (i - 1 + photos.length) % photos.length);
-  const nextImage = () => setCurrentImageIndex(i => (i + 1) % photos.length);
+  const galleryPhotos = loteo.planImageUrl
+    ? photos.filter((url) => url !== loteo.planImageUrl)
+    : photos;
+  const prevImage = () => setCurrentImageIndex(i => (i - 1 + galleryPhotos.length) % galleryPhotos.length);
+  const nextImage = () => setCurrentImageIndex(i => (i + 1) % galleryPhotos.length);
 
   return (
     <div className={landingShell}>
@@ -137,32 +140,35 @@ const LoteoDetail = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Galería de fotos generales */}
-        {photos.length > 0 && (
+        {/* Galería (sin la imagen del plano si está configurada aparte) */}
+        {galleryPhotos.length > 0 && (
           <div className="relative h-64 sm:h-80 md:h-96 rounded-2xl overflow-hidden mb-8 bg-bgElevated">
             <img
-              src={photos[currentImageIndex]}
+              src={galleryPhotos[currentImageIndex]}
               alt={loteo.name}
               className="w-full h-full object-cover"
             />
-            {photos.length > 1 && (
+            {galleryPhotos.length > 1 && (
               <>
                 <button
+                  type="button"
                   onClick={prevImage}
                   className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition"
                 >
                   <IoChevronBackOutline className="w-5 h-5" />
                 </button>
                 <button
+                  type="button"
                   onClick={nextImage}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full transition"
                 >
                   <IoChevronForwardOutline className="w-5 h-5" />
                 </button>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-1">
-                  {photos.map((_, i) => (
+                  {galleryPhotos.map((_, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => setCurrentImageIndex(i)}
                       className={`w-2 h-2 rounded-full transition ${i === currentImageIndex ? 'bg-brand-light' : 'bg-textMuted/40'}`}
                     />
@@ -171,6 +177,26 @@ const LoteoDetail = () => {
               </>
             )}
           </div>
+        )}
+
+        {/* Plano interactivo */}
+        {loteo.planImageUrl && (
+          <section className="mb-10">
+            <h2 className="text-xl font-bold text-textPrimary mb-1 flex items-center gap-2">
+              <IoMapOutline className="w-6 h-6 text-brand-light" />
+              Plano interactivo
+            </h2>
+            <p className="text-textMuted text-sm mb-4">
+              Tocá un lote en el plano para ver sus características. Verde: disponible · Amarillo: reservado · Rojo: vendido.
+            </p>
+            <LoteoPlanMap
+              planImageUrl={loteo.planImageUrl}
+              lotes={loteo.lotes || []}
+              mode="view"
+              selectedLoteId={selectedLote?.id}
+              onLoteSelect={(lote) => setSelectedLote(lote)}
+            />
+          </section>
         )}
 
         {/* Título e info */}
@@ -216,6 +242,7 @@ const LoteoDetail = () => {
               {loteo.lotes.map((lote) => (
                 <button
                   key={lote.id}
+                  type="button"
                   onClick={() => setSelectedLote(lote.id === selectedLote?.id ? null : lote)}
                   disabled={lote.status === 'VENDIDO'}
                   className={`text-left ${landingCardHover} p-3 ${

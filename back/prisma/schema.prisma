@@ -1037,6 +1037,7 @@ model loteos {
   precioBase  Float?
   status      enum_loteo_status @default(ACTIVO)
   photos      String[]          @default([])
+  planImageUrl String?          @db.VarChar(500)
   isPublished Boolean           @default(false)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -1058,6 +1059,8 @@ model lotes {
   status      enum_lote_status @default(DISPONIBLE)
   description String?
   photos      String[]         @default([])
+  planX       Float?
+  planY       Float?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
