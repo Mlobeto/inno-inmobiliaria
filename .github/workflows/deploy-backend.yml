@@ -1,7 +1,7 @@
 # ============================================================
 # deploy-backend.yml
 # Trigger: push a main con cambios en back/ o infra/
-# Hace: build Docker → push a ACR → actualiza Container App
+# Hace: build Docker → push a GHCR → actualiza Container App
 # ============================================================
 name: Deploy Backend
 
@@ -18,20 +18,40 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: inno-prod-rg
-  ACR_NAME: innoacrprod
   CONTAINER_APP_NAME: inno-prod-api
-  IMAGE_NAME: inno-api
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # Necesario para OIDC login a Azure
+      id-token: write    # Necesario para OIDC login a Azure
       contents: read
+      packages: write    # Necesario para push a GHCR
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      # Login a GitHub Container Registry con el token automático del workflow
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build y push de la imagen al GHCR
+      - name: Build and push Docker image
+        run: |
+          IMAGE_TAG=ghcr.io/${{ github.repository_owner }}/inno-api:${{ github.sha }}
+          docker build \
+            -f back/Dockerfile \
+            -t $IMAGE_TAG \
+            -t ghcr.io/${{ github.repository_owner }}/inno-api:latest \
+            .
+          docker push ghcr.io/${{ github.repository_owner }}/inno-api:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/inno-api:latest
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       # Login a Azure usando Federated Identity (OIDC) — sin secretos de larga duración
       - name: Azure login
@@ -41,22 +61,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Login a Container Registry usando Managed Identity
-      - name: Login to ACR
-        run: az acr login --name ${{ env.ACR_NAME }}
-
-      # Build y push usando ACR Tasks (se compila en Azure, sin depender de Docker Hub desde el runner)
-      - name: Build and push Docker image via ACR Tasks
-        run: |
-          IMAGE_TAG=${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          az acr build \
-            --registry ${{ env.ACR_NAME }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.IMAGE_NAME }}:latest \
-            -f back/Dockerfile \
-            .
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-
       # Registrar/actualizar los secretos en el Container App desde GitHub Secrets.
       # az containerapp secret set hace upsert: crea si no existen, actualiza si ya existen.
       - name: Sync secrets to Container App
@@ -65,11 +69,24 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --secrets \
+              "database-url=${{ secrets.DATABASE_URL }}" \
               "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
               "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
               "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
               "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
-              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}"
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
+              "ghcr-pat=${{ secrets.GHCR_PAT }}"
+
+      # Configurar GHCR como registro de imágenes en el Container App
+      # Usa un PAT con scope read:packages para que Azure pueda hacer pull en cualquier momento
+      - name: Configure GHCR registry on Container App
+        run: |
+          az containerapp registry set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --server ghcr.io \
+            --username ${{ github.repository_owner }} \
+            --password-secret-ref ghcr-pat
 
       # Actualizar la imagen en Container Apps y referenciar secrets como env vars
       - name: Deploy to Container Apps
