@@ -58,6 +58,34 @@ router.get('/plans', async (req, res) => {
 });
 
 /**
+ * GET /api/public/modules
+ * Lista módulos disponibles (para landing y página de registro)
+ */
+router.get('/modules', async (req, res) => {
+  try {
+    const modules = await prisma.modules.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        moduleId: true,
+        name: true,
+        description: true,
+        price: true,
+        currency: true,
+        featureKeys: true,
+        question: true,
+        icon: true,
+        sortOrder: true,
+      },
+    });
+    return res.status(200).json({ success: true, modules });
+  } catch (error) {
+    console.error('❌ Error en GET /public/modules:', error);
+    return res.status(500).json({ success: false, message: 'Error al obtener módulos' });
+  }
+});
+
+/**
  * GET /api/public/:subdomain
  * Landing page del tenant con propiedades publicadas
  */

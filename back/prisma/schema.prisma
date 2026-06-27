@@ -538,6 +538,50 @@ model pdf_templates {
   @@index([tenantId, templateType, propertyPurpose], map: "idx_pdf_templates_tenant_type_purpose")
 }
 
+// ============================================================
+// MÓDULOS ADD-ON (catálogo de módulos opcionales con precio)
+// ============================================================
+
+model modules {
+  moduleId    String   @id @db.VarChar(50)
+  name        String   @db.VarChar(100)
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  currency    String   @default("ARS") @db.VarChar(3)
+  featureKeys Json     @default("[]") // Array de feature keys que habilita este módulo
+  question    String?  @db.VarChar(500) // Pregunta que se muestra en la landing
+  icon        String?  @db.VarChar(50)
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @db.Timestamp(6)
+
+  tenant_modules tenant_modules[]
+
+  @@index([isActive], map: "idx_modules_active")
+  @@index([sortOrder], map: "idx_modules_sort_order")
+}
+
+// Módulos activos por tenant
+model tenant_modules {
+  id          Int       @id @default(autoincrement())
+  tenantId    Int
+  moduleId    String    @db.VarChar(50)
+  status      String    @default("active") @db.VarChar(20)
+  activatedAt DateTime  @default(now()) @db.Timestamptz(6)
+  canceledAt  DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  tenants tenants @relation(fields: [tenantId], references: [tenantId], onDelete: Cascade)
+  modules modules @relation(fields: [moduleId], references: [moduleId])
+
+  @@unique([tenantId, moduleId], map: "uq_tenant_modules")
+  @@index([tenantId], map: "idx_tenant_modules_tenant")
+  @@index([moduleId], map: "idx_tenant_modules_module")
+  @@index([status], map: "idx_tenant_modules_status")
+}
+
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model plans {
   planId        String          @id @db.VarChar(50)
@@ -652,6 +696,7 @@ model tenants {
   lote_ventas          lote_ventas[]
   TemporaryRental      TemporaryRental[]
   TemporaryRentalBooking TemporaryRentalBooking[]
+  tenant_modules       tenant_modules[]
   @@index([status], map: "idx_tenants_status")
   @@index([subdomain], map: "idx_tenants_subdomain")
   @@index([cuit], map: "tenants_cuit")

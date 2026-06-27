@@ -39,12 +39,12 @@ exports.register = async (req, res) => {
 /**
  * Registrar un nuevo tenant - Registro simple
  * POST /auth/register-tenant
- * Body: { fullName, email, password, planId }
+ * Body: { fullName, email, password, planId, moduleIds }
  */
 exports.registerTenant = async (req, res) => {
-  const { fullName, email, password, planId } = req.body;
+  const { fullName, email, password, planId, moduleIds = [] } = req.body;
   
-  console.log('POST /auth/register-tenant - Datos recibidos:', { fullName, email, hasPassword: !!password, planId });
+  console.log('POST /auth/register-tenant - Datos recibidos:', { fullName, email, hasPassword: !!password, planId, moduleIds });
 
   try {
     // Validaciones
@@ -85,8 +85,8 @@ exports.registerTenant = async (req, res) => {
       counter++;
     }
 
-    // Buscar plan por planId (si no se envía, usar 'basic' por defecto)
-    const selectedPlanId = planId || 'basic';
+    // Buscar plan base (siempre es 'base' en el nuevo sistema)
+    const selectedPlanId = planId || 'base';
     const plan = await prisma.plans.findFirst({ where: { planId: selectedPlanId, isActive: true } });
     if (!plan) {
       console.log('❌ Plan no encontrado:', selectedPlanId);
@@ -104,7 +104,37 @@ exports.registerTenant = async (req, res) => {
     // Determinar el status inicial (trialing si el plan lo tiene)
     const tenantStatus = plan.trialDays > 0 ? 'trialing' : 'active';
 
-    // Crear el tenant con datos del plan seleccionado
+    // Calcular precio total incluyendo módulos seleccionados
+    const { computeTotalPrice, activateInitialModules } = require('../utils/subscriptionHelpers');
+
+    // Precio: base + módulos seleccionados
+    let modulesPrice = 0;
+    let validModuleIds = [];
+    if (moduleIds && moduleIds.length > 0) {
+      const selectedModules = await prisma.modules.findMany({
+        where: { moduleId: { in: moduleIds }, isActive: true },
+      });
+      validModuleIds = selectedModules.map(m => m.moduleId);
+      modulesPrice = selectedModules.reduce((sum, m) => sum + parseFloat(m.price), 0);
+    }
+    const totalAmount = parseFloat(plan.priceMonthly) + modulesPrice;
+
+    // Features del tenant = base + módulos seleccionados
+    const baseFeatures = plan.features || {};
+    let moduleFeatures = {};
+    if (validModuleIds.length > 0) {
+      const selectedModules = await prisma.modules.findMany({
+        where: { moduleId: { in: validModuleIds } },
+      });
+      for (const mod of selectedModules) {
+        if (Array.isArray(mod.featureKeys)) {
+          mod.featureKeys.forEach(key => { moduleFeatures[key] = true; });
+        }
+      }
+    }
+    const computedFeatures = { ...baseFeatures, ...moduleFeatures };
+
+    // Crear el tenant con features ya calculadas
     const newTenant = await prisma.tenants.create({
       data: {
         businessName: tempCompanyName,
@@ -113,9 +143,9 @@ exports.registerTenant = async (req, res) => {
         subdomain: finalSubdomain,
         status: tenantStatus,
         plan: plan.planId.toUpperCase(),
-        maxAgents: plan.maxUsers || 2,
-        maxProperties: plan.maxProperties || 50,
-        features: plan.features || {},
+        maxAgents: plan.features?.maxUsers || 2,
+        maxProperties: plan.features?.maxProperties === -1 ? 999999 : (plan.features?.maxProperties || 50),
+        features: computedFeatures,
         trialEndsAt: plan.trialDays > 0 ? new Date(Date.now() + plan.trialDays * 24 * 60 * 60 * 1000) : null,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -157,10 +187,23 @@ exports.registerTenant = async (req, res) => {
         currentPeriodStart: trialStart,
         currentPeriodEnd: trialEnd,
         billingCycle: 'monthly',
-        amount: 0,
+        amount: totalAmount,
         currency: 'ARS',
       },
     });
+
+    // Activar módulos seleccionados para este tenant
+    if (validModuleIds.length > 0) {
+      await prisma.tenant_modules.createMany({
+        data: validModuleIds.map(moduleId => ({
+          tenantId: newTenant.tenantId,
+          moduleId,
+          status: 'active',
+        })),
+        skipDuplicates: true,
+      });
+      console.log('✅ Módulos activados:', validModuleIds);
+    }
 
     console.log('✅ Suscripción creada:', subscription.subscriptionId);
 

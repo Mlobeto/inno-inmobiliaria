@@ -17,6 +17,11 @@ export const publicApi = baseApi.injectEndpoints({
       providesTags: ['PublicPlans'],
     }),
 
+    getPublicModules: builder.query({
+      query: () => '/public/modules',
+      providesTags: ['PublicModules'],
+    }),
+
   }),
   overrideExisting: false,
 });
@@ -24,6 +29,7 @@ export const publicApi = baseApi.injectEndpoints({
 // Export hooks
 export const {
   useGetPublicPlansQuery,
+  useGetPublicModulesQuery,
 } = publicApi;
 
 export default publicApi;

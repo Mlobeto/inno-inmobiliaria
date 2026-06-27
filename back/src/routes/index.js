@@ -76,6 +76,7 @@ router.use("/pdf-templates", authMiddleware, requireTenantScope, tenancyMiddlewa
 router.use("/tenant", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./tenant")); // Tenant management and signature
 router.use("/upload", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./upload")); // File upload → Azure Blob Storage
 router.use("/subscriptions", require("./subscriptionRoutes")); // Maneja auth + tenancy internamente
+router.use("/modules", require("./moduleRoutes")); // Módulos add-on
 router.use("/mercadolibre", require("./mercadolibre")); // MercadoLibre integration
 router.use("/leads", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('leads'), require("./leads")); // Leads/CRM
 router.use("/tickets", require("./tickets")); // Soporte / Tickets (maneja auth internamente)
@@ -84,7 +85,7 @@ router.use("/agents", authMiddleware, requireTenantScope, tenancyMiddleware, ten
 router.use("/commissions", authMiddleware, requireTenantScope, tenancyMiddleware, tenantLimiter, checkSubscription, checkFeature('agentRole'), require("./commissions")); // Comisiones de agentes
 router.use("/owner-settlements", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./ownerSettlements")); // Liquidaciones al propietario
 router.use("/clause-library",   authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./clauseLibrary")); // Biblioteca de cláusulas
-router.use("/temporary-rental", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, require("./temporaryRentalRoutes")); // Alquileres temporales
+router.use("/temporary-rental", authMiddleware, requireTenantScope, tenancyMiddleware, forbidAgents, tenantLimiter, checkSubscription, checkFeature('temporaryRentals'), require("./temporaryRentalRoutes")); // Alquileres temporales
 router.use("/electronic-invoicing", require("./electronicInvoiceRoutes")); // ARCA/AFIP facturación electrónica
 router.use("/dolar", require("./dolar")); // Cotización del dólar (proxy Bluelytics)
 router.use("/fix", require("./fixConstraints")); // Endpoint temporal

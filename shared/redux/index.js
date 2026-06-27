@@ -18,6 +18,7 @@ export { baseApi } from './api/baseApi';
 export {
   publicApi,
   useGetPublicPlansQuery,
+  useGetPublicModulesQuery,
 } from './api/publicApi';
 
 // ==================== AUTH API ====================

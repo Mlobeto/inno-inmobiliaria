@@ -18,6 +18,8 @@ const Register = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const planId = searchParams.get('planId');
+  const moduleIdsParam = searchParams.get('moduleIds');
+  const moduleIds = moduleIdsParam ? moduleIdsParam.split(',').filter(Boolean) : [];
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -70,7 +72,8 @@ const Register = () => {
         fullName: formData.fullName,
         email: formData.email,
         password: formData.password,
-        planId: planId || 'basic'
+        planId: planId || 'base',
+        moduleIds,
       }).unwrap();
 
       console.log('Resultado del registro:', result);

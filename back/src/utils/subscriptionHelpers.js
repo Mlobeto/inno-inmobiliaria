@@ -1,5 +1,5 @@
 /**
- * Helpers para planes lifetime y consistencia tenant ↔ subscriptions.
+ * Helpers para planes y consistencia tenant ↔ subscriptions ↔ modules.
  */
 
 function normalizePlanId(planId) {
@@ -36,7 +36,7 @@ function buildLifetimeSubscriptionData() {
   };
 }
 
-function buildPaidPlanSubscriptionData(planRecord, existingSubscription = null) {
+function buildPaidPlanSubscriptionData(planRecord, existingSubscription = null, moduleIds = []) {
   const now = new Date();
   const periodEnd = new Date();
   periodEnd.setDate(periodEnd.getDate() + 30);
@@ -47,6 +47,7 @@ function buildPaidPlanSubscriptionData(planRecord, existingSubscription = null) 
       ? new Date(existingSubscription.currentPeriodEnd)
       : periodEnd;
 
+  // El monto base se calcula en el llamador que ya tiene los precios de módulos
   return {
     planId: normalizePlanId(planRecord.planId),
     status: 'active',
@@ -59,6 +60,80 @@ function buildPaidPlanSubscriptionData(planRecord, existingSubscription = null) 
     trialEnd: null,
     cancelAtPeriodEnd: false,
   };
+}
+
+/**
+ * Calcula las features efectivas del tenant: base plan + módulos activos.
+ */
+async function computeTenantFeatures(prisma, tenantId) {
+  const basePlan = await prisma.plans.findUnique({ where: { planId: 'base' } });
+  const baseFeatures = (basePlan?.features) || {};
+
+  const activeModules = await prisma.tenant_modules.findMany({
+    where: { tenantId, status: 'active' },
+    include: { modules: true },
+  });
+
+  const moduleFeatures = {};
+  for (const tm of activeModules) {
+    const keys = tm.modules.featureKeys;
+    if (Array.isArray(keys)) {
+      keys.forEach((key) => { moduleFeatures[key] = true; });
+    }
+  }
+
+  return { ...baseFeatures, ...moduleFeatures };
+}
+
+/**
+ * Calcula precio total: base + módulos activos del tenant.
+ */
+async function computeTotalPrice(prisma, tenantId, extraModuleIds = []) {
+  const basePlan = await prisma.plans.findUnique({ where: { planId: 'base' } });
+  const basePrice = parseFloat(basePlan?.priceMonthly || 10000);
+
+  // Módulos ya activos en BD
+  const activeModules = await prisma.tenant_modules.findMany({
+    where: { tenantId, status: 'active' },
+    include: { modules: true },
+  });
+
+  // Módulos extra (al momento del registro, antes de crear tenant_modules)
+  let extraPrice = 0;
+  if (extraModuleIds.length > 0) {
+    const extraModules = await prisma.modules.findMany({
+      where: { moduleId: { in: extraModuleIds }, isActive: true },
+    });
+    extraPrice = extraModules.reduce((sum, m) => sum + parseFloat(m.price), 0);
+  }
+
+  const activePrice = activeModules.reduce(
+    (sum, tm) => sum + parseFloat(tm.modules.price),
+    0
+  );
+
+  return basePrice + activePrice + extraPrice;
+}
+
+/**
+ * Activa módulos iniciales al registrar un tenant nuevo.
+ */
+async function activateInitialModules(prisma, tenantId, moduleIds = []) {
+  if (!moduleIds || moduleIds.length === 0) return;
+
+  const validModules = await prisma.modules.findMany({
+    where: { moduleId: { in: moduleIds }, isActive: true },
+  });
+
+  await Promise.all(
+    validModules.map((mod) =>
+      prisma.tenant_modules.upsert({
+        where: { uq_tenant_modules: { tenantId, moduleId: mod.moduleId } },
+        update: { status: 'active', canceledAt: null },
+        create: { tenantId, moduleId: mod.moduleId, status: 'active' },
+      })
+    )
+  );
 }
 
 /**
@@ -88,6 +163,12 @@ async function syncTenantSubscriptionPlan(prisma, tenantId, planId, planRecord) 
           status: 'active',
         };
 
+  // Calcular precio total real (base + módulos)
+  if (!isLifetimePlanId(planIdNorm)) {
+    const totalPrice = await computeTotalPrice(prisma, tenantId);
+    subData.amount = totalPrice;
+  }
+
   let updated;
   if (subscription) {
     updated = await prisma.subscriptions.update({
@@ -104,16 +185,16 @@ async function syncTenantSubscriptionPlan(prisma, tenantId, planId, planRecord) 
     });
   }
 
-  const tenantPatch = {
-    plan: planIdNorm.toUpperCase(),
-    ...(isLifetimePlanId(planIdNorm)
-      ? { status: 'active', trialEndsAt: null }
-      : {}),
-  };
+  // Sincronizar features del tenant
+  const features = await computeTenantFeatures(prisma, tenantId);
 
   await prisma.tenants.update({
     where: { tenantId },
-    data: tenantPatch,
+    data: {
+      plan: planIdNorm.toUpperCase(),
+      features,
+      ...(isLifetimePlanId(planIdNorm) ? { status: 'active', trialEndsAt: null } : {}),
+    },
   });
 
   return updated;
@@ -125,5 +206,9 @@ module.exports = {
   isLifetimeSubscription,
   buildLifetimeSubscriptionData,
   buildPaidPlanSubscriptionData,
+  computeTenantFeatures,
+  computeTotalPrice,
+  activateInitialModules,
   syncTenantSubscriptionPlan,
 };
+
