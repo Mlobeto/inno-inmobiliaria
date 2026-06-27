@@ -21,6 +21,10 @@ import {
   IoMapOutline,
   IoFunnelOutline,
   IoKeyOutline,
+  IoAddCircleOutline,
+  IoTrashOutline,
+  IoCalendarOutline,
+  IoHomeOutline,
 } from 'react-icons/io5';
 import {
   panelShell,
@@ -39,43 +43,14 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-const PLAN_COLORS = {
-  basic: { border: 'border-borderBase', active: 'border-brand ring-1 ring-brand/30' },
-  professional: { border: 'border-brand/40', active: 'border-brand ring-2 ring-brand/40' },
-  gestpro: { border: 'border-borderStrong', active: 'border-brand-light ring-2 ring-brand/50' },
+const MODULE_ICONS = {
+  temporary_rentals: IoCalendarOutline,
+  landing:           IoGlobeOutline,
+  leads_team:        IoPeopleCircleOutline,
+  mercadolibre:      IoStorefrontOutline,
+  loteos:            IoMapOutline,
+  portal_inquilino:  IoHomeOutline,
 };
-
-const COMPARE_ROWS = [
-  { label: 'Propiedades', key: 'maxProperties', render: (v) => (v === -1 ? 'Ilimitadas' : v) },
-  { label: 'Clientes', key: 'maxClients', render: (v) => (v === -1 ? 'Ilimitados' : v) },
-  { label: 'Usuarios', key: 'maxUsers', render: (v) => v },
-  { label: 'Almacenamiento', key: 'maxStorageGB', render: (v) => `${v} GB` },
-  { label: 'Página web', key: 'landingPage', render: (v) => v },
-  { label: 'Portal inquilinos', key: 'portalInquilino', render: (v) => v },
-  { label: 'MercadoLibre', key: 'mercadoLibreIntegration', render: (v) => v },
-  { label: 'WhatsApp', key: 'whatsappIntegration', render: (v) => v },
-  { label: 'CRM Leads', key: 'leads', render: (v) => v },
-  { label: 'Agentes & Comisiones', key: 'agentRole', render: (v) => v },
-  { label: 'Facturación ARCA', key: 'electronicInvoicing', render: (v) => v },
-  { label: 'Gestión Loteos', key: 'loteos', render: (v) => v },
-  { label: 'Dominio propio', key: 'customDomain', render: (v) => v },
-  { label: 'Soporte prioritario', key: 'prioritySupport', render: (v) => v },
-];
-
-const FEATURE_FLAGS = [
-  { key: 'landingPage', label: 'Página web', icon: IoGlobeOutline },
-  { key: 'portalInquilino', label: 'Portal inquilinos', icon: IoKeyOutline },
-  { key: 'mercadoLibreIntegration', label: 'MercadoLibre', icon: IoStorefrontOutline },
-  { key: 'leads', label: 'CRM Leads', icon: IoFunnelOutline },
-  { key: 'agentRole', label: 'Agentes & Comisiones', icon: IoPeopleCircleOutline },
-  { key: 'electronicInvoicing', label: 'Facturación ARCA', icon: null },
-  { key: 'loteos', label: 'Gestión Loteos', icon: IoMapOutline },
-  { key: 'customDomain', label: 'Dominio propio', icon: IoGlobeOutline },
-  { key: 'prioritySupport', label: 'Soporte prioritario', icon: null },
-  { key: 'whatsappIntegration', label: 'WhatsApp', icon: null },
-  { key: 'exportData', label: 'Exportación de datos', icon: null },
-  { key: 'estadisticas', label: 'Estadísticas avanzadas', icon: null },
-];
 
 const STATUSES_NEEDING_PAYMENT = ['past_due', 'canceled', 'incomplete', 'expired'];
 
@@ -97,74 +72,16 @@ function isTrialExpired(sub) {
   return new Date(sub.trialEnd) <= new Date();
 }
 
-function PlanFeaturesList({ features, compact = false }) {
-  const f = features || {};
-  return (
-    <ul className={`space-y-1.5 ${compact ? 'text-xs' : 'text-sm'}`}>
-      {COMPARE_ROWS.map((row) => {
-        const raw = f[row.key];
-        if (raw === undefined || raw === null) return null;
-        const rendered = row.render(raw);
-        const isBool = typeof rendered === 'boolean';
-        const included = isBool ? rendered : true;
-        return (
-          <li
-            key={row.key}
-            className={`flex items-center gap-2 ${included ? 'text-textSecondary' : 'text-textMuted'}`}
-          >
-            {isBool ? (
-              included ? (
-                <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
-              ) : (
-                <IoCloseCircle className="w-4 h-4 text-textMuted shrink-0 opacity-60" />
-              )
-            ) : (
-              <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
-            )}
-            <span className={included ? '' : 'line-through opacity-50'}>
-              {row.label}
-              {!isBool && `: ${rendered}`}
-            </span>
-          </li>
-        );
-      })}
-      {FEATURE_FLAGS.map(({ key, label, icon: Icon }) => {
-        const val = f[key];
-        if (val === undefined) return null;
-        if (COMPARE_ROWS.some((r) => r.key === key)) return null;
-        return (
-          <li
-            key={key}
-            className={`flex items-center gap-2 ${val ? 'text-textSecondary' : 'text-textMuted'}`}
-          >
-            {val ? (
-              <IoCheckmarkCircle className="w-4 h-4 text-brand-light shrink-0" />
-            ) : (
-              <IoCloseCircle className="w-4 h-4 text-textMuted shrink-0 opacity-60" />
-            )}
-            {Icon && <Icon className={`w-3.5 h-3.5 shrink-0 ${val ? 'text-brand-light' : 'text-textMuted'}`} />}
-            <span className={val ? '' : 'line-through opacity-50'}>{label}</span>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-PlanFeaturesList.propTypes = {
-  features: PropTypes.object,
-  compact: PropTypes.bool,
-};
-
 const SubscriptionManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isExpired = searchParams.get('expired') === 'true';
   const [subscription, setSubscription] = useState(null);
-  const [plans, setPlans] = useState([]);
+  const [allModules, setAllModules] = useState([]);
+  const [tenantModules, setTenantModules] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isChangingPlan, setIsChangingPlan] = useState(false);
+  const [isChangingModule, setIsChangingModule] = useState(null); // moduleId en proceso
 
   useEffect(() => {
     loadSubscriptionData();
@@ -175,74 +92,88 @@ const SubscriptionManager = () => {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const subResponse = await axios.get(`${API_URL}/subscriptions/current`, { headers });
-      setSubscription(subResponse.data?.subscription || null);
+      const [subRes, allModRes, tenantModRes] = await Promise.all([
+        axios.get(`${API_URL}/subscriptions/current`, { headers }),
+        axios.get(`${API_URL}/modules`),
+        axios.get(`${API_URL}/modules/tenant`, { headers }),
+      ]);
 
-      const plansResponse = await axios.get(`${API_URL}/plans`, { headers });
-      setPlans(plansResponse.data?.plans || []);
+      setSubscription(subRes.data?.subscription || null);
+      setAllModules(allModRes.data?.modules || []);
+      setTenantModules(tenantModRes.data?.modules || []);
 
       try {
-        const paymentsResponse = await axios.get(`${API_URL}/subscriptions/payment-history`, { headers });
-        setPaymentHistory(paymentsResponse.data?.payments || []);
+        const paymentsRes = await axios.get(`${API_URL}/subscriptions/payment-history`, { headers });
+        setPaymentHistory(paymentsRes.data?.payments || []);
       } catch {
         /* historial opcional */
       }
 
       setIsLoading(false);
     } catch (error) {
-      console.error('Error al cargar datos de suscripción:', error);
+      console.error('Error al cargar datos:', error);
       toast.error('Error al cargar información de la suscripción');
       setIsLoading(false);
     }
   };
 
-  const handleCreateSubscription = async (planId) => {
-    const needsPayment = subscriptionNeedsPayment(subscription);
-    const confirmMsg = needsPayment
-      ? 'Vas a Mercado Pago para activar la suscripción.\n\n' +
-        '• El período de prueba ya lo usaste: el primer cobro es al confirmar (o en el próximo ciclo según MP).\n' +
-        '• Las suscripciones se debitan con tarjeta de crédito o débito.\n\n' +
-        '¿Continuar?'
-      : '¿Querés suscribirte a este plan?';
-    if (!window.confirm(confirmMsg)) return;
-    setIsChangingPlan(true);
+  const activeModuleIds = new Set(tenantModules.map((tm) => tm.moduleId));
+
+  const handleActivateModule = async (moduleId) => {
+    if (!window.confirm('¿Querés agregar este módulo? El precio de tu suscripción se actualizará.')) return;
+    setIsChangingModule(moduleId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `${API_URL}/modules/activate`,
+        { moduleIds: [moduleId] },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast.success(`Módulo activado. Nuevo total: ${formatCurrency(res.data.newTotalPrice)}/mes`);
+      await loadSubscriptionData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error al activar módulo');
+    } finally {
+      setIsChangingModule(null);
+    }
+  };
+
+  const handleDeactivateModule = async (moduleId) => {
+    if (!window.confirm('¿Querés desactivar este módulo? Perderás acceso a esas funcionalidades.')) return;
+    setIsChangingModule(moduleId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.post(
+        `${API_URL}/modules/deactivate`,
+        { moduleId },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      toast.success(`Módulo desactivado. Nuevo total: ${formatCurrency(res.data.newTotalPrice)}/mes`);
+      await loadSubscriptionData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Error al desactivar módulo');
+    } finally {
+      setIsChangingModule(null);
+    }
+  };
+
+  const handleCreateSubscription = async () => {
+    if (!window.confirm(
+      'Vas a Mercado Pago para activar la suscripción.\n\n' +
+      '• Las suscripciones se debitan mensualmente con tarjeta de crédito o débito.\n\n' +
+      '¿Continuar?'
+    )) return;
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/subscriptions/create-subscription`,
-        { planId },
+        { planId: 'base' },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       window.location.href = response.data.subscriptionUrl;
     } catch (error) {
       const data = error.response?.data;
-      const prefix = data?.code ? `[${data.code}] ` : '';
-      const hint = typeof data?.hint === 'string' ? ` ${data.hint}` : '';
-      toast.error(`${prefix}${data?.error || error.message || 'Error al crear la suscripción'}${hint}`, {
-        autoClose: 12000,
-      });
-    } finally {
-      setIsChangingPlan(false);
-    }
-  };
-
-  const handleChangePlan = async (newPlanId) => {
-    if (!window.confirm('¿Estás seguro de cambiar tu plan de suscripción?')) return;
-
-    setIsChangingPlan(true);
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_URL}/subscriptions/change-plan`,
-        { newPlanId },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      toast.success('Plan actualizado exitosamente');
-      await loadSubscriptionData();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Error al cambiar plan');
-    } finally {
-      setIsChangingPlan(false);
+      toast.error(data?.error || error.message || 'Error al crear la suscripción', { autoClose: 12000 });
     }
   };
 
@@ -338,7 +269,7 @@ const SubscriptionManager = () => {
                   onClick={() => {
                     const el = document.getElementById('available-plans');
                     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    else if (subscription?.planId) handleCreateSubscription(subscription.planId);
+                    else handleCreateSubscription();
                   }}
                   className={btnPrimary}
                 >
@@ -391,19 +322,30 @@ const SubscriptionManager = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <h2 className="text-lg font-semibold text-textPrimary flex items-center gap-2">
               <IoLayersOutline className="w-5 h-5 text-brand-light" />
-              Plan actual
+              Mi suscripción
             </h2>
             {getStatusBadge(subscription?.status)}
           </div>
 
-          <div className="grid sm:grid-cols-3 gap-3 mb-6">
+          <div className="grid sm:grid-cols-3 gap-3 mb-4">
             <div className={statCard}>
               <p className="text-xs text-textMuted mb-0.5">Plan</p>
-              <p className="text-lg font-bold text-textPrimary">{subscription?.Plan?.name || 'N/A'}</p>
-              <p className="text-sm text-textSecondary mt-1">
-                {formatCurrency(parseFloat(subscription?.Plan?.priceMonthly || 0))}/mes
+              <p className="text-lg font-bold text-textPrimary">Plan Base</p>
+              <p className="text-sm text-textSecondary mt-1">{formatCurrency(10000)}/mes</p>
+            </div>
+            <div className={statCard}>
+              <p className="text-xs text-textMuted mb-0.5">Módulos activos</p>
+              <p className="text-2xl font-bold text-textPrimary">{tenantModules.length}</p>
+            </div>
+            <div className={statCard}>
+              <p className="text-xs text-textMuted mb-0.5">Total mensual</p>
+              <p className="text-lg font-bold text-textPrimary">
+                {formatCurrency(parseFloat(subscription?.amount || 10000))}
               </p>
             </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
             <div className={statCard}>
               <p className="text-xs text-textMuted mb-0.5">
                 {subscription?.status === 'trialing' ? 'Trial termina' : 'Próxima renovación'}
@@ -415,109 +357,111 @@ const SubscriptionManager = () => {
               </p>
             </div>
             <div className={statCard}>
-              <p className="text-xs text-textMuted mb-0.5">Fecha de inicio</p>
+              <p className="text-xs text-textMuted mb-0.5">Inicio</p>
               <p className="text-sm font-semibold text-textPrimary">{formatDate(subscription?.currentPeriodStart)}</p>
             </div>
           </div>
-
-          {subscription?.Plan?.features && (
-            <div className="pt-5 border-t border-borderBase">
-              <h3 className="text-sm font-semibold text-textPrimary mb-3">Características incluidas</h3>
-              <PlanFeaturesList features={subscription.Plan.features} />
-            </div>
-          )}
         </div>
 
-        <div id="available-plans" className={`${card} p-5 sm:p-6 mb-6 scroll-mt-4`}>
-          <h2 className="text-lg font-semibold text-textPrimary mb-5 flex items-center gap-2">
-            <IoLayersOutline className="w-5 h-5 text-brand-light" />
-            {subscriptionNeedsPayment(subscription) ? 'Renovar o elegir plan' : 'Cambiar plan'}
-          </h2>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {plans
-              .filter((plan) => plan.isActive && plan.planId !== 'lifetime')
-              .map((plan) => {
-                const isCurrentPlan = subscription?.planId === plan.planId;
-                const needsPayment = subscriptionNeedsPayment(subscription);
-                const isDisabled = isChangingPlan || (isCurrentPlan && !needsPayment);
-                const colors = PLAN_COLORS[plan.planId] || PLAN_COLORS.basic;
-                const features = plan.features || {};
-
-                let buttonLabel = 'Suscribirse';
-                if (isCurrentPlan) {
-                  buttonLabel = needsPayment ? 'Pagar y reactivar' : 'Plan actual';
-                } else if (subscription && !needsPayment) {
-                  buttonLabel = 'Cambiar a este plan';
-                }
-
+        {/* Módulos activos */}
+        {tenantModules.length > 0 && (
+          <div className={`${card} p-5 sm:p-6 mb-6`}>
+            <h2 className="text-lg font-semibold text-textPrimary mb-4 flex items-center gap-2">
+              <IoCheckmarkCircle className="w-5 h-5 text-brand-light" />
+              Módulos activos
+            </h2>
+            <div className="space-y-3">
+              {tenantModules.map((tm) => {
+                const mod = tm.modules || allModules.find(m => m.moduleId === tm.moduleId);
+                if (!mod) return null;
+                const Icon = MODULE_ICONS[mod.moduleId] || IoLayersOutline;
                 return (
-                  <div
-                    key={plan.planId}
-                    className={`rounded-xl border bg-bgElevated/40 p-4 flex flex-col transition-colors ${
-                      isCurrentPlan ? colors.active : `${colors.border} hover:border-borderStrong`
-                    }`}
-                  >
-                    <div className="mb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-base font-bold text-textPrimary">{plan.name}</h3>
-                        {plan.isPopular && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-light bg-brand-muted px-2 py-0.5 rounded-full border border-borderStrong">
-                            Popular
-                          </span>
-                        )}
+                  <div key={mod.moduleId} className="flex items-center justify-between gap-4 p-3 rounded-xl bg-brand-muted/30 border border-borderStrong">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-brand-muted border border-borderStrong">
+                        <Icon className="w-5 h-5 text-brand-light" />
                       </div>
-                      <p className="text-xs text-textMuted mt-1 min-h-[2rem]">{plan.description}</p>
-                    </div>
-
-                    <p className="text-2xl font-bold text-textPrimary mb-3">
-                      {formatCurrency(parseFloat(plan.priceMonthly || 0))}
-                      <span className="text-sm text-textMuted font-normal">/mes</span>
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2 mb-4 text-center text-xs">
-                      <div className="rounded-lg bg-bgSurface border border-borderBase px-2 py-1.5">
-                        <div className="font-bold text-textPrimary">
-                          {features.maxProperties === -1 ? '∞' : features.maxProperties ?? '—'}
-                        </div>
-                        <div className="text-textMuted">Propiedades</div>
-                      </div>
-                      <div className="rounded-lg bg-bgSurface border border-borderBase px-2 py-1.5">
-                        <div className="font-bold text-textPrimary">
-                          {features.maxClients === -1 ? '∞' : features.maxClients ?? '—'}
-                        </div>
-                        <div className="text-textMuted">Clientes</div>
+                      <div>
+                        <p className="font-medium text-textPrimary text-sm">{mod.name}</p>
+                        <p className="text-xs text-textMuted">{formatCurrency(mod.price)}/mes</p>
                       </div>
                     </div>
-
-                    <div className="flex-1 mb-4">
-                      <PlanFeaturesList features={features} compact />
-                    </div>
-
                     <button
                       type="button"
-                      onClick={() => {
-                        if (needsPayment || !subscription) {
-                          handleCreateSubscription(plan.planId);
-                        } else {
-                          handleChangePlan(plan.planId);
-                        }
-                      }}
-                      disabled={isDisabled}
-                      className={
-                        isDisabled
-                          ? `${btnSecondary} w-full justify-center opacity-60 cursor-not-allowed`
-                          : needsPayment && isCurrentPlan
-                            ? 'w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-customRed hover:bg-customRedDark text-textWhite text-sm font-semibold rounded-lg transition-colors disabled:opacity-50'
-                            : `${btnPrimary} w-full justify-center`
-                      }
+                      onClick={() => handleDeactivateModule(mod.moduleId)}
+                      disabled={isChangingModule === mod.moduleId}
+                      className="text-customRed hover:text-customRedDark text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
                     >
-                      {isChangingPlan ? 'Procesando...' : buttonLabel}
+                      <IoTrashOutline className="w-4 h-4" />
+                      {isChangingModule === mod.moduleId ? 'Procesando...' : 'Quitar'}
                     </button>
                   </div>
                 );
               })}
+            </div>
           </div>
+        )}
+
+        {/* Módulos disponibles para agregar */}
+        <div id="available-plans" className={`${card} p-5 sm:p-6 mb-6 scroll-mt-4`}>
+          <h2 className="text-lg font-semibold text-textPrimary mb-2 flex items-center gap-2">
+            <IoAddCircleOutline className="w-5 h-5 text-brand-light" />
+            {allModules.filter(m => !activeModuleIds.has(m.moduleId)).length === 0
+              ? 'Módulos disponibles'
+              : 'Agregar módulos'}
+          </h2>
+          <p className="text-sm text-textMuted mb-5">
+            Sumá funcionalidades a tu plan. Se descuentan junto con tu suscripción mensual.
+          </p>
+
+          {allModules.filter(m => !activeModuleIds.has(m.moduleId)).length === 0 ? (
+            <p className="text-textMuted text-sm text-center py-6">🎉 Tenés todos los módulos activos</p>
+          ) : (
+            <div className="space-y-3">
+              {allModules
+                .filter(m => !activeModuleIds.has(m.moduleId))
+                .map((mod) => {
+                  const Icon = MODULE_ICONS[mod.moduleId] || IoLayersOutline;
+                  return (
+                    <div key={mod.moduleId} className="flex items-center justify-between gap-4 p-4 rounded-xl border border-borderBase bg-bgElevated/40 hover:border-borderStrong transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-bgSurface border border-borderBase">
+                          <Icon className="w-5 h-5 text-textMuted" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-textPrimary text-sm">{mod.name}</p>
+                          <p className="text-xs text-textMuted mt-0.5">{mod.description}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-textPrimary">+{formatCurrency(mod.price)}</p>
+                          <p className="text-xs text-textMuted">/mes</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleActivateModule(mod.moduleId)}
+                          disabled={!!isChangingModule}
+                          className={`${btnPrimary} text-xs py-1.5 px-3 disabled:opacity-50`}
+                        >
+                          <IoAddCircleOutline className="w-4 h-4" />
+                          {isChangingModule === mod.moduleId ? 'Activando...' : 'Agregar'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
+          {subscriptionNeedsPayment(subscription) && (
+            <div className="mt-5 pt-5 border-t border-borderBase">
+              <button type="button" onClick={handleCreateSubscription} className={`${btnPrimary} w-full justify-center`}>
+                <IoCardOutline className="w-4 h-4" />
+                Activar suscripción con Mercado Pago
+              </button>
+            </div>
+          )}
         </div>
 
         {paymentHistory?.length > 0 && (

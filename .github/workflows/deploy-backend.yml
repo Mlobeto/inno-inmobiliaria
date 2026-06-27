@@ -62,40 +62,25 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Registrar/actualizar los secretos en el Container App desde GitHub Secrets.
-      # az containerapp secret set hace upsert: crea si no existen, actualiza si ya existen.
-      - name: Sync secrets to Container App
+      # Un solo update: secrets + registry GHCR + imagen + env vars.
+      # Evita 3 provisiones seguidas que causan "Operation expired" en Azure.
+      - name: Deploy to Container Apps
         run: |
-          az containerapp secret set \
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.IMAGE_TAG }} \
+            --registry-server ghcr.io \
+            --registry-username ${OWNER} \
+            --registry-password ${{ secrets.GHCR_PAT }} \
             --secrets \
               "database-url=${{ secrets.DATABASE_URL }}" \
               "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
               "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
               "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
               "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
-              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}"
-
-      # Configurar GHCR como registro de imágenes en el Container App
-      # Usa un PAT con scope read:packages para que Azure pueda hacer pull en cualquier momento
-      - name: Configure GHCR registry on Container App
-        run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          az containerapp registry set \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --server ghcr.io \
-            --username ${OWNER} \
-            --password ${{ secrets.GHCR_PAT }}
-
-      # Actualizar la imagen en Container Apps y referenciar secrets como env vars
-      - name: Deploy to Container Apps
-        run: |
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE_TAG }} \
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
             --set-env-vars \
               "NODE_ENV=production" \
               "PORT=3001" \
@@ -113,13 +98,41 @@ jobs:
               "PLATFORM_ADMIN_EMAIL=admin@innoinmo.com" \
               "PLATFORM_ADMIN_EMAILS=admin@innoinmo.com" \
               "CONTACT_EMAIL=${{ secrets.CONTACT_EMAIL }}" \
-              "ACS_SENDER_ADDRESS=DoNotReply@GestProps.com.ar"
+              "ACS_SENDER_ADDRESS=DoNotReply@GestProps.com.ar" \
+            --no-wait
 
-      # Verificar que el deployment quedó activo
+      # Esperar a que la revisión quede activa (Azure puede tardar varios minutos)
       - name: Verify deployment
         run: |
-          az containerapp show \
+          echo "Esperando revisión activa..."
+          for i in $(seq 1 36); do
+            STATE=$(az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "[?properties.active].properties.runningState | [0]" \
+              --output tsv 2>/dev/null || echo "Unknown")
+            echo "Intento $i/36 — estado: ${STATE:-sin revisión}"
+            if [ "$STATE" = "Running" ]; then
+              az containerapp show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --query "properties.latestRevisionFqdn" \
+                --output tsv
+              exit 0
+            fi
+            if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
+              echo "Revisión falló. Logs recientes:"
+              az containerapp logs show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --tail 50 || true
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Timeout esperando revisión activa"
+          az containerapp logs show \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "properties.latestRevisionFqdn" \
-            --output tsv
+            --tail 50 || true
+          exit 1

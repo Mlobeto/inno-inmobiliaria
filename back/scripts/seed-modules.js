@@ -4,8 +4,12 @@
  * Ejecutar: node back/scripts/seed-modules.js
  */
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const path = require('path');
+
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
+
+const prisma = require('../src/utils/prismaClient');
 
 async function main() {
   console.log('🌱 Seeding plan base y módulos...');
