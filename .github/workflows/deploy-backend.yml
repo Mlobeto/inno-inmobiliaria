@@ -43,14 +43,15 @@ jobs:
       # Build y push de la imagen al GHCR
       - name: Build and push Docker image
         run: |
-          IMAGE_TAG=ghcr.io/${{ github.repository_owner }}/inno-api:${{ github.sha }}
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG=ghcr.io/${OWNER}/inno-api:${{ github.sha }}
           docker build \
             -f back/Dockerfile \
             -t $IMAGE_TAG \
-            -t ghcr.io/${{ github.repository_owner }}/inno-api:latest \
+            -t ghcr.io/${OWNER}/inno-api:latest \
             .
-          docker push ghcr.io/${{ github.repository_owner }}/inno-api:${{ github.sha }}
-          docker push ghcr.io/${{ github.repository_owner }}/inno-api:latest
+          docker push $IMAGE_TAG
+          docker push ghcr.io/${OWNER}/inno-api:latest
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
 
       # Login a Azure usando Federated Identity (OIDC) — sin secretos de larga duración
@@ -81,11 +82,12 @@ jobs:
       # Usa un PAT con scope read:packages para que Azure pueda hacer pull en cualquier momento
       - name: Configure GHCR registry on Container App
         run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           az containerapp registry set \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --server ghcr.io \
-            --username ${{ github.repository_owner }} \
+            --username ${OWNER} \
             --password-secret-ref ghcr-pat
 
       # Actualizar la imagen en Container Apps y referenciar secrets como env vars

@@ -1,7 +1,7 @@
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { IoArrowBackOutline, IoChevronForwardOutline } from 'react-icons/io5';
-import { panelShell, panelContainer, backLink } from './adminPanelTheme';
+import { panelShell, backLink } from './adminPanelTheme';
 
 export function AdminPanelLayout({
   backTo = '/panel',
