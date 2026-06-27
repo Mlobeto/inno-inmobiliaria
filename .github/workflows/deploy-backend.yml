@@ -75,8 +75,7 @@ jobs:
               "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
               "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
               "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
-              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
-              "ghcr-pat=${{ secrets.GHCR_PAT }}"
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}"
 
       # Configurar GHCR como registro de imágenes en el Container App
       # Usa un PAT con scope read:packages para que Azure pueda hacer pull en cualquier momento
@@ -88,7 +87,7 @@ jobs:
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --server ghcr.io \
             --username ${OWNER} \
-            --password-secret-ref ghcr-pat
+            --password ${{ secrets.GHCR_PAT }}
 
       # Actualizar la imagen en Container Apps y referenciar secrets como env vars
       - name: Deploy to Container Apps
