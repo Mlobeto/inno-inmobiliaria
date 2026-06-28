@@ -62,7 +62,7 @@ jobs:
 
       - name: Wait for Azure idle
         run: |
-          echo "Esperando que Azure termine operaciones previas (hasta 30 min)..."
+          echo "Esperando que Azure no tenga operaciones en curso..."
           for i in $(seq 1 90); do
             STATE=$(az containerapp show \
               --name ${{ env.CONTAINER_APP_NAME }} \
@@ -70,28 +70,26 @@ jobs:
               --query "properties.provisioningState" \
               --output tsv 2>/dev/null || echo "Unknown")
             echo "Intento $i/90 — provisioningState: $STATE"
-            if [ "$STATE" = "Succeeded" ]; then
-              echo "Container App listo."
-              break
-            fi
+            # Failed es normal tras una revisión rota — la app sigue en la revisión anterior.
+            # Solo esperamos mientras hay una operación activa (InProgress / Updating).
+            case "$STATE" in
+              Succeeded|Failed|Canceled)
+                echo "Estado terminal ($STATE) — continuando deploy."
+                exit 0
+                ;;
+              InProgress|Updating|Provisioning)
+                sleep 20
+                ;;
+              *)
+                echo "Estado desconocido ($STATE) — continuando."
+                exit 0
+                ;;
+            esac
             if [ "$i" -eq 90 ]; then
-              echo "Timeout esperando provisioningState=Succeeded (último: $STATE)"
-              exit 1
+              echo "Timeout esperando fin de operación (último: $STATE). Intentando deploy igual..."
+              exit 0
             fi
-            sleep 20
           done
-
-      - name: Record revision before deploy
-        id: rev
-        run: |
-          PRE=$(az containerapp revision list \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "sort_by(@, &properties.createdTime)[-1].name" \
-            --output tsv)
-          echo "pre_revision=$PRE" >> $GITHUB_OUTPUT
-          echo "Revisión previa: $PRE"
-          echo "Nueva revisión esperada: ${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
 
       - name: Deactivate failed revisions
         continue-on-error: true
@@ -108,6 +106,22 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --revision "$REV" || true
           done
+          if [ -n "$FAILED" ]; then
+            echo "Esperando 30s tras desactivar revisiones fallidas..."
+            sleep 30
+          fi
+
+      - name: Record revision before deploy
+        id: rev
+        run: |
+          PRE=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "sort_by(@, &properties.createdTime)[-1].name" \
+            --output tsv)
+          echo "pre_revision=$PRE" >> $GITHUB_OUTPUT
+          echo "Revisión previa: $PRE"
+          echo "Nueva revisión esperada: ${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
 
       - name: Deploy to Container Apps
         env:
