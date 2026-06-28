@@ -51,7 +51,6 @@ jobs:
           docker push $IMAGE_TAG
           docker push ghcr.io/${OWNER}/inno-api:latest
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          echo "REVISION_SUFFIX=gh${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Azure login
         uses: azure/login@v2
@@ -131,15 +130,8 @@ jobs:
           echo "Imagen objetivo: ${{ env.IMAGE_TAG }}"
 
       - name: Deploy to Container Apps
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "ERROR: Falta el secret DATABASE_URL en GitHub (Settings → Secrets)."
-            exit 1
-          fi
-
-          # Reparar DATABASE_URL (secretref: literal rompe Prisma) y forzar arranque sin migrate
+          # Solo imagen + command — no reescribir env vars (DATABASE_URL ya OK en revisión activa)
           for i in $(seq 1 40); do
             echo "Deploy intento $i/40..."
             if OUT=$(az containerapp update \
@@ -147,10 +139,8 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --container-name api \
               --image ${{ env.IMAGE_TAG }} \
-              --revision-suffix "${{ env.REVISION_SUFFIX }}" \
               --command "node" \
               --args "index.js" \
-              --set-env-vars "DATABASE_URL=$DATABASE_URL" \
               --no-wait 2>&1); then
               echo "$OUT"
               echo "Deploy iniciado."
@@ -173,71 +163,72 @@ jobs:
           API_URL="https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io"
           TARGET_IMAGE="${{ env.IMAGE_TAG }}"
           SHA="${{ github.sha }}"
-          PRE_IMAGE="${{ steps.rev.outputs.pre_image }}"
-          echo "Esperando imagen $TARGET_IMAGE (previa: $PRE_IMAGE)..."
+          echo "Esperando revisión Running con imagen $TARGET_IMAGE..."
           sleep 30
+
+          check_api() {
+            local BASE="$1"
+            curl -sf "$BASE/health" | grep -q '"status":"OK"' || return 1
+            curl -sf "$BASE/api/public/modules" | grep -q '"modules"' && return 0
+            curl -sf "$BASE/api/public/plans" | grep -q '"plans"' && return 0
+            return 1
+          }
+
           for i in $(seq 1 60); do
-            CUR_IMAGE=$(az containerapp show \
+            echo "Intento $i/60"
+            REVS=$(az containerapp revision list \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "properties.template.containers[0].image" \
-              --output tsv 2>/dev/null || echo "?")
-            REV=$(az containerapp revision list \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "sort_by(@, &properties.createdTime)[-1].name" \
-              --output tsv 2>/dev/null || echo "?")
-            STATE=$(az containerapp revision list \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
-              --output tsv 2>/dev/null || echo "Unknown")
+              --query "sort_by(@, &properties.createdTime)[].{name:name,image:properties.template.containers[0].image,state:properties.runningState,fqdn:properties.fqdn}" \
+              -o json 2>/dev/null || echo "[]")
 
-            IMAGE_OK=false
-            if [ "$CUR_IMAGE" = "$TARGET_IMAGE" ]; then IMAGE_OK=true; fi
-            if echo "$CUR_IMAGE" | grep -qF "$SHA"; then IMAGE_OK=true; fi
+            FOUND=false
+            while read -r line; do
+              REV=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])")
+              REV_IMAGE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['image'])")
+              STATE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['state'])")
+              FQDN=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('fqdn') or '')")
 
-            echo "Intento $i/60 — rev $REV ($STATE) imagen: $CUR_IMAGE (ok=$IMAGE_OK)"
+              IMAGE_HIT=false
+              [ "$REV_IMAGE" = "$TARGET_IMAGE" ] && IMAGE_HIT=true
+              echo "$REV_IMAGE" | grep -qF "$SHA" && IMAGE_HIT=true
+              echo "  $REV | $STATE | hit=$IMAGE_HIT | $REV_IMAGE"
+              [ "$IMAGE_HIT" = false ] && continue
+              FOUND=true
 
-            if [ "$IMAGE_OK" = false ]; then
-              sleep 15
-              continue
-            fi
+              if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
+                echo "Revisión falló. Logs:"
+                az containerapp logs show \
+                  --name ${{ env.CONTAINER_APP_NAME }} \
+                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                  --revision "$REV" --tail 80 || true
+                exit 1
+              fi
 
-            if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
-              echo "Revisión falló tras deploy. Logs:"
-              az containerapp logs show \
-                --name ${{ env.CONTAINER_APP_NAME }} \
-                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                --revision "$REV" \
-                --tail 80 || true
-              exit 1
-            fi
+              if [ "$STATE" = "Running" ] && [ -n "$FQDN" ]; then
+                REV_URL="https://$FQDN"
+                if check_api "$REV_URL"; then
+                  echo "Revisión $REV OK en $REV_URL"
+                  for j in $(seq 1 12); do
+                    if check_api "$API_URL"; then
+                      echo "Deploy OK — tráfico en URL principal."
+                      exit 0
+                    fi
+                    sleep 10
+                  done
+                  echo "Deploy OK — revisión sana (tráfico aún en revisión anterior)."
+                  exit 0
+                fi
+              fi
+            done < <(echo "$REVS" | python3 -c "import sys,json; [print(json.dumps(r)) for r in json.load(sys.stdin)]")
 
-            if [ "$STATE" != "Running" ]; then
-              sleep 15
-              continue
-            fi
-
-            UPTIME=$(curl -sf "$API_URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uptime',-1))" 2>/dev/null || echo "-1")
-            echo "Health uptime: $UPTIME s"
-
-            if curl -sf "$API_URL/api/public/modules" | grep -q '"name"'; then
-              echo "Deploy OK — /api/public/modules responde."
-              exit 0
-            fi
-
-            if [ "$UPTIME" != "-1" ] && [ "${UPTIME%%.*}" -lt 600 ]; then
-              echo "Deploy OK — uptime bajo ($UPTIME s)."
-              exit 0
-            fi
-
-            echo "Imagen desplegada, esperando health/modules..."
+            [ "$FOUND" = false ] && echo "  Sin revisión con imagen nueva aún."
             sleep 15
           done
-          echo "Timeout. Imagen actual: $CUR_IMAGE"
-          az containerapp logs show \
+
+          echo "Timeout."
+          az containerapp revision list \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --tail 80 || true
+            -o table || true
           exit 1
