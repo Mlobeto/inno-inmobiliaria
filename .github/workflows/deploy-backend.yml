@@ -61,18 +61,23 @@ jobs:
 
       - name: Wait for Azure idle
         run: |
-          echo "Esperando que Azure termine operaciones previas..."
-          for i in $(seq 1 30); do
+          echo "Esperando que Azure termine operaciones previas (hasta 30 min)..."
+          for i in $(seq 1 90); do
             STATE=$(az containerapp show \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --query "properties.provisioningState" \
               --output tsv 2>/dev/null || echo "Unknown")
-            echo "Intento $i/30 — provisioningState: $STATE"
-            if [ "$STATE" = "Succeeded" ] || [ "$STATE" = "Failed" ]; then
+            echo "Intento $i/90 — provisioningState: $STATE"
+            if [ "$STATE" = "Succeeded" ]; then
+              echo "Container App listo."
               break
             fi
-            sleep 10
+            if [ "$i" -eq 90 ]; then
+              echo "Timeout esperando provisioningState=Succeeded (último: $STATE)"
+              exit 1
+            fi
+            sleep 20
           done
 
       # Secrets ya configurados en el Container App — no re-sincronizar en cada deploy
@@ -83,11 +88,28 @@ jobs:
         run: |
           # Solo actualizar imagen — no tocar env vars (secretref: en --set-env-vars
           # puede guardarse como literal y romper DATABASE_URL en revisiones nuevas).
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE_TAG }} \
-            --no-wait
+          for i in $(seq 1 40); do
+            echo "Deploy intento $i/40..."
+            if OUT=$(az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image ${{ env.IMAGE_TAG }} \
+              --no-wait 2>&1); then
+              echo "$OUT"
+              echo "Deploy iniciado."
+              exit 0
+            fi
+            echo "$OUT"
+            if echo "$OUT" | grep -qi "ContainerAppOperationInProgress"; then
+              echo "Operación en curso, reintentando en 30s..."
+              sleep 30
+              continue
+            fi
+            echo "Error no recuperable en deploy."
+            exit 1
+          done
+          echo "Timeout: Azure siguió ocupado tras 40 reintentos."
+          exit 1
 
       - name: Verify deployment
         run: |
