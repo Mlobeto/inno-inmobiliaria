@@ -19,15 +19,13 @@ import Register from "./Components/Register"; // 🆕 NUEVO - Registro con plan
 import PlatformAdminDashboard from "./Admin/PlatformAdmin/Dashboard"; // 🆕 NUEVO
 import TenantList from "./Admin/PlatformAdmin/TenantList"; // 🆕 NUEVO
 import TenantDetail from "./Admin/PlatformAdmin/TenantDetail"; // 🆕 NUEVO
-// 🆕 NUEVO - Componentes de Suscripción
-import PlanSelector from "./Components/PlanSelector";
-// Páginas públicas
+import LandingPlans from "./Components/LandingPlans";
+import LandingFooter from "./Components/LandingFooter";
+import { LandingNav } from "./Components/LandingHero";
 import ContactForm from "./Components/ContactForm";
 import TermsOfService from "./Components/TermsOfService";
 import PrivacyPolicy from "./Components/PrivacyPolicy";
-
 import SubscriptionSuccess from "./Components/SubscriptionSuccess";
-// 🆕 NUEVO - Landing Pages Públicas
 import TenantLanding from "./Components/Landing/TenantLanding";
 import PortalInquilinos from "./Components/Landing/PortalInquilinos";
 import PropertyDetail from "./Components/Landing/PropertyDetail";
@@ -38,7 +36,6 @@ import PanelComisiones from "./Components/Admin/PanelComisiones";
 // eslint-disable-next-line no-unused-vars
 import ProtectedRoutes from "./utils/ProtectedRoutes";
 import PaymentForm from "./Components/Pagos/PaymentForm";
-
 import CreateLeaseForm from "./Components/Contratos/CreateLeaseForm";
 import PaymentList from "./Components/Pagos/PaymentList";
 import PaymentReport from "./Components/Pagos/PaymentReport";
@@ -50,14 +47,24 @@ import ContratoAlquiler from "./Components/PdfTemplates/ContratoAlquiler";
 import ReciboPreview from "./Components/PdfTemplates/ReciboPreview";
 import ContratoPreview from "./Components/PdfTemplates/ContratoPreview";
 import SignatureManager from "./Components/Admin/SignatureManager";
-import CompanySettings from "./Components/Admin/CompanySettings"; // 🆕 NUEVO
-import SubscriptionManager from "./Components/Admin/SubscriptionManager"; // 🆕 NUEVO - Gestión de suscripción
-import PdfTemplateManager from "./Components/Admin/PdfTemplateManager"; // 🆕 NUEVO - Gestión de plantillas PDF
+import CompanySettings from "./Components/Admin/CompanySettings";
+import SubscriptionManager from "./Components/Admin/SubscriptionManager";
+import PdfTemplateManager from "./Components/Admin/PdfTemplateManager";
 import InstallPWA from "./Components/InstallPWA";
-import ProtectedRoute from "./Components/Guards/ProtectedRoute"; // 🆕 Guard combinado
+import ProtectedRoute from "./Components/Guards/ProtectedRoute";
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
 import { useSelector } from "react-redux";
 import { selectIsImpersonating, selectImpersonatedTenant } from "@shared/redux";
+
+function PlansPage() {
+  return (
+    <div className="landing-container bg-bgBase min-h-screen font-Montserrat">
+      <LandingNav />
+      <LandingPlans />
+      <LandingFooter />
+    </div>
+  );
+}
 
 function App() {
   useTokenExpiry();
@@ -200,7 +207,7 @@ function App() {
       <Route path="/platform-admin/tenants/:tenantId" element={<TenantDetail />} /> {/* 🆕 NUEVO */}
 
       {/* 🆕 NUEVO - Suscripciones y Planes */}
-      <Route path="/plans" element={<PlanSelector />} /> {/* Selector de planes (público/autenticado) */}
+      <Route path="/plans" element={<PlansPage />} />
       <Route path="/subscription/success" element={<SubscriptionSuccess />} /> {/* Callback de MercadoPago */}
 
       {/* Páginas públicas */}

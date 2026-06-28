@@ -54,7 +54,7 @@ function LandingPlans() {
 
   const total = BASE_PRICE + modulesTotal;
 
-  const registerUrl = `/register?planId=base${
+  const registerUrl = `/registro?planId=base${
     selected.size > 0 ? `&moduleIds=${[...selected].join(',')}` : ''
   }`;
 
