@@ -1,6 +1,14 @@
 const prisma = require('../utils/prismaClient');
 const fs = require('fs');
 const path = require('path');
+const {
+  parseSafeDate,
+  getFreqMonths,
+  calculateUpdatePeriod,
+  getNextUpdateDate,
+  computeUpdateInfo,
+  leaseNeedsPendingUpdate,
+} = require('../utils/leaseUpdateHelpers');
 
 function decodeBase64(dataString) {
   try {
@@ -31,55 +39,6 @@ const fixForeignKeyConstraints = async () => {
   }
 };
 
-function calculateUpdatePeriod(startDate, updateFrequency, updateDate) {
-  const start = new Date(startDate);
-  const update = new Date(updateDate);
-
-  let monthsDiff = (update.getFullYear() - start.getFullYear()) * 12;
-  monthsDiff += update.getMonth() - start.getMonth();
-  if (update.getDate() < start.getDate()) {
-    monthsDiff--;
-  }
-
-  switch (updateFrequency) {
-    case 'semestral':
-      return `Semestre ${Math.floor(monthsDiff / 6) + 1}`;
-    case 'cuatrimestral':
-      return `Cuatrimestre ${Math.floor(monthsDiff / 4) + 1}`;
-    case 'anual':
-      return `Año ${Math.floor(monthsDiff / 12) + 1}`;
-    default:
-      return 'Desconocido';
-  }
-}
-
-function getNextUpdateDate(startDate, updateFrequency) {
-  let freqMonths = 0;
-  if (updateFrequency === 'semestral') freqMonths = 6;
-  else if (updateFrequency === 'cuatrimestral') freqMonths = 4;
-  else if (updateFrequency === 'anual') freqMonths = 12;
-
-  const start = new Date(startDate);
-  const now = new Date();
-  const monthsSinceStart = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-  const periodsElapsed = Math.floor(monthsSinceStart / freqMonths);
-
-  const nextUpdate = new Date(start);
-  nextUpdate.setMonth(nextUpdate.getMonth() + (periodsElapsed + 1) * freqMonths);
-  return nextUpdate;
-}
-
-function needsUpdate(startDate, updateFrequency) {
-  let freqMonths = 0;
-  if (updateFrequency === 'semestral') freqMonths = 6;
-  else if (updateFrequency === 'cuatrimestral') freqMonths = 4;
-  else if (updateFrequency === 'anual') freqMonths = 12;
-
-  const start = new Date(startDate);
-  const now = new Date();
-  const monthsSinceStart = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-  return monthsSinceStart >= freqMonths && (monthsSinceStart % freqMonths === 0 || monthsSinceStart > freqMonths);
-}
 
 async function enrichLeases(leases) {
   if (!leases.length) return [];
@@ -350,35 +309,10 @@ exports.getAllLeases = async (req, res) => {
     const leases = await prisma.Leases.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
     const enriched = await enrichLeases(leases);
 
-    const leasesWithUpdateInfo = enriched.map((lease) => {
-      const start = new Date(lease.startDate);
-      const now = new Date();
-
-      const monthsSinceStart = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-      let freqMonths = 0;
-      if (lease.updateFrequency === 'semestral') freqMonths = 6;
-      else if (lease.updateFrequency === 'cuatrimestral') freqMonths = 4;
-      else if (lease.updateFrequency === 'anual') freqMonths = 12;
-
-      const shouldUpdate = monthsSinceStart >= freqMonths;
-      const periodsElapsed = freqMonths > 0 ? Math.floor(monthsSinceStart / freqMonths) : 0;
-      const nextUpdate = new Date(start);
-      if (freqMonths > 0) nextUpdate.setMonth(nextUpdate.getMonth() + (periodsElapsed + 1) * freqMonths);
-
-      const lastUpdate = lease.RentUpdates?.[0] || null;
-
-      return {
-        ...lease,
-        updateInfo: {
-          monthsSinceStart,
-          shouldUpdate,
-          lastUpdateDate: lastUpdate ? lastUpdate.updateDate : null,
-          nextUpdateDate: nextUpdate,
-          periodsElapsed,
-          hasUpdates: (lease.RentUpdates || []).length > 0,
-        },
-      };
-    });
+    const leasesWithUpdateInfo = enriched.map((lease) => ({
+      ...lease,
+      updateInfo: computeUpdateInfo(lease),
+    }));
 
     res.status(200).json(leasesWithUpdateInfo);
   } catch (error) {
@@ -442,30 +376,36 @@ exports.checkPendingPayments = async (req, res) => {
 
 exports.updateRentAmount = async (req, res) => {
   try {
+    const { tenantId } = req.user;
     const id = parseInt(req.params.id, 10);
     const { newRentAmount, updateDate, pdfData, fileName } = req.body;
 
-    if (!newRentAmount || !updateDate || !pdfData || !fileName) {
-      return res.status(400).json({ error: 'El nuevo monto de alquiler, la fecha de actualización, el PDF y el nombre del archivo son obligatorios.' });
+    if (!newRentAmount || !updateDate) {
+      return res.status(400).json({
+        error: 'El nuevo monto de alquiler y la fecha de actualización son obligatorios.',
+      });
     }
 
-    const lease = await prisma.Leases.findUnique({ where: { id } });
+    const lease = await prisma.Leases.findFirst({ where: { id, tenantId } });
     if (!lease) return res.status(404).json({ error: 'Contrato no encontrado.' });
 
+    const oldRentAmount = lease.rentAmount;
     const period = calculateUpdatePeriod(lease.startDate, lease.updateFrequency, updateDate);
 
-    const pdfDirectory = path.join(__dirname, '../../pdfs');
-    if (!fs.existsSync(pdfDirectory)) fs.mkdirSync(pdfDirectory, { recursive: true });
-    const filePath = path.join(pdfDirectory, fileName);
-
-    fs.writeFileSync(filePath, decodeBase64(pdfData));
+    let filePath = null;
+    if (pdfData && fileName) {
+      const pdfDirectory = path.join(__dirname, '../../pdfs');
+      if (!fs.existsSync(pdfDirectory)) fs.mkdirSync(pdfDirectory, { recursive: true });
+      filePath = path.join(pdfDirectory, fileName);
+      fs.writeFileSync(filePath, decodeBase64(pdfData));
+    }
 
     await prisma.RentUpdates.create({
       data: {
         leaseId: id,
         tenantId: lease.tenantId,
-        updateDate: new Date(updateDate),
-        oldRentAmount: lease.rentAmount,
+        updateDate: parseSafeDate(updateDate) || new Date(updateDate),
+        oldRentAmount,
         newRentAmount: parseFloat(newRentAmount),
         period,
         pdfPath: filePath,
@@ -479,7 +419,16 @@ exports.updateRentAmount = async (req, res) => {
       data: { rentAmount: parseFloat(newRentAmount) },
     });
 
-    res.status(200).json({ message: 'Monto de alquiler actualizado con éxito.', lease: { ...updatedLease, leaseId: updatedLease.id } });
+    res.status(200).json({
+      message: 'Monto de alquiler actualizado con éxito.',
+      lease: { ...updatedLease, leaseId: updatedLease.id },
+      update: {
+        oldAmount: Number(oldRentAmount),
+        newAmount: parseFloat(newRentAmount),
+        updateDate,
+        period,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar el monto del alquiler.', details: error.message });
   }
@@ -545,7 +494,7 @@ const debugLeaseAlerts = async (req, res) => {
         startDate: lease.startDate,
         updateFrequency: lease.updateFrequency,
         currentRent: lease.rentAmount,
-        lastUpdateDate: lease.updatedAt || 'Nunca actualizado',
+        lastUpdateDate: lease.RentUpdates?.[0]?.updateDate || 'Nunca actualizado',
         nextUpdateDate: nextUpdate,
         daysUntilUpdate,
         shouldAlert,
@@ -572,37 +521,13 @@ exports.getLeasesPendingUpdate = async (req, res) => {
     const leases = await prisma.Leases.findMany({ where: { status: 'active', tenantId } });
     const enriched = await enrichLeases(leases);
 
-    const pendingUpdates = enriched.filter((lease) => {
-      const start = new Date(lease.startDate);
-      const monthsSinceStart = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-
-      let freqMonths = 0;
-      if (lease.updateFrequency === 'semestral') freqMonths = 6;
-      else if (lease.updateFrequency === 'cuatrimestral') freqMonths = 4;
-      else if (lease.updateFrequency === 'anual') freqMonths = 12;
-
-      const shouldUpdate = monthsSinceStart >= freqMonths;
-      const lastUpdate = lease.RentUpdates?.[0] || null;
-
-      if (lastUpdate) {
-        const lastUpdateDate = new Date(lastUpdate.updateDate);
-        const monthsSinceLastUpdate = (now.getFullYear() - lastUpdateDate.getFullYear()) * 12 + (now.getMonth() - lastUpdateDate.getMonth());
-        return shouldUpdate && monthsSinceLastUpdate >= freqMonths;
-      }
-
-      return shouldUpdate;
-    });
+    const pendingUpdates = enriched.filter((lease) => leaseNeedsPendingUpdate(lease));
 
     const detailedPendingUpdates = pendingUpdates.map((lease) => {
-      const start = new Date(lease.startDate);
-      const monthsSinceStart = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
-
-      let freqMonths = 0;
-      if (lease.updateFrequency === 'semestral') freqMonths = 6;
-      else if (lease.updateFrequency === 'cuatrimestral') freqMonths = 4;
-      else if (lease.updateFrequency === 'anual') freqMonths = 12;
-
-      const periodsOverdue = freqMonths > 0 ? Math.floor(monthsSinceStart / freqMonths) : 0;
+      const info = computeUpdateInfo(lease);
+      const freqMonths = getFreqMonths(lease.updateFrequency) || 1;
+      const monthsSinceStart = info.monthsSinceStart;
+      const periodsOverdue = Math.floor(monthsSinceStart / freqMonths);
       const monthsOverdue = monthsSinceStart - periodsOverdue * freqMonths;
 
       return {
@@ -617,7 +542,9 @@ exports.getLeasesPendingUpdate = async (req, res) => {
         periodsOverdue,
         monthsOverdue,
         urgency: monthsOverdue > 6 ? 'high' : monthsOverdue > 3 ? 'medium' : 'low',
-        lastUpdate: lease.RentUpdates?.[0]?.updateDate || null,
+        lastUpdate: info.lastUpdateDate,
+        isOldContractRecentlyLoaded: info.isOldContractRecentlyLoaded,
+        nextUpdateDate: info.nextUpdateDate,
       };
     });
 

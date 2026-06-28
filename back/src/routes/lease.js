@@ -146,6 +146,7 @@ router.get('/:id/update-history', getLeaseUpdateHistory); // 🆕
 router.put('/:id/terminate', terminateLease);
 router.put('/:id/quick-update', quickUpdateLeaseRent); // 🆕
 router.put('/:id', updateLease); // 🆕 Actualización general de lease
+router.put('/:id/rent', updateRentAmount);
 router.put('/leases/:id/rent', updateRentAmount);
 
 router.get('/:id', getLeaseById);

@@ -83,19 +83,20 @@ const TEMPLATE_DEFINITIONS = [
   },
   {
     templateType: 'ACTUALIZACION_RENTA',
-    templateName: 'Actualización de Renta',
-    fileName: 'actualizacion-renta.html',
+    templateName: 'Actualización de Alquiler',
+    fileName: 'actualizacion-renta.pdfmake.json',
+    isPdfMake: true,
     variables: {
+      renderer: 'pdfmake',
       lease: { rentAmount: 'Monto anterior', startDate: 'Fecha inicio contrato', updateFrequency: 'Frecuencia actualización' },
-      property: { address: 'Dirección', city: 'Ciudad' },
-      tenant: { name: 'Nombre inquilino', cuil: 'CUIL' },
-      landlord: { name: 'Nombre propietario', cuil: 'CUIL' },
-      newRentAmount: 'Nuevo monto (pasado en customVariables)',
-      updateDate: 'Fecha actualización (pasado en customVariables)',
-      porcentajeAumento: 'Porcentaje de aumento (calculado en customVariables)',
-      periodo: 'Período (calculado en customVariables)',
-      ipcIndex: 'Índice IPC (opcional)',
-      inmobiliaria: { businessName: 'Nombre inmobiliaria', cuit: 'CUIT', signatureUrl: 'Firma' }
+      property: { address: 'Dirección' },
+      tenant: { name: 'Nombre inquilino' },
+      landlord: { name: 'Nombre propietario' },
+      placeholders: [
+        '{{companyName}}', '{{leaseId}}', '{{updateDate}}', '{{periodo}}', '{{frequency}}',
+        '{{propertyAddress}}', '{{tenantName}}', '{{landlordName}}', '{{oldAmount}}',
+        '{{newAmount}}', '{{percentLine}}', '{{indexFooter}}', '{{indexSourceUrl}}',
+      ],
     },
     pageSize: 'A4',
     orientation: 'portrait',
@@ -133,13 +134,16 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null, forceUp
         continue;
       }
 
-      // Leer el contenido del template HTML
+      // Leer el contenido del template (HTML o pdfMake JSON)
       const htmlTemplate = await readTemplate(templateDef.fileName);
+      const variables = templateDef.isPdfMake
+        ? { ...(templateDef.variables || {}), renderer: 'pdfmake' }
+        : templateDef.variables;
 
       if (existing && forceUpdate) {
         await prisma.pdf_templates.update({
           where: { id: existing.id },
-          data: { htmlTemplate, updatedAt: new Date() },
+          data: { htmlTemplate, variables, updatedAt: new Date() },
         });
         console.log(`   🔄 ${templateDef.templateType} actualizado al template por defecto`);
         continue;
@@ -152,10 +156,7 @@ async function createDefaultTemplatesForTenant(tenantId, adminId = null, forceUp
           templateType: templateDef.templateType,
           templateName: templateDef.templateName,
           htmlTemplate,
-          styles: '',
-          headerHtml: '',
-          footerHtml: '',
-          variables: templateDef.variables,
+          variables,
           pageSize: templateDef.pageSize,
           orientation: templateDef.orientation,
           isDefault: templateDef.isDefault,

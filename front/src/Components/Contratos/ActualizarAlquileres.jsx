@@ -5,9 +5,14 @@ import {
   updateLeaseRentAmount
 } from "../../redux/Actions/actions";
 import { useGetAllLeasesQuery } from "@shared/redux";
-import Swal from "sweetalert2";
-import pdfMake from 'pdfmake/build/pdfmake';
-import * as pdfFonts from 'pdfmake/build/vfs_fonts';
+import { toast } from "react-toastify";
+import { formatDateSafe, parseSafeDate, formatDateForInput } from "../../utils/dateUtils";
+import {
+  downloadRentUpdatePdf,
+  getNextUpdateDateFromLease,
+  leaseNeedsUpdateSoon,
+} from "../../utils/rentUpdatePdf";
+import { useRentUpdatePdfAssets } from "../../hooks/useRentUpdatePdfAssets";
 import { 
   IoArrowBackOutline,
   IoHomeOutline,
@@ -17,59 +22,22 @@ import {
   IoTimeOutline,
   IoLinkOutline,
   IoDocumentTextOutline,
-  IoRefreshOutline
+  IoRefreshOutline,
+  IoCloseOutline,
 } from 'react-icons/io5';
-
-// Configurar pdfMake
-if (pdfFonts.pdfMake && pdfFonts.pdfMake.vfs) {
-  pdfMake.vfs = pdfFonts.pdfMake.vfs;
-} else if (pdfFonts.default && pdfFonts.default.pdfMake) {
-  pdfMake.vfs = pdfFonts.default.pdfMake.vfs;
-} else {
-  pdfMake.vfs = pdfFonts;
-}
 
 const ActualizarAlquileres = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { data: leases = [], isLoading: loading, refetch } = useGetAllLeasesQuery();
+  const { companySettings, customTemplateJson } = useRentUpdatePdfAssets();
   const [actualizaciones, setActualizaciones] = useState({});
   const [processing, setProcessing] = useState({});
+  const [confirmData, setConfirmData] = useState(null);
 
-  // RTK Query carga automáticamente al montar el componente
+  const calcularProximaActualizacion = (lease) => getNextUpdateDateFromLease(lease);
 
-  const MESES_POR_FRECUENCIA = { semestral: 6, cuatrimestral: 4, anual: 12, trimestral: 3 };
-
-  /**
-   * Calcula la próxima fecha de actualización basándose en meses completos
-   * desde startDate, sin considerar el día dentro del mes.
-   */
-  const calcularProximaActualizacion = (lease) => {
-    const inicio = new Date(lease.startDate);
-    const mesesPeriodo = MESES_POR_FRECUENCIA[lease.updateFrequency] || 12;
-    const hoy = new Date();
-
-    // Diferencia en meses enteros (sin días)
-    const mesesTranscurridos =
-      (hoy.getFullYear() - inicio.getFullYear()) * 12 +
-      (hoy.getMonth() - inicio.getMonth());
-
-    const periodosElapsed = Math.floor(mesesTranscurridos / mesesPeriodo);
-    const proxima = new Date(inicio);
-    proxima.setMonth(proxima.getMonth() + (periodosElapsed + 1) * mesesPeriodo);
-    return proxima;
-  };
-
-  /**
-   * Un contrato necesita actualización cuando estamos a ≤ 20 días de la
-   * próxima fecha (últimos días del mes anterior + primeros del mes de actualización).
-   */
-  const necesitaActualizacion = (lease) => {
-    if (lease.status !== 'active') return false;
-    const proxima = calcularProximaActualizacion(lease);
-    const diasRestantes = Math.ceil((proxima - new Date()) / (1000 * 60 * 60 * 24));
-    return diasRestantes >= 0 && diasRestantes <= 20;
-  };
+  const necesitaActualizacion = (lease) => leaseNeedsUpdateSoon(lease, 20);
 
   // Filtrar contratos que necesitan actualización
   const contratosParaActualizar = (leases || []).filter(lease => 
@@ -107,16 +75,8 @@ const ActualizarAlquileres = () => {
 
   const getLeaseById = (id) => leases.find(l => l.id === id);
 
-  // Formatear fecha
-  const formatearFecha = (date) => {
-    const d = typeof date === 'string' ? new Date(date.split('T')[0] + 'T12:00:00') : new Date(date);
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = String(d.getMonth() + 1).padStart(2, '0');
-    const anio = d.getFullYear();
-    return `${dia}/${mes}/${anio}`;
-  };
+  const formatearFecha = (date) => formatDateSafe(date);
 
-  // Formatear monto
   const formatearMonto = (monto) => {
     return new Intl.NumberFormat('es-AR', {
       style: 'currency',
@@ -125,236 +85,85 @@ const ActualizarAlquileres = () => {
     }).format(monto);
   };
 
-  // Generar PDF de actualización
   const generarPdfActualizacion = (lease, nuevoMonto, ipcIndex, fechaActualizacion) => {
-    const porcentajeAumento = (((nuevoMonto - lease.rentAmount) / lease.rentAmount) * 100).toFixed(2);
-    // Usar la fecha del período del contrato, no la fecha de hoy
-    const fechaUpdate = fechaActualizacion ? new Date(fechaActualizacion) : calcularProximaActualizacion(lease);
-    const fechaHoy = formatearFecha(fechaUpdate);
-
-    // Calcular período a partir de la fecha de actualización correcta
-    const startDate = new Date(lease.startDate);
-    const monthsSinceStart = (fechaUpdate.getFullYear() - startDate.getFullYear()) * 12 +
-                            (fechaUpdate.getMonth() - startDate.getMonth());
-
-    let periodo = 'Período desconocido';
-    if (lease.updateFrequency === "semestral") {
-      periodo = `Semestre ${Math.floor(monthsSinceStart / 6) + 1}`;
-    } else if (lease.updateFrequency === "cuatrimestral") {
-      periodo = `Cuatrimestre ${Math.floor(monthsSinceStart / 4) + 1}`;
-    } else if (lease.updateFrequency === "anual") {
-      periodo = `Año ${Math.floor(monthsSinceStart / 12) + 1}`;
-    }
-
-    const docDefinition = {
-      content: [
-        { text: 'QUINTERO+LOBETO PROPIEDADES', style: 'header', margin: [0, 0, 0, 20] },
-        { text: 'ACTUALIZACIÓN DE ALQUILER', style: 'title', margin: [0, 0, 0, 30] },
-        
-        {
-          table: {
-            widths: ['30%', '70%'],
-            body: [
-              [{ text: 'ID del Contrato:', style: 'label' }, { text: lease.id, style: 'value' }],
-              [{ text: 'Fecha de Actualización:', style: 'label' }, { text: fechaHoy, style: 'value' }],
-              [{ text: 'Período:', style: 'label' }, { text: periodo, style: 'value' }],
-              [{ text: 'Frecuencia:', style: 'label' }, { text: lease.updateFrequency.toUpperCase(), style: 'value' }]
-            ]
-          },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 20]
-        },
-
-        {
-          table: {
-            widths: ['30%', '70%'],
-            body: [
-              [{ text: 'Propiedad:', style: 'label' }, { text: lease.Property?.address || 'N/A', style: 'value' }],
-              [{ text: 'Inquilino:', style: 'label' }, { text: lease.Tenant?.name || 'N/A', style: 'value' }],
-              [{ text: 'Propietario:', style: 'label' }, { text: lease.Landlord?.name || 'N/A', style: 'value' }]
-            ]
-          },
-          layout: 'noBorders',
-          margin: [0, 0, 0, 30]
-        },
-
-        {
-          table: {
-            widths: ['*'],
-            body: [[{ text: 'DETALLES DE LA ACTUALIZACIÓN', style: 'sectionHeader' }]]
-          },
-          layout: { fillColor: '#3B82F6', hLineWidth: () => 0, vLineWidth: () => 0 },
-          margin: [0, 0, 0, 15]
-        },
-
-        {
-          columns: [
-            {
-              width: '50%',
-              stack: [
-                { text: 'Monto Anterior', style: 'amountLabel' },
-                { text: formatearMonto(lease.rentAmount), style: 'amountOld' }
-              ]
-            },
-            {
-              width: '50%',
-              stack: [
-                { text: 'Nuevo Monto', style: 'amountLabel' },
-                { text: formatearMonto(nuevoMonto), style: 'amountNew' }
-              ]
-            }
-          ],
-          margin: [0, 0, 0, 20]
-        },
-
-        {
-          text: `Aumento: ${porcentajeAumento}% ${ipcIndex ? `(IPC: ${ipcIndex})` : ''}`,
-          style: 'percentage',
-          margin: [0, 0, 0, 30]
-        },
-
-        {
-          canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 1, lineColor: '#E5E7EB' }],
-          margin: [0, 0, 0, 10]
-        },
-
-        { text: 'Cálculo realizado según índice de alquileres', style: 'footer', margin: [0, 10, 0, 5] },
-        {
-          text: [
-            { text: 'Fuente: ', style: 'footer' },
-            { text: 'https://arquiler.com/', style: 'link', link: 'https://arquiler.com/' }
-          ],
-          margin: [0, 0, 0, 30]
-        },
-
-        {
-          columns: [
-            {
-              width: '50%',
-              stack: [
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }] },
-                { text: 'Firma del Propietario', style: 'signatureLabel', margin: [0, 5, 0, 0] }
-              ]
-            },
-            {
-              width: '50%',
-              stack: [
-                { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 200, y2: 0, lineWidth: 0.5 }] },
-                { text: 'Firma del Inquilino', style: 'signatureLabel', margin: [0, 5, 0, 0] }
-              ]
-            }
-          ],
-          margin: [0, 40, 0, 0]
-        }
-      ],
-      
-      styles: {
-        header: { fontSize: 18, bold: true, alignment: 'center', color: '#1F2937' },
-        title: { fontSize: 16, bold: true, alignment: 'center', color: '#3B82F6' },
-        label: { fontSize: 10, bold: true, color: '#6B7280', margin: [0, 3, 0, 3] },
-        value: { fontSize: 10, color: '#1F2937', margin: [0, 3, 0, 3] },
-        sectionHeader: { fontSize: 12, bold: true, color: '#FFFFFF', alignment: 'center', margin: [10, 10, 10, 10] },
-        amountLabel: { fontSize: 11, color: '#6B7280', alignment: 'center', margin: [0, 0, 0, 5] },
-        amountOld: { fontSize: 18, color: '#EF4444', alignment: 'center', decoration: 'lineThrough' },
-        amountNew: { fontSize: 22, bold: true, color: '#10B981', alignment: 'center' },
-        percentage: { fontSize: 14, bold: true, color: '#3B82F6', alignment: 'center' },
-        footer: { fontSize: 9, color: '#6B7280', alignment: 'center' },
-        link: { fontSize: 9, color: '#3B82F6', decoration: 'underline', alignment: 'center' },
-        signatureLabel: { fontSize: 9, alignment: 'center', color: '#6B7280' }
+    const fechaUpdate = fechaActualizacion || calcularProximaActualizacion(lease);
+    downloadRentUpdatePdf(
+      {
+        lease,
+        newRentAmount: nuevoMonto,
+        updateDate: fechaUpdate,
+        ipcIndex,
+        companySettings,
       },
-      
-      pageSize: 'A4',
-      pageMargins: [40, 60, 40, 60],
-      defaultStyle: { font: 'Roboto' }
-    };
-
-    return pdfMake.createPdf(docDefinition).download(`Actualizacion_Alquiler_${lease.id}_${fechaHoy.replace(/\//g, '_')}.pdf`);
+      customTemplateJson,
+    );
   };
 
-  // Manejar actualización
-  const handleActualizar = async (lease) => {
+  const openConfirmActualizacion = (lease) => {
     const actualizacion = actualizaciones[lease.id];
-    
+
     if (!actualizacion?.nuevoMonto) {
-      Swal.fire("Error", "Debe ingresar el nuevo monto o porcentaje de actualización", "error");
+      toast.error('Ingresá el nuevo monto o el porcentaje de actualización');
       return;
     }
 
     const nuevoMonto = parseFloat(actualizacion.nuevoMonto);
-    const porcentaje = actualizacion.porcentaje || (((nuevoMonto - lease.rentAmount) / lease.rentAmount) * 100).toFixed(2);
+    const porcentaje = actualizacion.porcentaje
+      || (((nuevoMonto - lease.rentAmount) / lease.rentAmount) * 100).toFixed(2);
 
-    const result = await Swal.fire({
-      title: "Confirmar Actualización",
-      html: `
-        <div style="text-align: left; padding: 20px;">
-          <p style="margin: 10px 0;"><strong>Propiedad:</strong> ${lease.Property?.address || 'N/A'}</p>
-          <p style="margin: 10px 0;"><strong>Inquilino:</strong> ${lease.Tenant?.name || 'N/A'}</p>
-          <p style="margin: 10px 0;"><strong>Monto actual:</strong> <span style="color: #EF4444;">${formatearMonto(lease.rentAmount)}</span></p>
-          <p style="margin: 10px 0;"><strong>Nuevo monto:</strong> <span style="color: #10B981; font-size: 18px; font-weight: bold;">${formatearMonto(nuevoMonto)}</span></p>
-          <p style="margin: 10px 0;"><strong>Aumento:</strong> <span style="color: #3B82F6; font-weight: bold;">${porcentaje}%</span></p>
-          ${actualizacion.ipcIndex ? `<p style="margin: 10px 0;"><strong>IPC aplicado:</strong> ${actualizacion.ipcIndex}</p>` : ''}
-        </div>
-      `,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "✓ Actualizar y Generar PDF",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: '#10B981',
-      cancelButtonColor: '#EF4444'
-    });
+    setConfirmData({ lease, actualizacion, nuevoMonto, porcentaje });
+  };
 
-    if (!result.isConfirmed) return;
+  const executeActualizacion = async () => {
+    if (!confirmData) return;
+
+    const { lease, actualizacion, nuevoMonto } = confirmData;
+    setConfirmData(null);
 
     try {
-      setProcessing(prev => ({ ...prev, [lease.id]: true }));
+      setProcessing((prev) => ({ ...prev, [lease.id]: true }));
 
-      Swal.fire({
-        title: 'Procesando...',
-        text: 'Actualizando contrato y generando PDF',
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
+      await toast.promise(
+        (async () => {
+          const fechaIngresada = actualizacion?.fechaActualizacion;
+          const fechaActualizacion = fechaIngresada
+            ? parseSafeDate(fechaIngresada)
+            : calcularProximaActualizacion(lease);
 
-      // Usar la fecha ingresada por el usuario; si no la tocó, usar la calculada del período
-      const fechaIngresada = actualizacion?.fechaActualizacion;
-      const fechaActualizacion = fechaIngresada
-        ? new Date(fechaIngresada + 'T12:00:00') // mediodía para evitar desfase de zona horaria
-        : calcularProximaActualizacion(lease);
+          await dispatch(updateLeaseRentAmount(
+            lease.id,
+            nuevoMonto,
+            fechaActualizacion.toISOString(),
+          ));
 
-      // Actualizar en el backend con la fecha elegida por el usuario
-      await dispatch(updateLeaseRentAmount(
-        lease.id,
-        nuevoMonto,
-        fechaActualizacion.toISOString(),
-        null, // El PDF se generará localmente
-        `Actualizacion_${lease.id}_${Date.now()}.pdf`
-      ));
+          generarPdfActualizacion(
+            { ...lease, rentAmount: nuevoMonto },
+            nuevoMonto,
+            actualizacion.ipcIndex,
+            fechaActualizacion,
+          );
 
-      // Generar PDF con la misma fecha elegida
-      generarPdfActualizacion(lease, nuevoMonto, actualizacion.ipcIndex, fechaActualizacion);
+          setActualizaciones((prev) => {
+            const newState = { ...prev };
+            delete newState[lease.id];
+            return newState;
+          });
 
-      // Limpiar formulario
-      setActualizaciones(prev => {
-        const newState = { ...prev };
-        delete newState[lease.id];
-        return newState;
-      });
-
-      // Recargar datos
-      refetch();
-
-      Swal.fire({
-        title: "¡Éxito!",
-        text: "El contrato ha sido actualizado y el PDF generado correctamente",
-        icon: "success",
-        timer: 3000
-      });
-
-    } catch (error) {
-      console.error("Error al actualizar:", error);
-      Swal.fire("Error", "No se pudo actualizar el contrato", "error");
+          await refetch();
+        })(),
+        {
+          pending: 'Actualizando contrato y generando PDF...',
+          success: 'Alquiler actualizado y PDF generado correctamente',
+          error: {
+            render: ({ data: err }) =>
+              err?.response?.data?.error
+              || err?.response?.data?.message
+              || 'No se pudo actualizar el contrato',
+          },
+        },
+      );
     } finally {
-      setProcessing(prev => ({ ...prev, [lease.id]: false }));
+      setProcessing((prev) => ({ ...prev, [lease.id]: false }));
     }
   };
 
@@ -548,7 +357,7 @@ const ActualizarAlquileres = () => {
                           type="date"
                           value={
                             actualizaciones[lease.id]?.fechaActualizacion ||
-                            calcularProximaActualizacion(lease).toISOString().split('T')[0]
+                            formatDateForInput(calcularProximaActualizacion(lease))
                           }
                           onChange={(e) => handleActualizacionChange(lease.id, 'fechaActualizacion', e.target.value)}
                           className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -606,7 +415,8 @@ const ActualizarAlquileres = () => {
                       )}
 
                       <button
-                        onClick={() => handleActualizar(lease)}
+                        type="button"
+                        onClick={() => openConfirmActualizacion(lease)}
                         disabled={!actualizaciones[lease.id]?.nuevoMonto || processing[lease.id]}
                         className={`w-full py-3 rounded-lg font-semibold transition-all flex items-center justify-center space-x-2 ${
                           actualizaciones[lease.id]?.nuevoMonto && !processing[lease.id]
@@ -708,6 +518,77 @@ const ActualizarAlquileres = () => {
           )}
         </div>
       </div>
+
+      {confirmData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div
+            className="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-update-title"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <h3 id="confirm-update-title" className="text-lg font-semibold text-white">
+                Confirmar actualización
+              </h3>
+              <button
+                type="button"
+                onClick={() => setConfirmData(null)}
+                className="text-slate-400 hover:text-white transition-colors"
+                aria-label="Cerrar"
+              >
+                <IoCloseOutline className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <p className="text-slate-300">
+                <span className="text-slate-400">Propiedad:</span>{' '}
+                {confirmData.lease.Property?.address || 'N/A'}
+              </p>
+              <p className="text-slate-300">
+                <span className="text-slate-400">Inquilino:</span>{' '}
+                {confirmData.lease.Tenant?.name || 'N/A'}
+              </p>
+              <p className="text-slate-300">
+                <span className="text-slate-400">Monto actual:</span>{' '}
+                <span className="text-red-400 font-medium">{formatearMonto(confirmData.lease.rentAmount)}</span>
+              </p>
+              <p className="text-slate-300">
+                <span className="text-slate-400">Nuevo monto:</span>{' '}
+                <span className="text-green-400 font-bold text-lg">{formatearMonto(confirmData.nuevoMonto)}</span>
+              </p>
+              <p className="text-slate-300">
+                <span className="text-slate-400">Aumento:</span>{' '}
+                <span className="text-blue-400 font-semibold">{confirmData.porcentaje}%</span>
+              </p>
+              {confirmData.actualizacion.ipcIndex && (
+                <p className="text-slate-300">
+                  <span className="text-slate-400">IPC aplicado:</span>{' '}
+                  {confirmData.actualizacion.ipcIndex}
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => setConfirmData(null)}
+                className="flex-1 py-2.5 rounded-lg border border-white/20 text-slate-300 hover:bg-white/5 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeActualizacion}
+                className="flex-1 py-2.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold transition-colors"
+              >
+                Actualizar y generar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

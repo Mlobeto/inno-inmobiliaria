@@ -30,6 +30,11 @@ import { toast } from 'react-toastify';
 import VisualPdfEditor from './VisualPdfEditor';
 import TemplateWizard from './TemplateWizard';
 import ClauseLibraryManager from './ClauseLibraryManager';
+import { getDefaultRentUpdateTemplateJson } from '../../utils/rentUpdatePdf';
+
+const isPdfMakeTemplate = (templateType, htmlTemplate, variables) =>
+  templateType === 'ACTUALIZACION_RENTA' &&
+  (variables?.renderer === 'pdfmake' || (htmlTemplate && htmlTemplate.trim().startsWith('{')));
 
 const PdfTemplateManager = ({ embedded = false }) => {
   const navigate = useNavigate();
@@ -695,14 +700,30 @@ p { margin: 10px 0; text-align: justify; }`,
         return;
       }
 
+      if (isPdfMakeTemplate(formData.templateType, formData.htmlTemplate, editingTemplate?.variables)) {
+        try {
+          JSON.parse(formData.htmlTemplate);
+        } catch {
+          toast.error('La plantilla pdfMake debe ser JSON válido');
+          return;
+        }
+      }
+
+      const payload = {
+        ...formData,
+        ...(isPdfMakeTemplate(formData.templateType, formData.htmlTemplate, editingTemplate?.variables)
+          ? { variables: { renderer: 'pdfmake' } }
+          : {}),
+      };
+
       if (editingTemplate) {
         await updateTemplate({
           id: editingTemplate.id,
-          ...formData,
+          ...payload,
         }).unwrap();
         toast.success('Plantilla actualizada exitosamente');
       } else {
-        await createTemplate(formData).unwrap();
+        await createTemplate(payload).unwrap();
         toast.success('Plantilla creada exitosamente');
       }
 
@@ -976,13 +997,40 @@ p { margin: 10px 0; text-align: justify; }`,
             <h2 className="text-xl font-semibold text-white mb-6">
               Contenido de la Plantilla *
             </h2>
-            <VisualPdfEditor
-              value={formData.htmlTemplate}
-              onChange={(value) => setFormData({ ...formData, htmlTemplate: value })}
-              templateType={formData.templateType}
-              pageSize={formData.pageSize}
-              orientation={formData.orientation}
-            />
+            {isPdfMakeTemplate(formData.templateType, formData.htmlTemplate, editingTemplate?.variables) ? (
+              <div>
+                <p className="text-slate-400 text-sm mb-3">
+                  Plantilla <strong className="text-white">pdfMake</strong> (mismo formato que el PDF de actualización de alquiler).
+                  El nombre de la inmobiliaria se toma de Configuración → Empresa (<code className="text-blue-300">{'{{companyName}}'}</code>).
+                  Placeholders: {'{{leaseId}}'}, {'{{updateDate}}'}, {'{{periodo}}'}, {'{{oldAmount}}'}, {'{{newAmount}}'}, etc.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFormData({
+                    ...formData,
+                    htmlTemplate: JSON.stringify(getDefaultRentUpdateTemplateJson(), null, 2),
+                  })}
+                  className="mb-3 text-sm text-blue-400 hover:text-blue-300"
+                >
+                  Restaurar estructura por defecto
+                </button>
+                <textarea
+                  value={formData.htmlTemplate}
+                  onChange={(e) => setFormData({ ...formData, htmlTemplate: e.target.value })}
+                  rows={24}
+                  className="w-full font-mono text-sm px-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  spellCheck={false}
+                />
+              </div>
+            ) : (
+              <VisualPdfEditor
+                value={formData.htmlTemplate}
+                onChange={(value) => setFormData({ ...formData, htmlTemplate: value })}
+                templateType={formData.templateType}
+                pageSize={formData.pageSize}
+                orientation={formData.orientation}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -15,8 +15,15 @@ const errorMessages = {
   // Agrega más según tus acciones
 };
 
+const COMPONENT_HANDLED_FAILURES = new Set([
+  'UPDATE_LEASE_RENT_FAILURE',
+]);
+
 const toastMiddleware = () => (next) => (action) => {
   if (action.type.endsWith("_FAILURE") || action.type.endsWith("_FAIL")) {
+    if (COMPONENT_HANDLED_FAILURES.has(action.type)) {
+      return next(action);
+    }
     const customMsg = errorMessages[action.type];
     // Si el payload es un array de errores, muestra cada uno
     if (Array.isArray(action.payload)) {

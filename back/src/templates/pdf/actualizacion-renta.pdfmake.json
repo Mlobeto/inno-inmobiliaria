@@ -1,0 +1,94 @@
+{
+  "renderer": "pdfmake",
+  "description": "Plantilla pdfMake para actualización de alquiler. Placeholders: {{companyName}}, {{leaseId}}, {{updateDate}}, {{periodo}}, {{frequency}}, {{propertyAddress}}, {{tenantName}}, {{landlordName}}, {{oldAmount}}, {{newAmount}}, {{percentLine}}, {{indexFooter}}, {{indexSourceUrl}}",
+  "pageSize": "A4",
+  "pageMargins": [40, 60, 40, 60],
+  "defaultStyle": { "font": "Roboto" },
+  "styles": {
+    "header": { "fontSize": 18, "bold": true, "alignment": "center", "color": "#1F2937" },
+    "title": { "fontSize": 16, "bold": true, "alignment": "center", "color": "#3B82F6" },
+    "label": { "fontSize": 10, "bold": true, "color": "#6B7280", "margin": [0, 3, 0, 3] },
+    "value": { "fontSize": 10, "color": "#1F2937", "margin": [0, 3, 0, 3] },
+    "sectionHeader": { "fontSize": 12, "bold": true, "color": "#FFFFFF", "alignment": "center", "margin": [10, 10, 10, 10] },
+    "amountLabel": { "fontSize": 11, "color": "#6B7280", "alignment": "center", "margin": [0, 0, 0, 5] },
+    "amountOld": { "fontSize": 18, "color": "#EF4444", "alignment": "center", "decoration": "lineThrough" },
+    "amountNew": { "fontSize": 22, "bold": true, "color": "#10B981", "alignment": "center" },
+    "percentage": { "fontSize": 14, "bold": true, "color": "#3B82F6", "alignment": "center" },
+    "footer": { "fontSize": 9, "color": "#6B7280", "alignment": "center" },
+    "link": { "fontSize": 9, "color": "#3B82F6", "decoration": "underline", "alignment": "center" },
+    "signatureLabel": { "fontSize": 9, "alignment": "center", "color": "#6B7280" }
+  },
+  "content": [
+    { "text": "{{companyName}}", "style": "header", "margin": [0, 0, 0, 20] },
+    { "text": "ACTUALIZACIÓN DE ALQUILER", "style": "title", "margin": [0, 0, 0, 30] },
+    {
+      "table": {
+        "widths": ["30%", "70%"],
+        "body": [
+          [{ "text": "ID del Contrato:", "style": "label" }, { "text": "{{leaseId}}", "style": "value" }],
+          [{ "text": "Fecha de Actualización:", "style": "label" }, { "text": "{{updateDate}}", "style": "value" }],
+          [{ "text": "Período:", "style": "label" }, { "text": "{{periodo}}", "style": "value" }],
+          [{ "text": "Frecuencia:", "style": "label" }, { "text": "{{frequency}}", "style": "value" }]
+        ]
+      },
+      "layout": "noBorders",
+      "margin": [0, 0, 0, 20]
+    },
+    {
+      "table": {
+        "widths": ["30%", "70%"],
+        "body": [
+          [{ "text": "Propiedad:", "style": "label" }, { "text": "{{propertyAddress}}", "style": "value" }],
+          [{ "text": "Inquilino:", "style": "label" }, { "text": "{{tenantName}}", "style": "value" }],
+          [{ "text": "Propietario:", "style": "label" }, { "text": "{{landlordName}}", "style": "value" }]
+        ]
+      },
+      "layout": "noBorders",
+      "margin": [0, 0, 0, 30]
+    },
+    {
+      "table": { "widths": ["*"], "body": [[{ "text": "DETALLES DE LA ACTUALIZACIÓN", "style": "sectionHeader" }]] },
+      "layout": { "fillColor": "#3B82F6", "hLineWidth": 0, "vLineWidth": 0 },
+      "margin": [0, 0, 0, 15]
+    },
+    {
+      "columns": [
+        { "width": "50%", "stack": [{ "text": "Monto Anterior", "style": "amountLabel" }, { "text": "{{oldAmount}}", "style": "amountOld" }] },
+        { "width": "50%", "stack": [{ "text": "Nuevo Monto", "style": "amountLabel" }, { "text": "{{newAmount}}", "style": "amountNew" }] }
+      ],
+      "margin": [0, 0, 0, 20]
+    },
+    { "text": "{{percentLine}}", "style": "percentage", "margin": [0, 0, 0, 30] },
+    {
+      "canvas": [{ "type": "line", "x1": 0, "y1": 0, "x2": 515, "y2": 0, "lineWidth": 1, "lineColor": "#E5E7EB" }],
+      "margin": [0, 0, 0, 10]
+    },
+    { "text": "{{indexFooter}}", "style": "footer", "margin": [0, 10, 0, 5] },
+    {
+      "text": [
+        { "text": "Fuente: ", "style": "footer" },
+        { "text": "{{indexSourceUrl}}", "style": "link", "link": "{{indexSourceUrl}}" }
+      ],
+      "margin": [0, 0, 0, 30]
+    },
+    {
+      "columns": [
+        {
+          "width": "50%",
+          "stack": [
+            { "canvas": [{ "type": "line", "x1": 0, "y1": 0, "x2": 200, "y2": 0, "lineWidth": 0.5 }] },
+            { "text": "Firma del Propietario", "style": "signatureLabel", "margin": [0, 5, 0, 0] }
+          ]
+        },
+        {
+          "width": "50%",
+          "stack": [
+            { "canvas": [{ "type": "line", "x1": 0, "y1": 0, "x2": 200, "y2": 0, "lineWidth": 0.5 }] },
+            { "text": "Firma del Inquilino", "style": "signatureLabel", "margin": [0, 5, 0, 0] }
+          ]
+        }
+      ],
+      "margin": [0, 40, 0, 0]
+    }
+  ]
+}

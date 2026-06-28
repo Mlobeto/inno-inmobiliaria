@@ -755,42 +755,32 @@ export const getLeaseById = (leaseId) => async (dispatch) => {
 };
 
 export const updateLeaseRentAmount =
-  (leaseId, newRentAmount, updateDate, pdfData, fileName) =>
+  (leaseId, newRentAmount, updateDate, pdfData = null, fileName = null) =>
   async (dispatch) => {
     try {
       dispatch({ type: UPDATE_LEASE_RENT_REQUEST });
 
-      const response = await axios.put(`/lease/leases/${leaseId}/rent`, {
+      const response = await axios.put(`/lease/${leaseId}/rent`, {
         newRentAmount,
         updateDate,
-        pdfData,
-        fileName,
+        ...(pdfData && fileName ? { pdfData, fileName } : {}),
       });
 
       dispatch({
         type: UPDATE_LEASE_RENT_SUCCESS,
-        payload: response.data, // Datos del contrato actualizado
+        payload: response.data,
       });
 
-      Swal.fire(
-        "Éxito",
-        "El monto del alquiler se actualizó correctamente.",
-        "success"
-      );
+      return response.data;
     } catch (error) {
       dispatch({
         type: UPDATE_LEASE_RENT_FAILURE,
         payload:
           error.response?.data?.message ||
-          "Error al actualizar el monto del alquiler",
+          error.response?.data?.error ||
+          'Error al actualizar el monto del alquiler',
       });
-
-      Swal.fire(
-        "Error",
-        error.response?.data?.message ||
-          "No se pudo actualizar el monto del alquiler.",
-        "error"
-      );
+      throw error;
     }
   };
 

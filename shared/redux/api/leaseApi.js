@@ -57,7 +57,7 @@ export const leaseApi = baseApi.injectEndpoints({
     updateLeaseRent: builder.mutation({
       query: ({ leaseId, ...rentData }) => ({
         url: `/lease/${leaseId}/rent`,
-        method: 'PATCH',
+        method: 'PUT',
         body: rentData,
       }),
       invalidatesTags: (result, error, { leaseId }) => [

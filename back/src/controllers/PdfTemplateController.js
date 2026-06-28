@@ -503,15 +503,13 @@ const getTemplateTypes = async (req, res) => {
         ]
       },
       {
-        value: "ACTUALIZACION_ALQUILER",
+        value: "ACTUALIZACION_RENTA",
         label: "Actualización de Alquiler",
-        description: "Documento de actualización de monto de alquiler",
+        description: "Documento pdfMake de actualización de monto (editable en JSON). Usa datos de la inmobiliaria configurados en empresa.",
         variables: [
-          "landlord.name", "landlord.cuil",
-          "tenant.name", "tenant.cuil",
-          "property.address", "property.city",
-          "lease.rentAmount", "newRentAmount", "porcentajeAumento",
-          "updateDate", "periodo"
+          "{{companyName}}", "{{leaseId}}", "{{updateDate}}", "{{periodo}}", "{{frequency}}",
+          "{{propertyAddress}}", "{{tenantName}}", "{{landlordName}}", "{{oldAmount}}",
+          "{{newAmount}}", "{{percentLine}}", "{{indexFooter}}", "{{indexSourceUrl}}",
         ]
       },
       {
@@ -767,8 +765,10 @@ const resetToDefaults = async (req, res) => {
     CONTRATO_ALQUILER: 'contrato-alquiler.html',
     RECIBO_PAGO: 'recibo-pago.html',
     AUTORIZACION_VENTA: 'autorizacion-venta.html',
-    ACTUALIZACION_RENTA: 'actualizacion-renta.html',
+    ACTUALIZACION_RENTA: 'actualizacion-renta.pdfmake.json',
   };
+
+  const PDFMAKE_TYPES = new Set(['ACTUALIZACION_RENTA']);
 
   try {
     const { tenantId } = req.user;
@@ -782,9 +782,23 @@ const resetToDefaults = async (req, res) => {
       if (!fileName) continue;
       try {
         const htmlTemplate = await fs.readFile(path.join(TEMPLATES_DIR, fileName), 'utf-8');
+        const updateData = {
+          htmlTemplate,
+          updatedAt: new Date(),
+          ...(PDFMAKE_TYPES.has(type) ? {
+            variables: {
+              renderer: 'pdfmake',
+              placeholders: [
+                '{{companyName}}', '{{leaseId}}', '{{updateDate}}', '{{periodo}}',
+                '{{frequency}}', '{{propertyAddress}}', '{{tenantName}}', '{{landlordName}}',
+                '{{oldAmount}}', '{{newAmount}}', '{{percentLine}}', '{{indexFooter}}', '{{indexSourceUrl}}',
+              ],
+            },
+          } : {}),
+        };
         const updated = await prisma.pdf_templates.updateMany({
           where: { tenantId, templateType: type, deletedAt: null },
-          data: { htmlTemplate, updatedAt: new Date() },
+          data: updateData,
         });
         results.push({ type, updated: updated.count });
       } catch (err) {

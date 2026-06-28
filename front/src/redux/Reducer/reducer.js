@@ -625,9 +625,14 @@ const rootReducer = (state = initialState, action) => {
       return {
         ...state,
         loading: false,
-        leases: state.leases.map((lease) =>
-          lease.id === action.payload.lease.id ? action.payload.lease : lease
-        ),
+        leases: state.leases.map((lease) => {
+          const updated = action.payload?.lease;
+          if (!updated) return lease;
+          const updatedId = updated.id ?? updated.leaseId;
+          return lease.id === updatedId
+            ? { ...lease, ...updated, rentAmount: updated.rentAmount }
+            : lease;
+        }),
       };
 
     case UPDATE_LEASE_RENT_FAILURE:
