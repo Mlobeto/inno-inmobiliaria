@@ -12,16 +12,16 @@ import {
   IoMapOutline,
   IoHomeOutline,
   IoCheckmarkSharp,
+  IoArrowForwardOutline,
 } from 'react-icons/io5';
 
-// Mapa de iconos por moduleId
 const MODULE_ICONS = {
   temporary_rentals: IoCalendarOutline,
-  landing:           IoGlobeOutline,
-  leads_team:        IoPeopleOutline,
-  mercadolibre:      IoStorefrontOutline,
-  loteos:            IoMapOutline,
-  portal_inquilino:  IoHomeOutline,
+  landing: IoGlobeOutline,
+  leads_team: IoPeopleOutline,
+  mercadolibre: IoStorefrontOutline,
+  loteos: IoMapOutline,
+  portal_inquilino: IoHomeOutline,
 };
 
 const BASE_PRICE = 10000;
@@ -60,75 +60,85 @@ function LandingPlans() {
 
   if (isLoading) {
     return (
-      <section id="planes" className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Cargando módulos...</p>
+      <section id="planes" className="py-16 sm:py-24 bg-bgSurface font-Montserrat border-t border-borderBase">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-brand border-t-transparent mx-auto" />
+          <p className="mt-4 text-textSecondary">Cargando módulos...</p>
         </div>
       </section>
     );
   }
 
   return (
-    <section id="planes" className="py-20 bg-gradient-to-b from-white to-gray-50">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section
+      id="planes"
+      className="relative py-16 sm:py-24 bg-bgSurface font-Montserrat border-t border-borderBase overflow-hidden"
+    >
+      {/* Glow de fondo — continuidad con el hero */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 50% at 50% 0%, rgba(90,140,114,0.14) 0%, transparent 60%)',
+        }}
+      />
 
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-12">
-          <span className="inline-block bg-indigo-100 text-indigo-700 text-sm font-semibold px-4 py-1 rounded-full mb-4">
+        <div className="text-center mb-10 sm:mb-14">
+          <span className="inline-flex items-center gap-2 rounded-full border border-borderStrong bg-brand-subtle/80 px-4 py-1.5 text-sm font-semibold text-brand-light mb-4">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-light animate-pulse" />
             Sin planes fijos
           </span>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-textPrimary mb-4 tracking-tight">
             Armá tu plan según lo que necesitás
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg text-textSecondary max-w-2xl mx-auto leading-relaxed">
             Empezá con lo esencial y sumá solo los módulos que tu inmobiliaria usa.
             Sin pagar por lo que no necesitás.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8 items-start">
-
-          {/* Columna izquierda: preguntas + módulos */}
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+          {/* Módulos */}
           <div className="lg:col-span-2 space-y-4">
-
-            {/* Plan base — siempre incluido */}
-            <div className="bg-indigo-600 rounded-2xl p-6 text-white">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <IoCheckmarkSharp className="text-indigo-200 text-xl" />
-                    <span className="text-indigo-200 text-sm font-medium uppercase tracking-wide">
+            {/* Plan base */}
+            <div className="rounded-2xl border border-borderStrong bg-gradient-to-br from-brand-dark to-brand p-6 sm:p-7 shadow-brandGlow">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <IoCheckmarkSharp className="text-brand-light text-xl shrink-0" />
+                    <span className="text-brand-light text-xs font-semibold uppercase tracking-wider">
                       Siempre incluido
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold mb-2">Plan Base</h3>
-                  <p className="text-indigo-200 text-sm leading-relaxed">
+                  <h3 className="text-xl sm:text-2xl font-bold text-textWhite mb-2">Plan Base</h3>
+                  <p className="text-textWhite/80 text-sm leading-relaxed max-w-lg">
                     Gestión completa de alquileres y ventas: propiedades, contratos,
                     cuotas, recibos y balance.
                   </p>
-                  <ul className="mt-3 grid grid-cols-2 gap-1">
+                  <ul className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {['Alquileres', 'Ventas', 'Contratos', 'Recibos', 'Balance', 'Reportes'].map((f) => (
-                      <li key={f} className="flex items-center gap-1 text-indigo-100 text-xs">
-                        <IoCheckmarkCircle className="flex-shrink-0" />
+                      <li key={f} className="flex items-center gap-1.5 text-textWhite/90 text-xs sm:text-sm">
+                        <IoCheckmarkCircle className="text-brand-light shrink-0 w-4 h-4" />
                         {f}
                       </li>
                     ))}
                   </ul>
                 </div>
-                <div className="text-right flex-shrink-0 ml-4">
-                  <div className="text-3xl font-bold">{formatPrice(BASE_PRICE)}</div>
-                  <div className="text-indigo-300 text-sm">/mes</div>
-                  <div className="mt-2 bg-indigo-500 text-indigo-100 text-xs px-3 py-1 rounded-full">
+                <div className="sm:text-right shrink-0 sm:pl-4">
+                  <div className="text-3xl sm:text-4xl font-bold text-textWhite">{formatPrice(BASE_PRICE)}</div>
+                  <div className="text-brand-light/90 text-sm">/mes</div>
+                  <div className="mt-2 inline-block bg-brand-muted/80 text-brand-light text-xs font-medium px-3 py-1 rounded-full border border-borderStrong">
                     7 días gratis
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Módulos */}
-            <p className="text-gray-500 text-sm font-medium px-1">
-              ¿Necesitás algo más? Sumá los módulos que uses:
+            <p className="text-textSecondary text-sm font-medium px-1 pt-1">
+              ¿Necesitás algo más? Tocá para sumar módulos:
             </p>
 
             {modules.map((mod) => {
@@ -138,47 +148,42 @@ function LandingPlans() {
               return (
                 <button
                   key={mod.moduleId}
+                  type="button"
                   onClick={() => toggle(mod.moduleId)}
-                  className={`w-full text-left rounded-2xl border-2 p-5 transition-all duration-200 ${
+                  className={`w-full text-left rounded-xl border-2 p-5 sm:p-6 transition-all duration-200 ${
                     isOn
-                      ? 'border-indigo-500 bg-indigo-50 shadow-md'
-                      : 'border-gray-200 bg-white hover:border-indigo-300 hover:shadow-sm'
+                      ? 'border-brand-light bg-brand-subtle shadow-brandGlow ring-1 ring-brand-light/30'
+                      : 'border-borderBase bg-bgElevated hover:border-borderStrong hover:bg-bgBase hover:shadow-brand'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      {/* Icono */}
+                    <div className="flex items-start gap-4 min-w-0">
                       <div
-                        className={`p-2 rounded-xl flex-shrink-0 ${
-                          isOn ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-100 text-gray-500'
+                        className={`p-2.5 rounded-xl shrink-0 ${
+                          isOn ? 'bg-brand-muted text-brand-light' : 'bg-brand-subtle text-textMuted'
                         }`}
                       >
                         <Icon className="text-2xl" />
                       </div>
-
-                      {/* Texto */}
-                      <div>
-                        <p className={`text-xs font-medium mb-1 ${isOn ? 'text-indigo-500' : 'text-gray-400'}`}>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-medium mb-1 ${isOn ? 'text-brand-light' : 'text-textMuted'}`}>
                           {mod.question}
                         </p>
-                        <h4 className="font-semibold text-gray-900">{mod.name}</h4>
-                        <p className="text-gray-500 text-sm mt-1 leading-relaxed">
-                          {mod.description}
-                        </p>
+                        <h4 className="font-semibold text-textPrimary text-base sm:text-lg">{mod.name}</h4>
+                        <p className="text-textSecondary text-sm mt-1 leading-relaxed">{mod.description}</p>
                       </div>
                     </div>
-
-                    {/* Precio + toggle */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className={`text-lg font-bold ${isOn ? 'text-indigo-600' : 'text-gray-700'}`}>
+                    <div className="shrink-0 text-right">
+                      <div className={`text-lg sm:text-xl font-bold ${isOn ? 'text-brand-light' : 'text-textPrimary'}`}>
                         +{formatPrice(mod.price)}
                       </div>
-                      <div className="text-gray-400 text-xs">/mes</div>
-                      <div className={`mt-2 transition-colors ${isOn ? 'text-indigo-500' : 'text-gray-300'}`}>
-                        {isOn
-                          ? <IoRemoveCircle className="text-2xl ml-auto" />
-                          : <IoAddCircle className="text-2xl ml-auto" />
-                        }
+                      <div className="text-textMuted text-xs">/mes</div>
+                      <div className={`mt-2 ${isOn ? 'text-brand-light' : 'text-textMuted'}`}>
+                        {isOn ? (
+                          <IoRemoveCircle className="text-2xl ml-auto" aria-label="Quitar módulo" />
+                        ) : (
+                          <IoAddCircle className="text-2xl ml-auto" aria-label="Agregar módulo" />
+                        )}
                       </div>
                     </div>
                   </div>
@@ -187,75 +192,66 @@ function LandingPlans() {
             })}
           </div>
 
-          {/* Columna derecha: resumen pegajoso */}
-          <div className="lg:sticky lg:top-24">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-              <h3 className="font-bold text-gray-900 mb-4 text-lg">Tu plan</h3>
+          {/* Resumen sticky */}
+          <div className="lg:sticky lg:top-20">
+            <div className="rounded-2xl border-2 border-borderStrong bg-bgElevated p-6 shadow-brandGlow">
+              <h3 className="font-bold text-textPrimary mb-1 text-lg">Tu plan</h3>
+              <p className="text-textMuted text-xs mb-5">Precio estimado mensual</p>
 
-              {/* Desglose */}
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2.5 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Plan Base</span>
-                  <span className="font-medium">{formatPrice(BASE_PRICE)}</span>
+                  <span className="text-textSecondary">Plan Base</span>
+                  <span className="font-medium text-textPrimary">{formatPrice(BASE_PRICE)}</span>
                 </div>
-
                 {modules
                   .filter((m) => selected.has(m.moduleId))
                   .map((m) => (
-                    <div key={m.moduleId} className="flex justify-between text-sm">
-                      <span className="text-indigo-600">+ {m.name}</span>
-                      <span className="font-medium text-indigo-600">
-                        {formatPrice(m.price)}
-                      </span>
+                    <div key={m.moduleId} className="flex justify-between text-sm gap-2">
+                      <span className="text-brand-light truncate">+ {m.name}</span>
+                      <span className="font-medium text-brand-light shrink-0">{formatPrice(m.price)}</span>
                     </div>
                   ))}
-
                 {selected.size === 0 && (
-                  <p className="text-gray-400 text-xs italic">
-                    Sumá módulos para ver el total
+                  <p className="text-textMuted text-xs italic py-1">
+                    Sumá módulos para ver el total actualizado
                   </p>
                 )}
               </div>
 
-              {/* Separador */}
-              <div className="border-t border-gray-100 pt-4 mb-5">
+              <div className="border-t border-borderBase pt-4 mb-5">
                 <div className="flex justify-between items-baseline">
-                  <span className="font-semibold text-gray-900">Total</span>
+                  <span className="font-semibold text-textPrimary">Total</span>
                   <div className="text-right">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {formatPrice(total)}
-                    </span>
-                    <span className="text-gray-500 text-sm">/mes</span>
+                    <span className="text-3xl sm:text-4xl font-bold text-textPrimary">{formatPrice(total)}</span>
+                    <span className="text-textSecondary text-sm ml-1">/mes</span>
                   </div>
                 </div>
               </div>
 
-              {/* Trial badge */}
-              <div className="bg-green-50 text-green-700 text-sm text-center py-2 rounded-lg mb-4 font-medium">
-                🎉 Primeros 7 días gratis, sin tarjeta
+              <div className="bg-brand-subtle border border-borderBase text-brand-light text-sm text-center py-2.5 rounded-lg mb-4 font-medium">
+                Primeros 7 días gratis · Sin tarjeta
               </div>
 
-              {/* CTA */}
               <Link
                 to={registerUrl}
-                className="block w-full py-3 px-6 rounded-xl font-semibold text-center bg-indigo-600 hover:bg-indigo-700 text-white transition"
+                className="flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl font-semibold bg-brand hover:bg-brand-dark text-textWhite transition-colors shadow-brandGlow"
               >
                 Comenzar gratis
+                <IoArrowForwardOutline className="w-4 h-4" />
               </Link>
 
-              <p className="text-center text-gray-400 text-xs mt-3">
+              <p className="text-center text-textMuted text-xs mt-3">
                 Cancelás cuando quieras · Sin permanencia
               </p>
             </div>
           </div>
         </div>
 
-        {/* Footer note */}
-        <p className="text-center text-gray-500 text-sm mt-10">
+        <p className="text-center text-textSecondary text-sm mt-10">
           ¿Tenés dudas sobre qué módulos necesitás?{' '}
-          <a href="#contacto" className="text-indigo-600 hover:underline">
+          <Link to="/contacto" className="text-brand-light hover:underline font-medium">
             Consultanos
-          </a>
+          </Link>
         </p>
       </div>
     </section>
