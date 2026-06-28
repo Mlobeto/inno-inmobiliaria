@@ -24,15 +24,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write    # Necesario para OIDC login a Azure
+      id-token: write
       contents: read
-      packages: write    # Necesario para push a GHCR
+      packages: write
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # Login a GitHub Container Registry con el token automático del workflow
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -40,7 +39,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Build y push de la imagen al GHCR
       - name: Build and push Docker image
         run: |
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -53,9 +51,7 @@ jobs:
           docker push $IMAGE_TAG
           docker push ghcr.io/${OWNER}/inno-api:latest
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-          echo "GHCR_OWNER=$OWNER" >> $GITHUB_ENV
 
-      # Login a Azure usando Federated Identity (OIDC) — sin secretos de larga duración
       - name: Azure login
         uses: azure/login@v2
         with:
@@ -63,8 +59,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Esperar a que Azure termine operaciones previas y desplegar en un solo paso
-      - name: Deploy to Container Apps
+      - name: Wait for Azure idle
         run: |
           echo "Esperando que Azure termine operaciones previas..."
           for i in $(seq 1 30); do
@@ -80,20 +75,42 @@ jobs:
             sleep 10
           done
 
-          az containerapp update \
+      # Secrets: comando aparte (update no acepta --secrets)
+      - name: Sync secrets to Container App
+        run: |
+          az containerapp secret set \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE_TAG }} \
-            --registry-server ghcr.io \
-            --registry-username ${{ env.GHCR_OWNER }} \
-            --registry-password ${{ secrets.GHCR_PAT }} \
             --secrets \
               "database-url=${{ secrets.DATABASE_URL }}" \
               "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
               "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
               "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
               "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
-              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}"
+
+      - name: Wait for Azure idle
+        run: |
+          for i in $(seq 1 30); do
+            STATE=$(az containerapp show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.provisioningState" \
+              --output tsv 2>/dev/null || echo "Unknown")
+            echo "Post-secrets $i/30 — provisioningState: $STATE"
+            if [ "$STATE" = "Succeeded" ] || [ "$STATE" = "Failed" ]; then
+              break
+            fi
+            sleep 10
+          done
+
+      # Imagen pública en GHCR — no hace falta registry-server/password
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.IMAGE_TAG }} \
             --set-env-vars \
               "NODE_ENV=production" \
               "PORT=3001" \
@@ -114,7 +131,6 @@ jobs:
               "ACS_SENDER_ADDRESS=DoNotReply@GestProps.com.ar" \
             --no-wait
 
-      # Esperar a que la revisión quede activa (Azure puede tardar varios minutos)
       - name: Verify deployment
         run: |
           echo "Esperando revisión activa..."
@@ -126,15 +142,14 @@ jobs:
               --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
               --output tsv 2>/dev/null || echo "Unknown")
             echo "Intento $i/36 — última revisión: ${STATE:-desconocido}"
-            if [ "$STATE" = "Running" ] || [ "$STATE" = "Processing" ]; then
-              if [ "$STATE" = "Running" ]; then
-                az containerapp show \
-                  --name ${{ env.CONTAINER_APP_NAME }} \
-                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                  --query "properties.latestRevisionFqdn" \
-                  --output tsv
-                exit 0
-              fi
+            if [ "$STATE" = "Running" ]; then
+              FQDN=$(az containerapp show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --query "properties.latestRevisionFqdn" \
+                --output tsv)
+              echo "Revisión activa: $FQDN"
+              exit 0
             fi
             if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
               echo "Revisión falló. Logs:"
