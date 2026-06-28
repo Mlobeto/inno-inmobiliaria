@@ -99,7 +99,8 @@ const TenantDetail = () => {
   
   const tenant = data?.data?.tenant || {};
   const subscription = data?.data?.subscription || null;
-  const stats = data?.data?.stats || {};
+  const stats = data?.data?.usage || data?.data?.stats || {};
+  const primaryAdmin = tenant.admins?.[0] || null;
   const plans = plansData?.plans || [];
 
   // ── Handlers ───────────────────────────────────────────────
@@ -330,8 +331,20 @@ const TenantDetail = () => {
                   <p className="font-semibold text-gray-900">{tenant.cuit || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Email</p>
+                  <p className="text-sm text-gray-600">Email del negocio</p>
                   <p className="font-semibold text-gray-900">{tenant.email}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Username (login)</p>
+                  {primaryAdmin ? (
+                    <p className="font-semibold text-gray-900 font-mono">{primaryAdmin.username}</p>
+                  ) : (
+                    <p className="text-sm text-amber-600 italic">Sin usuario admin</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Email admin</p>
+                  <p className="font-semibold text-gray-900">{primaryAdmin?.email || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Teléfono</p>
@@ -986,7 +999,10 @@ const TenantDetail = () => {
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-bold mb-2">🔑 Resetear Contraseña Admin</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Admin: <strong>{data?.data?.admins?.[0]?.email || data?.data?.tenant?.email || '(principal del tenant)'}</strong>
+              Admin: <strong>{primaryAdmin?.username || primaryAdmin?.email || tenant.email || '(sin admin)'}</strong>
+              {primaryAdmin?.username && primaryAdmin?.email && (
+                <span className="block text-xs text-gray-400 mt-1">{primaryAdmin.email}</span>
+              )}
             </p>
 
             {resetLink ? (

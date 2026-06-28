@@ -139,7 +139,7 @@ const TenantList = () => {
               </label>
               <input
                 type="text"
-                placeholder="Nombre, email o subdomain..."
+                placeholder="Nombre, email, subdomain o username..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -196,6 +196,9 @@ const TenantList = () => {
                     Negocio
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Usuario admin
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Subdomain
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -221,7 +224,7 @@ const TenantList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {tenants.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                       No se encontraron tenants con los filtros seleccionados
                     </td>
                   </tr>
@@ -237,6 +240,20 @@ const TenantList = () => {
                             {tenant.email}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {tenant.admins?.[0]?.username ? (
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 font-mono">
+                              {tenant.admins[0].username}
+                            </div>
+                            {tenant.admins[0].fullName && (
+                              <div className="text-xs text-gray-500">{tenant.admins[0].fullName}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400 italic">Sin admin</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <a
