@@ -63,32 +63,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Secrets por separado con --no-wait (evita bloqueo de 20 min si la revisión tarda)
-      - name: Sync secrets to Container App
-        run: |
-          az containerapp secret set \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --secrets \
-              "database-url=${{ secrets.DATABASE_URL }}" \
-              "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
-              "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
-              "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
-              "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
-              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
-            --no-wait
-
-      # Registry GHCR (Azure guarda el PAT como secret interno)
-      - name: Configure GHCR registry
-        run: |
-          az containerapp registry set \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --server ghcr.io \
-            --username ${{ env.GHCR_OWNER }} \
-            --password ${{ secrets.GHCR_PAT }}
-
-      # Asegurar ingress habilitado (estaba disabled en un deploy anterior)
+      # Un solo update con secrets + registry + imagen + env vars (--no-wait evita timeout de 20 min)
       - name: Ensure ingress enabled
         run: |
           az containerapp ingress enable \
@@ -99,13 +74,22 @@ jobs:
             --transport auto \
             --allow-insecure false
 
-      # Solo imagen + env vars — sin reprovisionar secrets otra vez
       - name: Deploy to Container Apps
         run: |
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --image ${{ env.IMAGE_TAG }} \
+            --registry-server ghcr.io \
+            --registry-username ${{ env.GHCR_OWNER }} \
+            --registry-password ${{ secrets.GHCR_PAT }} \
+            --secrets \
+              "database-url=${{ secrets.DATABASE_URL }}" \
+              "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
+              "encryption-key=${{ secrets.ENCRYPTION_KEY }}" \
+              "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
+              "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
+              "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
             --set-env-vars \
               "NODE_ENV=production" \
               "PORT=3001" \
