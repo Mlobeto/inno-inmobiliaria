@@ -51,6 +51,7 @@ jobs:
           docker push $IMAGE_TAG
           docker push ghcr.io/${OWNER}/inno-api:latest
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "REVISION_SUFFIX=gh${{ github.run_number }}" >> $GITHUB_ENV
 
       - name: Azure login
         uses: azure/login@v2
@@ -80,20 +81,55 @@ jobs:
             sleep 20
           done
 
-      # Secrets ya configurados en el Container App — no re-sincronizar en cada deploy
-      # (secret set bloquea ~20 min esperando provision). Para rotarlos: workflow manual
-      # o az containerapp secret set desde Azure CLI local.
+      - name: Record revision before deploy
+        id: rev
+        run: |
+          PRE=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "sort_by(@, &properties.createdTime)[-1].name" \
+            --output tsv)
+          echo "pre_revision=$PRE" >> $GITHUB_OUTPUT
+          echo "Revisión previa: $PRE"
+          echo "Nueva revisión esperada: ${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
+
+      - name: Deactivate failed revisions
+        continue-on-error: true
+        run: |
+          FAILED=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?properties.runningState=='Failed'].name" \
+            --output tsv)
+          for REV in $FAILED; do
+            echo "Desactivando revisión fallida: $REV"
+            az containerapp revision deactivate \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --revision "$REV" || true
+          done
 
       - name: Deploy to Container Apps
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          # Solo actualizar imagen — no tocar env vars (secretref: en --set-env-vars
-          # puede guardarse como literal y romper DATABASE_URL en revisiones nuevas).
+          if [ -z "$DATABASE_URL" ]; then
+            echo "ERROR: Falta el secret DATABASE_URL en GitHub (Settings → Secrets)."
+            exit 1
+          fi
+
+          # Reparar DATABASE_URL (secretref: literal rompe Prisma) y forzar arranque sin migrate
           for i in $(seq 1 40); do
             echo "Deploy intento $i/40..."
             if OUT=$(az containerapp update \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --container-name api \
               --image ${{ env.IMAGE_TAG }} \
+              --revision-suffix "${{ env.REVISION_SUFFIX }}" \
+              --command "node" \
+              --args "index.js" \
+              --set-env-vars "DATABASE_URL=$DATABASE_URL" \
               --no-wait 2>&1); then
               echo "$OUT"
               echo "Deploy iniciado."
@@ -114,20 +150,31 @@ jobs:
       - name: Verify deployment
         run: |
           API_URL="https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io"
-          echo "Esperando revisión activa..."
+          PRE="${{ steps.rev.outputs.pre_revision }}"
+          EXPECT="${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
+          echo "Esperando revisión nueva ($EXPECT), previa era $PRE..."
           sleep 30
           for i in $(seq 1 36); do
-            STATE=$(az containerapp revision list \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
-              --output tsv 2>/dev/null || echo "Unknown")
             REV=$(az containerapp revision list \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --query "sort_by(@, &properties.createdTime)[-1].name" \
               --output tsv 2>/dev/null || echo "?")
+            STATE=$(az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
+              --output tsv 2>/dev/null || echo "Unknown")
+
+            # Ignorar revisiones viejas (ej. 0000104 fallida) hasta que aparezca la nueva
+            if [ "$REV" = "$PRE" ]; then
+              echo "Intento $i/36 — aún no hay revisión nueva (sigue $PRE)..."
+              sleep 10
+              continue
+            fi
+
             echo "Intento $i/36 — revisión $REV: ${STATE:-desconocido}"
+
             if [ "$STATE" = "Running" ]; then
               UPTIME=$(curl -sf "$API_URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uptime',-1))" 2>/dev/null || echo "-1")
               echo "Health uptime: $UPTIME s"
@@ -135,16 +182,20 @@ jobs:
                 echo "Revisión nueva activa (uptime < 10 min)"
                 exit 0
               fi
-              echo "Revisión Running pero uptime alto — puede ser revisión vieja, esperando..."
+              echo "Revisión Running pero uptime alto — esperando tráfico en revisión nueva..."
             fi
+
             if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
-              echo "Revisión falló. Logs:"
-              az containerapp logs show \
-                --name ${{ env.CONTAINER_APP_NAME }} \
-                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                --revision "$REV" \
-                --tail 80 || true
-              exit 1
+              # Solo fallar si es la revisión que acabamos de desplegar
+              if [ "$REV" = "$EXPECT" ] || [ "$REV" != "$PRE" ]; then
+                echo "Revisión falló. Logs:"
+                az containerapp logs show \
+                  --name ${{ env.CONTAINER_APP_NAME }} \
+                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                  --revision "$REV" \
+                  --tail 80 || true
+                exit 1
+              fi
             fi
             sleep 10
           done
