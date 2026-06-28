@@ -10,6 +10,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('dotenv').config({ path: path.join(__dirname, '..', '.env.production') });
 
 const prisma = require('../src/utils/prismaClient');
+const { refreshLifetimePlanFeatures } = require('../src/controllers/ModuleAdminController');
 
 async function main() {
   console.log('🌱 Seeding plan base y módulos...');
@@ -71,32 +72,9 @@ async function main() {
   });
   console.log('  ✅ Plan base creado/actualizado');
 
-  // Plan lifetime (para admins de plataforma)
-  await prisma.plans.upsert({
-    where: { planId: 'lifetime' },
-    update: { isActive: true },
-    create: {
-      planId: 'lifetime',
-      name: 'Plan Lifetime',
-      description: 'Acceso completo permanente (solo Platform Admin).',
-      priceMonthly: 0,
-      currency: 'ARS',
-      trialDays: 0,
-      isActive: true,
-      isPopular: false,
-      sortOrder: 99,
-      features: {
-        properties: true, rentals: true, sales: true, clients: true,
-        contracts: true, receipts: true, balance: true, pdfTemplates: true,
-        estadisticas: true, exportData: true,
-        temporaryRentals: true, landingPage: true, leads: true,
-        agentRole: true, mercadoLibreIntegration: true, loteos: true,
-        portalInquilino: true, electronic_invoicing: true,
-        maxProperties: -1, maxClients: -1, maxUsers: -1,
-      },
-    },
-  });
-  console.log('  ✅ Plan lifetime creado/actualizado');
+  // Plan lifetime: todos los módulos (solo asignación manual, no visible en front público)
+  await refreshLifetimePlanFeatures();
+  console.log('  ✅ Plan lifetime sincronizado con todos los módulos');
 
   // Desactivar planes viejos
   await prisma.plans.updateMany({

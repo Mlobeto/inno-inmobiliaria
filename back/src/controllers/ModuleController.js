@@ -124,18 +124,29 @@ async function deactivateModule(req, res) {
  * Recalcula y guarda en tenants.features las features del plan base + módulos activos.
  */
 async function syncTenantFeatures(tenantId) {
-  // Features base del plan
   const tenant = await prisma.tenants.findUnique({
     where: { tenantId },
     include: {
       subscriptions: {
         where: { status: { in: ['trialing', 'active'] } },
-        include: { plans: true },
         orderBy: { createdAt: 'desc' },
         take: 1,
       },
     },
   });
+
+  const planNorm = String(tenant?.plan || '').toLowerCase();
+  const subPlan = tenant?.subscriptions?.[0]?.planId;
+  const isLifetime =
+    planNorm === 'lifetime' ||
+    String(subPlan || '').toLowerCase() === 'lifetime';
+
+  if (isLifetime) {
+    const lifetimePlan = await prisma.plans.findUnique({ where: { planId: 'lifetime' } });
+    const features = lifetimePlan?.features || {};
+    await prisma.tenants.update({ where: { tenantId }, data: { features } });
+    return features;
+  }
 
   const basePlan = await prisma.plans.findUnique({ where: { planId: 'base' } });
   const baseFeatures = basePlan?.features || {};

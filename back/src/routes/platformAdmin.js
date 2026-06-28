@@ -51,4 +51,11 @@ router.put('/plans/:planId', planController.updatePlan);
 router.delete('/plans/:planId', planController.deletePlan);
 router.patch('/plans/:planId/toggle-status', planController.togglePlanStatus);
 
+/**
+ * Catálogo de módulos (precios add-on)
+ */
+const moduleAdminController = require('../controllers/ModuleAdminController');
+router.get('/modules', moduleAdminController.listModulesAdmin);
+router.put('/modules/:moduleId', moduleAdminController.updateModuleCatalog);
+
 module.exports = router;

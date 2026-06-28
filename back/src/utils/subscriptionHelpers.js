@@ -66,6 +66,22 @@ function buildPaidPlanSubscriptionData(planRecord, existingSubscription = null, 
  * Calcula las features efectivas del tenant: base plan + módulos activos.
  */
 async function computeTenantFeatures(prisma, tenantId) {
+  const tenant = await prisma.tenants.findUnique({ where: { tenantId } });
+
+  if (isLifetimePlanId(tenant?.plan)) {
+    const lifetimePlan = await prisma.plans.findUnique({ where: { planId: 'lifetime' } });
+    if (lifetimePlan?.features) return lifetimePlan.features;
+  }
+
+  const activeSub = await prisma.subscriptions.findFirst({
+    where: { tenantId, status: { in: ['trialing', 'active'] } },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (isLifetimeSubscription(activeSub)) {
+    const lifetimePlan = await prisma.plans.findUnique({ where: { planId: 'lifetime' } });
+    if (lifetimePlan?.features) return lifetimePlan.features;
+  }
+
   const basePlan = await prisma.plans.findUnique({ where: { planId: 'base' } });
   const baseFeatures = (basePlan?.features) || {};
 

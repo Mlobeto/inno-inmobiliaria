@@ -58,6 +58,8 @@ export {
   useUpdatePlanMutation,
   useDeletePlanMutation,
   useTogglePlanStatusMutation,
+  useListCatalogModulesQuery,
+  useUpdateCatalogModuleMutation,
   useImpersonateTenantMutation,
   useGetTenantOperationalQuery,
   useUpdateTenantSubscriptionMutation,

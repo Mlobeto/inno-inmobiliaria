@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetDashboardQuery } from '../../redux/platformAdmin';
 import CreateManualTenantForm from './CreateManualTenantForm';
-import PlanManagement from './PlanManagement';
+import PricingManagement from './PricingManagement';
 import TicketsAdmin from './TicketsAdmin';
 
 function PlatformAdminDashboard() {
@@ -67,7 +67,7 @@ function PlatformAdminDashboard() {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              📋 Planes
+              💰 Precios y módulos
             </button>
             <button
               onClick={() => setActiveTab('tickets')}
@@ -146,7 +146,7 @@ function PlatformAdminDashboard() {
               onClick={() => setActiveTab('plans')}
               className="px-4 py-3 bg-green-600 text-white rounded hover:bg-green-700 transition"
             >
-              Gestionar Planes
+              Gestionar precios
             </button>
             <button className="px-4 py-3 bg-purple-600 text-white rounded hover:bg-purple-700 transition">
               Configuración
@@ -175,7 +175,7 @@ function PlatformAdminDashboard() {
 
         {/* Tab de Planes */}
         {activeTab === 'plans' && (
-          <PlanManagement />
+          <PricingManagement />
         )}
 
         {/* Tab de Tickets */}

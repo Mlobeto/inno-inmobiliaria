@@ -376,12 +376,8 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="free">Free</option>
-                <option value="basic">Basic</option>
-                <option value="professional">Professional</option>
-                <option value="gestpro">GestPRO</option>
-                <option value="lifetime">Lifetime</option>
-                <option value="lifetime">Lifetime (Permanente)</option>
+                <option value="base">Plan Base</option>
+                <option value="lifetime">Lifetime (interno — todos los módulos)</option>
               </select>
             </div>
             

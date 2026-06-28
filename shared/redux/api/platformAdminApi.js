@@ -187,6 +187,7 @@ export const platformAdminApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, { planId }) => [
         { type: 'Plans', id: planId },
         { type: 'Plans', id: 'LIST' },
+        'PublicModules',
       ],
     }),
 
@@ -210,6 +211,31 @@ export const platformAdminApi = baseApi.injectEndpoints({
       invalidatesTags: (result, error, planId) => [
         { type: 'Plans', id: planId },
         { type: 'Plans', id: 'LIST' },
+      ],
+    }),
+
+    listCatalogModules: builder.query({
+      query: () => '/platform-admin/modules',
+      providesTags: (result) =>
+        result?.modules
+          ? [
+              ...result.modules.map(({ moduleId }) => ({ type: 'CatalogModules', id: moduleId })),
+              { type: 'CatalogModules', id: 'LIST' },
+            ]
+          : [{ type: 'CatalogModules', id: 'LIST' }],
+    }),
+
+    updateCatalogModule: builder.mutation({
+      query: ({ moduleId, ...data }) => ({
+        url: `/platform-admin/modules/${moduleId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { moduleId }) => [
+        { type: 'CatalogModules', id: moduleId },
+        { type: 'CatalogModules', id: 'LIST' },
+        { type: 'Plans', id: 'lifetime' },
+        'PublicModules',
       ],
     }),
 
@@ -310,6 +336,10 @@ export const {
   useUpdatePlanMutation,
   useDeletePlanMutation,
   useTogglePlanStatusMutation,
+
+  // Módulos (catálogo)
+  useListCatalogModulesQuery,
+  useUpdateCatalogModuleMutation,
 
   // Impersonation + Operational
   useImpersonateTenantMutation,
