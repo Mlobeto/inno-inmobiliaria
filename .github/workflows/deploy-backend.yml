@@ -81,32 +81,17 @@ jobs:
 
       - name: Deploy to Container Apps
         run: |
+          # Solo actualizar imagen — no tocar env vars (secretref: en --set-env-vars
+          # puede guardarse como literal y romper DATABASE_URL en revisiones nuevas).
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --image ${{ env.IMAGE_TAG }} \
-            --set-env-vars \
-              "NODE_ENV=production" \
-              "PORT=3001" \
-              "DATABASE_URL=secretref:database-url" \
-              "JWT_SECRET_KEY=secretref:jwt-secret-key" \
-              "ENCRYPTION_KEY=secretref:encryption-key" \
-              "MP_ACCESS_TOKEN=secretref:mp-access-token" \
-              "MP_PUBLIC_KEY=secretref:mp-public-key" \
-              "BACKEND_URL=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io" \
-              "ML_CLIENT_SECRET=secretref:ml-client-secret" \
-              "AZURE_STORAGE_ACCOUNT_NAME=innomediaprod" \
-              "FRONTEND_URL=https://gestprop.com.ar" \
-              "ML_CLIENT_ID=6081765459956502" \
-              "ML_REDIRECT_URI=https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io/api/mercadolibre/callback" \
-              "PLATFORM_ADMIN_EMAIL=admin@innoinmo.com" \
-              "PLATFORM_ADMIN_EMAILS=admin@innoinmo.com" \
-              "CONTACT_EMAIL=${{ secrets.CONTACT_EMAIL }}" \
-              "ACS_SENDER_ADDRESS=DoNotReply@GestProps.com.ar" \
             --no-wait
 
       - name: Verify deployment
         run: |
+          API_URL="https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io"
           echo "Esperando revisión activa..."
           sleep 30
           for i in $(seq 1 36); do
@@ -115,21 +100,27 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
               --output tsv 2>/dev/null || echo "Unknown")
-            echo "Intento $i/36 — última revisión: ${STATE:-desconocido}"
+            REV=$(az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "sort_by(@, &properties.createdTime)[-1].name" \
+              --output tsv 2>/dev/null || echo "?")
+            echo "Intento $i/36 — revisión $REV: ${STATE:-desconocido}"
             if [ "$STATE" = "Running" ]; then
-              FQDN=$(az containerapp show \
-                --name ${{ env.CONTAINER_APP_NAME }} \
-                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                --query "properties.latestRevisionFqdn" \
-                --output tsv)
-              echo "Revisión activa: $FQDN"
-              exit 0
+              UPTIME=$(curl -sf "$API_URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uptime',-1))" 2>/dev/null || echo "-1")
+              echo "Health uptime: $UPTIME s"
+              if [ "$UPTIME" != "-1" ] && [ "${UPTIME%%.*}" -lt 600 ]; then
+                echo "Revisión nueva activa (uptime < 10 min)"
+                exit 0
+              fi
+              echo "Revisión Running pero uptime alto — puede ser revisión vieja, esperando..."
             fi
             if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
               echo "Revisión falló. Logs:"
               az containerapp logs show \
                 --name ${{ env.CONTAINER_APP_NAME }} \
                 --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --revision "$REV" \
                 --tail 80 || true
               exit 1
             fi
