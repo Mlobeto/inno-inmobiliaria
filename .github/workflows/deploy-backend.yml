@@ -105,7 +105,9 @@ jobs:
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
               --revision "$REV" || true
           done
-          if [ -n "$FAILED" ]; then
+          if [ -z "$FAILED" ]; then
+            echo "Sin revisiones Failed — OK."
+          else
             echo "Esperando 30s tras desactivar revisiones fallidas..."
             sleep 30
           fi
@@ -139,14 +141,26 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             -o table || true
-          # Quitar ACR eliminado (bloqueaba pulls)
-          az containerapp registry remove \
+          # Quitar ACR eliminado — Azure puede intentar pull ahí en vez de GHCR
+          if az containerapp registry list \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --server innoacrprod.azurecr.io 2>/dev/null || true
-          if [ -z "$GHCR_PAT" ]; then
-            echo "WARN: GHCR_PAT no configurado — usando imagen pública sin auth"
+            --query "[?server=='innoacrprod.azurecr.io']" -o tsv 2>/dev/null | grep -q .; then
+            echo "Eliminando registry ACR obsoleto..."
+            az containerapp registry remove \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --server innoacrprod.azurecr.io
           else
+            echo "Registry ACR ya no está — OK."
+          fi
+          HAS_GHCR=$(az containerapp registry list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?server=='ghcr.io'] | length(@)" -o tsv 2>/dev/null || echo "0")
+          if [ "$HAS_GHCR" != "0" ]; then
+            echo "ghcr.io ya configurado (secret ghcrio-mlobeto) — OK."
+          elif [ -n "$GHCR_PAT" ]; then
             echo "Configurando ghcr.io..."
             az containerapp registry set \
               --name ${{ env.CONTAINER_APP_NAME }} \
@@ -154,6 +168,8 @@ jobs:
               --server ghcr.io \
               --username "$OWNER" \
               --password "$GHCR_PAT"
+          else
+            echo "WARN: ghcr.io no configurado y GHCR_PAT ausente."
           fi
 
       - name: Deploy to Container Apps
