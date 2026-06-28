@@ -6,7 +6,26 @@
  */
 
 import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 import { useCreateManualTenantMutation, useCheckSubdomainAvailabilityQuery } from '@shared/redux';
+
+function formatCreateTenantError(err) {
+  const data = err?.data;
+  if (!data) return err?.message || 'Error desconocido al crear tenant';
+  if (typeof data.message === 'string' && data.message.length < 300) return data.message;
+  if (typeof data.error === 'string') {
+    const prismaMatch = data.error.match(
+      /Argument `(\w+)`: Invalid value provided\. Expected ([^,]+), provided (\w+)/
+    );
+    if (prismaMatch) {
+      const [, field, expected, received] = prismaMatch;
+      return `Campo "${field}": se esperaba ${expected.trim()}, se recibió ${received}.`;
+    }
+    const lastLine = data.error.split('\n').filter(Boolean).pop();
+    if (lastLine && lastLine.length < 200) return lastLine;
+  }
+  return data.message || 'Error al crear tenant';
+}
 
 const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
   const [createTenant, { isLoading, isError, error }] = useCreateManualTenantMutation();
@@ -30,6 +49,7 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
   });
   
   const [createdTenant, setCreatedTenant] = useState(null);
+  const [submitError, setSubmitError] = useState(null);
   const [subdomainToCheck, setSubdomainToCheck] = useState('');
   
   // Validación de subdomain en tiempo real (debounce)
@@ -53,6 +73,10 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
   
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setSubmitError(null);
+
+    const numericFields = ['durationDays', 'maxAgents', 'maxProperties'];
+    const parsedValue = numericFields.includes(name) ? parseInt(value, 10) || '' : value;
     
     // Si es subdomain, convertir a minúsculas y quitar caracteres inválidos
     if (name === 'subdomain') {
@@ -68,43 +92,51 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: parsedValue
       }));
     }
   };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError(null);
     
     // Validaciones básicas
     if (!formData.businessName || !formData.email || !formData.subdomain) {
-      alert('Nombre de negocio, email y subdomain son requeridos');
+      toast.error('Nombre de negocio, email y subdomain son requeridos');
       return;
     }
     
     // Validar que el subdomain esté disponible
     if (subdomainCheck && !subdomainCheck.available) {
-      alert('El subdomain no está disponible. Por favor elige otro.');
+      toast.error('El subdomain no está disponible. Elegí otro.');
       return;
     }
     
     if (formData.adminUsername && !formData.adminPassword) {
-      alert('Si especificas un username, debes proporcionar una contraseña');
+      toast.error('Si especificás un username, debés proporcionar una contraseña');
       return;
     }
+
+    const payload = {
+      ...formData,
+      durationDays: parseInt(formData.durationDays, 10) || 30,
+      maxAgents: parseInt(formData.maxAgents, 10) || 5,
+      maxProperties: parseInt(formData.maxProperties, 10) || 100,
+    };
     
     try {
-      const result = await createTenant(formData).unwrap();
+      const result = await createTenant(payload).unwrap();
       
       // Mostrar resultado con credenciales
       setCreatedTenant(result.data);
-      
-      // Notificar éxito
-      alert('✅ Tenant creado exitosamente!');
+      toast.success('Tenant creado exitosamente');
       
     } catch (err) {
-      console.error('Error creando tenant:', err);
-      alert(`❌ Error: ${err.data?.message || err.message}`);
+      const message = formatCreateTenantError(err);
+      console.error('Error creando tenant:', { status: err?.status, message, raw: err });
+      setSubmitError(message);
+      toast.error(message);
     }
   };
   
@@ -513,9 +545,10 @@ const CreateManualTenantForm = ({ onSuccess, onCancel }) => {
         </div>
         
         {/* Error */}
-        {isError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
-            ❌ {error?.data?.message || 'Error al crear tenant'}
+        {(submitError || isError) && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800 text-sm space-y-1">
+            <p className="font-medium">No se pudo crear el tenant</p>
+            <p>{submitError || formatCreateTenantError(error)}</p>
           </div>
         )}
         

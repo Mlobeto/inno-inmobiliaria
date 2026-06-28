@@ -800,6 +800,34 @@ exports.checkSubdomainAvailability = async (req, res) => {
   }
 };
 
+function parseIntField(value, fallback) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const parsed = parseInt(String(value), 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function formatPrismaError(error) {
+  const msg = error?.message || String(error);
+
+  const typeMismatch = msg.match(
+    /Argument `(\w+)`: Invalid value provided\. Expected ([^,]+), provided (\w+)/
+  );
+  if (typeMismatch) {
+    const [, field, expected, received] = typeMismatch;
+    return `El campo "${field}" debe ser ${expected.trim()} (se recibió ${received}).`;
+  }
+
+  if (msg.includes('Unique constraint failed')) {
+    if (msg.includes('subdomain')) return 'El subdominio ya está en uso.';
+    if (msg.includes('email')) return 'Ya existe un tenant con ese email.';
+    if (msg.includes('cuit')) return 'Ya existe un tenant con ese CUIT.';
+    return 'Ya existe un registro con esos datos.';
+  }
+
+  const firstLine = msg.split('\n').find((line) => line.trim() && !line.startsWith('{'));
+  return firstLine?.trim() || msg;
+}
+
 /**
  * @route POST /api/platform-admin/tenants/create-manual
  * @desc Crea un tenant manualmente sin pasar por MercadoPago
@@ -874,12 +902,24 @@ exports.createManualTenant = async (req, res) => {
       where: { planId: String(plan).toLowerCase(), isActive: true },
     });
 
+    const planFeatures =
+      planRecord?.features && typeof planRecord.features === 'object' && !Array.isArray(planRecord.features)
+        ? planRecord.features
+        : {};
+
     const resolvedFeatures = planRecord?.features
       ? planRecord.features
       : Array.isArray(features) ? { modules: features } : features;
 
-    const resolvedMaxAgents = planRecord?.maxUsers ?? maxAgents;
-    const resolvedMaxProperties = planRecord?.maxProperties ?? maxProperties;
+    const isLifetime = String(plan).toLowerCase() === 'lifetime';
+    const resolvedMaxAgents = parseIntField(
+      planFeatures.maxUsers ?? maxAgents,
+      isLifetime ? -1 : 5
+    );
+    const resolvedMaxProperties = parseIntField(
+      planFeatures.maxProperties ?? maxProperties,
+      isLifetime ? -1 : 100
+    );
 
     const newTenant = await prisma.tenants.create({
       data: {
@@ -900,9 +940,8 @@ exports.createManualTenant = async (req, res) => {
     });
 
     const startDate = new Date();
-    const isLifetime = String(plan).toLowerCase() === 'lifetime';
     const endDate = isLifetime ? null : new Date();
-    if (!isLifetime) endDate.setDate(endDate.getDate() + Number(durationDays));
+    if (!isLifetime) endDate.setDate(endDate.getDate() + parseIntField(durationDays, 30));
 
     const subscription = await prisma.subscriptions.create({
       data: {
@@ -972,11 +1011,28 @@ exports.createManualTenant = async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Error creando tenant manual', { error: error.message });
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear tenant',
+    const friendlyMessage = formatPrismaError(error);
+    const isValidation =
+      error?.name === 'PrismaClientValidationError' ||
+      friendlyMessage.includes('debe ser') ||
+      friendlyMessage.includes('Ya existe');
+
+    logger.error('Error creando tenant manual', {
       error: error.message,
+      friendlyMessage,
+      body: {
+        businessName: req.body?.businessName,
+        subdomain: req.body?.subdomain,
+        plan: req.body?.plan,
+        maxAgents: req.body?.maxAgents,
+        maxProperties: req.body?.maxProperties,
+      },
+    });
+
+    res.status(isValidation ? 400 : 500).json({
+      success: false,
+      message: friendlyMessage,
+      error: process.env.NODE_ENV === 'production' ? friendlyMessage : error.message,
     });
   }
 };
