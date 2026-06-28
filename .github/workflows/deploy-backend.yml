@@ -53,6 +53,7 @@ jobs:
           docker push $IMAGE_TAG
           docker push ghcr.io/${OWNER}/inno-api:latest
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "GHCR_OWNER=$OWNER" >> $GITHUB_ENV
 
       # Login a Azure usando Federated Identity (OIDC) — sin secretos de larga duración
       - name: Azure login
@@ -62,18 +63,12 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Un solo update: secrets + registry GHCR + imagen + env vars.
-      # Evita 3 provisiones seguidas que causan "Operation expired" en Azure.
-      - name: Deploy to Container Apps
+      # Secrets por separado con --no-wait (evita bloqueo de 20 min si la revisión tarda)
+      - name: Sync secrets to Container App
         run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          az containerapp update \
+          az containerapp secret set \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --image ${{ env.IMAGE_TAG }} \
-            --registry-server ghcr.io \
-            --registry-username ${OWNER} \
-            --registry-password ${{ secrets.GHCR_PAT }} \
             --secrets \
               "database-url=${{ secrets.DATABASE_URL }}" \
               "jwt-secret-key=${{ secrets.JWT_SECRET_KEY }}" \
@@ -81,6 +76,36 @@ jobs:
               "mp-access-token=${{ secrets.MP_ACCESS_TOKEN }}" \
               "mp-public-key=${{ secrets.MP_PUBLIC_KEY }}" \
               "ml-client-secret=${{ secrets.ML_CLIENT_SECRET }}" \
+            --no-wait
+
+      # Registry GHCR (Azure guarda el PAT como secret interno)
+      - name: Configure GHCR registry
+        run: |
+          az containerapp registry set \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --server ghcr.io \
+            --username ${{ env.GHCR_OWNER }} \
+            --password ${{ secrets.GHCR_PAT }}
+
+      # Asegurar ingress habilitado (estaba disabled en un deploy anterior)
+      - name: Ensure ingress enabled
+        run: |
+          az containerapp ingress enable \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --type external \
+            --target-port 3001 \
+            --transport auto \
+            --allow-insecure false
+
+      # Solo imagen + env vars — sin reprovisionar secrets otra vez
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.IMAGE_TAG }} \
             --set-env-vars \
               "NODE_ENV=production" \
               "PORT=3001" \
@@ -105,34 +130,37 @@ jobs:
       - name: Verify deployment
         run: |
           echo "Esperando revisión activa..."
+          sleep 30
           for i in $(seq 1 36); do
             STATE=$(az containerapp revision list \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "[?properties.active].properties.runningState | [0]" \
+              --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
               --output tsv 2>/dev/null || echo "Unknown")
-            echo "Intento $i/36 — estado: ${STATE:-sin revisión}"
-            if [ "$STATE" = "Running" ]; then
-              az containerapp show \
-                --name ${{ env.CONTAINER_APP_NAME }} \
-                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                --query "properties.latestRevisionFqdn" \
-                --output tsv
-              exit 0
+            echo "Intento $i/36 — última revisión: ${STATE:-desconocido}"
+            if [ "$STATE" = "Running" ] || [ "$STATE" = "Processing" ]; then
+              if [ "$STATE" = "Running" ]; then
+                az containerapp show \
+                  --name ${{ env.CONTAINER_APP_NAME }} \
+                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                  --query "properties.latestRevisionFqdn" \
+                  --output tsv
+                exit 0
+              fi
             fi
             if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
-              echo "Revisión falló. Logs recientes:"
+              echo "Revisión falló. Logs:"
               az containerapp logs show \
                 --name ${{ env.CONTAINER_APP_NAME }} \
                 --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                --tail 50 || true
+                --tail 80 || true
               exit 1
             fi
             sleep 10
           done
-          echo "Timeout esperando revisión activa"
+          echo "Timeout. Logs recientes:"
           az containerapp logs show \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --tail 50 || true
+            --tail 80 || true
           exit 1
