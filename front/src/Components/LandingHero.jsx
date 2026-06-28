@@ -30,8 +30,8 @@ function LandingNav() {
           <a href="#funcionalidades" className="hover:text-brand-light transition-colors">
             Funcionalidades
           </a>
-          <a href="/#planes" className="hover:text-brand-light transition-colors">
-            Planes
+          <a href="#planes" className="hover:text-brand-light transition-colors">
+            Configurá tu plan
           </a>
           <Link to="/contacto" className="hover:text-brand-light transition-colors">
             Contacto
@@ -103,12 +103,12 @@ function LandingHero() {
               Crear cuenta gratis
               <IoArrowForwardOutline className="w-4 h-4" />
             </Link>
-            <Link
-              to="/#planes"
-              className="inline-flex items-center justify-center gap-2 border border-borderStrong text-textPrimary hover:bg-brand-subtle font-semibold py-2.5 px-6 rounded-xl transition-colors"
+            <a
+              href="#planes"
+              className="inline-flex items-center justify-center gap-2 border border-borderStrong text-textPrimary hover:bg-brand-subtle hover:border-brand-light font-semibold py-2.5 px-6 rounded-xl transition-colors"
             >
-              Ver planes
-            </Link>
+              Configurá tu plan
+            </a>
           </div>
 
           <ul className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2">

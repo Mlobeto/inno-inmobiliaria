@@ -39,9 +39,9 @@ function LandingFooter() {
             <h4 className="text-textPrimary font-semibold mb-4">Enlaces rápidos</h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/plans" className="hover:text-brand-light transition-colors">
-                  Planes y precios
-                </Link>
+                <a href="/#planes" className="hover:text-brand-light transition-colors">
+                  Configurá tu plan
+                </a>
               </li>
               <li>
                 <Link to="/registro" className="hover:text-brand-light transition-colors">
