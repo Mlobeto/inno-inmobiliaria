@@ -6,6 +6,7 @@ import {
   useUpdatePlanMutation,
   useListCatalogModulesQuery,
   useUpdateCatalogModuleMutation,
+  useGetPublicModulesQuery,
 } from '@shared/redux';
 
 const formatArs = (value) =>
@@ -17,13 +18,29 @@ const formatArs = (value) =>
 
 function PricingManagement() {
   const { data: plansData, isLoading: loadingPlans, refetch: refetchPlans } = useListPlansQuery();
-  const { data: modulesData, isLoading: loadingModules, refetch: refetchModules } = useListCatalogModulesQuery();
+  const {
+    data: modulesData,
+    isLoading: loadingModules,
+    isError: modulesAdminError,
+    error: modulesError,
+    refetch: refetchModules,
+  } = useListCatalogModulesQuery();
+  const { data: publicModulesData, isLoading: loadingPublicModules } = useGetPublicModulesQuery(undefined, {
+    skip: Boolean(modulesData?.modules?.length),
+  });
   const [updatePlan, { isLoading: savingPlan }] = useUpdatePlanMutation();
   const [updateModule, { isLoading: savingModule }] = useUpdateCatalogModuleMutation();
 
   const basePlan = (plansData?.plans || []).find((p) => p.planId === 'base');
   const lifetimePlan = (plansData?.plans || []).find((p) => p.planId === 'lifetime');
-  const modules = modulesData?.modules || [];
+
+  const catalogModules = modulesData?.modules || [];
+  const usingPublicFallback = catalogModules.length === 0 && (publicModulesData?.modules?.length ?? 0) > 0;
+  const modules = catalogModules.length > 0
+    ? catalogModules
+    : (publicModulesData?.modules || []).map((m) => ({ ...m, isActive: true }));
+
+  const modulesApiUnavailable = modulesAdminError && modulesError?.status === 404;
 
   const [baseForm, setBaseForm] = useState({
     priceMonthly: '',
@@ -75,6 +92,10 @@ function PricingManagement() {
   };
 
   const handleSaveModule = async (moduleId) => {
+    if (modulesApiUnavailable) {
+      toast.error('Redeploy del backend requerido para editar módulos');
+      return;
+    }
     const edit = moduleEdits[moduleId];
     if (!edit) return;
     try {
@@ -98,7 +119,7 @@ function PricingManagement() {
 
   const basePrice = parseFloat(baseForm.priceMonthly || basePlan?.priceMonthly || 0);
 
-  if (loadingPlans || loadingModules) {
+  if (loadingPlans || loadingModules || (usingPublicFallback && loadingPublicModules)) {
     return (
       <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
         Cargando precios...
@@ -200,6 +221,29 @@ function PricingManagement() {
         </div>
       </div>
 
+      {modulesApiUnavailable && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          El backend en producción aún no expone{' '}
+          <code className="bg-amber-100 px-1 rounded">GET /platform-admin/modules</code>.
+          Mostramos el catálogo público en lectura; para editar precios, redeploy del backend
+          (workflow <strong>Deploy Backend</strong> en GitHub Actions).
+        </div>
+      )}
+
+      {usingPublicFallback && !modulesApiUnavailable && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          Catálogo cargado desde la API pública. Si editás un módulo y falla el guardado, recargá
+          después del deploy del backend.
+        </div>
+      )}
+
+      {modulesAdminError && !modulesApiUnavailable && modules.length === 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          No se pudo cargar el catálogo de módulos:{' '}
+          {modulesError?.data?.message || modulesError?.error || `Error ${modulesError?.status || ''}`}
+        </div>
+      )}
+
       {/* Módulos */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="p-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-4">
@@ -275,8 +319,9 @@ function PricingManagement() {
                       <button
                         type="button"
                         onClick={() => handleSaveModule(mod.moduleId)}
-                        disabled={savingModule}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-medium"
+                        disabled={savingModule || modulesApiUnavailable}
+                        title={modulesApiUnavailable ? 'Requiere deploy del backend' : undefined}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         <IoSaveOutline className="w-4 h-4" />
                         Guardar
@@ -289,7 +334,7 @@ function PricingManagement() {
           </table>
         </div>
 
-        {modules.length === 0 && (
+        {modules.length === 0 && !modulesAdminError && (
           <p className="p-8 text-center text-gray-500">
             No hay módulos en el catálogo. Ejecutá{' '}
             <code className="bg-gray-100 px-1 rounded">node back/scripts/seed-modules.js</code>
