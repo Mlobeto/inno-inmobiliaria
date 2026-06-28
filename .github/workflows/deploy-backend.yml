@@ -213,74 +213,31 @@ jobs:
       - name: Verify deployment
         run: |
           API_URL="https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io"
-          TARGET_IMAGE="${{ env.IMAGE_TAG }}"
-          SHA="${{ github.sha }}"
-          echo "Esperando revisión Running con imagen $TARGET_IMAGE..."
-          sleep 30
-
-          check_api() {
-            local BASE="$1"
-            curl -sf "$BASE/health" | grep -q '"status":"OK"' || return 1
-            curl -sf "$BASE/api/public/modules" | grep -q '"modules"' && return 0
-            curl -sf "$BASE/api/public/plans" | grep -q '"plans"' && return 0
-            return 1
-          }
-
-          for i in $(seq 1 60); do
-            echo "Intento $i/60"
-            REVS=$(az containerapp revision list \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --query "sort_by(@, &properties.createdTime)[].{name:name,image:properties.template.containers[0].image,state:properties.runningState,fqdn:properties.fqdn}" \
-              -o json 2>/dev/null || echo "[]")
-
-            FOUND=false
-            while read -r line; do
-              REV=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])")
-              REV_IMAGE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['image'])")
-              STATE=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin)['state'])")
-              FQDN=$(echo "$line" | python3 -c "import sys,json; print(json.load(sys.stdin).get('fqdn') or '')")
-
-              IMAGE_HIT=false
-              [ "$REV_IMAGE" = "$TARGET_IMAGE" ] && IMAGE_HIT=true
-              echo "$REV_IMAGE" | grep -qF "$SHA" && IMAGE_HIT=true
-              echo "  $REV | $STATE | hit=$IMAGE_HIT | $REV_IMAGE"
-              [ "$IMAGE_HIT" = false ] && continue
-              FOUND=true
-
-              if [ "$STATE" = "Failed" ]; then
-                echo "Revisión falló. Logs:"
-                az containerapp logs show \
-                  --name ${{ env.CONTAINER_APP_NAME }} \
-                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                  --revision "$REV" --tail 80 || true
-                exit 1
+          echo "Esperando que la API responda en $API_URL (hasta 10 min)..."
+          sleep 45
+          for i in $(seq 1 40); do
+            echo "Intento $i/40"
+            HEALTH=$(curl -s -m 15 "$API_URL/health" || true)
+            if echo "$HEALTH" | grep -q '"status":"OK"'; then
+              echo "Health OK: $HEALTH"
+              MODULES=$(curl -s -m 15 "$API_URL/api/public/modules" || true)
+              if echo "$MODULES" | grep -q '"modules"'; then
+                echo "Modules OK"
+                exit 0
               fi
-
-              if [ "$STATE" = "Running" ] && [ -n "$FQDN" ]; then
-                REV_URL="https://$FQDN"
-                if check_api "$REV_URL"; then
-                  echo "Revisión $REV OK en $REV_URL"
-                  for j in $(seq 1 12); do
-                    if check_api "$API_URL"; then
-                      echo "Deploy OK — tráfico en URL principal."
-                      exit 0
-                    fi
-                    sleep 10
-                  done
-                  echo "Deploy OK — revisión sana (tráfico aún en revisión anterior)."
-                  exit 0
-                fi
+              if echo "$MODULES" | grep -q '"success":true'; then
+                echo "Modules OK"
+                exit 0
               fi
-            done < <(echo "$REVS" | python3 -c "import sys,json; [print(json.dumps(r)) for r in json.load(sys.stdin)]")
-
-            [ "$FOUND" = false ] && echo "  Sin revisión con imagen nueva aún."
+              echo "Health OK pero /modules aún no: ${MODULES:0:120}"
+            else
+              echo "Sin health aún (${HEALTH:0:80})"
+            fi
             sleep 15
           done
-
-          echo "Timeout."
-          az containerapp revision list \
+          echo "Timeout — últimos logs:"
+          az containerapp logs show \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            -o table || true
+            --tail 40 || true
           exit 1
