@@ -131,45 +131,28 @@ jobs:
           echo "Imagen previa: $PRE_IMAGE"
           echo "Imagen objetivo: ${{ env.IMAGE_TAG }}"
 
-      - name: Configure container registries
-        env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      # Solo lectura — registry remove/set bloquean ~20 min en Azure CLI
+      - name: Check container registries
         run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "Registros actuales:"
+          echo "Registros configurados:"
           az containerapp registry list \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             -o table || true
-          # Quitar ACR eliminado — Azure puede intentar pull ahí en vez de GHCR
-          if az containerapp registry list \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query "[?server=='innoacrprod.azurecr.io']" -o tsv 2>/dev/null | grep -q .; then
-            echo "Eliminando registry ACR obsoleto..."
-            az containerapp registry remove \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --server innoacrprod.azurecr.io
-          else
-            echo "Registry ACR ya no está — OK."
-          fi
           HAS_GHCR=$(az containerapp registry list \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --query "[?server=='ghcr.io'] | length(@)" -o tsv 2>/dev/null || echo "0")
-          if [ "$HAS_GHCR" != "0" ]; then
-            echo "ghcr.io ya configurado (secret ghcrio-mlobeto) — OK."
-          elif [ -n "$GHCR_PAT" ]; then
-            echo "Configurando ghcr.io..."
-            az containerapp registry set \
-              --name ${{ env.CONTAINER_APP_NAME }} \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --server ghcr.io \
-              --username "$OWNER" \
-              --password "$GHCR_PAT"
-          else
-            echo "WARN: ghcr.io no configurado y GHCR_PAT ausente."
+          if [ "$HAS_GHCR" = "0" ]; then
+            echo "ERROR: ghcr.io no está configurado. Agregalo en Azure Portal → Container App → Registries."
+            exit 1
+          fi
+          echo "ghcr.io OK — continuando deploy."
+          if az containerapp registry list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[?server=='innoacrprod.azurecr.io'] | length(@)" -o tsv 2>/dev/null | grep -qv '^0$'; then
+            echo "WARN: innoacrprod.azurecr.io sigue listado — quitarlo manualmente en Portal (no bloquear CI)."
           fi
 
       - name: Deploy to Container Apps
