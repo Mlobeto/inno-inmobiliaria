@@ -52,5 +52,5 @@ COPY shared /shared
 # Exponer el puerto que usa Express (Railway/Azure usan PORT env var)
 EXPOSE 3001
 
-# Ejecutar migraciones Prisma y luego iniciar el servidor
-CMD ["sh", "-c", "npx prisma migrate deploy && node index.js"]
+# Arranque directo (migraciones se aplican manualmente o desde local antes del deploy)
+CMD ["node", "index.js"]
