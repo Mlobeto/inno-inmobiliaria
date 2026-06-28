@@ -167,6 +167,16 @@ async function main() {
       icon: 'home',
       sortOrder: 6,
     },
+    {
+      moduleId: 'electronic_invoicing',
+      name: 'Facturación Electrónica ARCA',
+      description: 'Emití facturas electrónicas con AFIP/ARCA desde el sistema: comprobantes A, B, C y notas de crédito.',
+      price: 7000,
+      featureKeys: ['electronic_invoicing', 'electronicInvoicing'],
+      question: '¿Necesitás emitir facturas electrónicas con AFIP/ARCA?',
+      icon: 'receipt',
+      sortOrder: 7,
+    },
   ];
 
   for (const mod of modules) {

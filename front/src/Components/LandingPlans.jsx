@@ -13,6 +13,7 @@ import {
   IoHomeOutline,
   IoCheckmarkSharp,
   IoArrowForwardOutline,
+  IoReceiptOutline,
 } from 'react-icons/io5';
 
 const MODULE_ICONS = {
@@ -22,6 +23,7 @@ const MODULE_ICONS = {
   mercadolibre: IoStorefrontOutline,
   loteos: IoMapOutline,
   portal_inquilino: IoHomeOutline,
+  electronic_invoicing: IoReceiptOutline,
 };
 
 const BASE_PRICE = 10000;

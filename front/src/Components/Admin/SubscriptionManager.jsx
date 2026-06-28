@@ -50,6 +50,7 @@ const MODULE_ICONS = {
   mercadolibre:      IoStorefrontOutline,
   loteos:            IoMapOutline,
   portal_inquilino:  IoHomeOutline,
+  electronic_invoicing: IoReceiptOutline,
 };
 
 const STATUSES_NEEDING_PAYMENT = ['past_due', 'canceled', 'incomplete', 'expired'];
