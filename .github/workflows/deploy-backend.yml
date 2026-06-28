@@ -119,9 +119,16 @@ jobs:
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --query "sort_by(@, &properties.createdTime)[-1].name" \
             --output tsv)
+          PRE_IMAGE=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].image" \
+            --output tsv)
           echo "pre_revision=$PRE" >> $GITHUB_OUTPUT
+          echo "pre_image=$PRE_IMAGE" >> $GITHUB_OUTPUT
           echo "Revisión previa: $PRE"
-          echo "Nueva revisión esperada: ${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
+          echo "Imagen previa: $PRE_IMAGE"
+          echo "Imagen objetivo: ${{ env.IMAGE_TAG }}"
 
       - name: Deploy to Container Apps
         env:
@@ -164,11 +171,17 @@ jobs:
       - name: Verify deployment
         run: |
           API_URL="https://inno-prod-api.proudmoss-fef6994b.eastus2.azurecontainerapps.io"
-          PRE="${{ steps.rev.outputs.pre_revision }}"
-          EXPECT="${{ env.CONTAINER_APP_NAME }}--${{ env.REVISION_SUFFIX }}"
-          echo "Esperando revisión nueva ($EXPECT), previa era $PRE..."
+          TARGET_IMAGE="${{ env.IMAGE_TAG }}"
+          SHA="${{ github.sha }}"
+          PRE_IMAGE="${{ steps.rev.outputs.pre_image }}"
+          echo "Esperando imagen $TARGET_IMAGE (previa: $PRE_IMAGE)..."
           sleep 30
-          for i in $(seq 1 36); do
+          for i in $(seq 1 60); do
+            CUR_IMAGE=$(az containerapp show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.template.containers[0].image" \
+              --output tsv 2>/dev/null || echo "?")
             REV=$(az containerapp revision list \
               --name ${{ env.CONTAINER_APP_NAME }} \
               --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
@@ -180,40 +193,49 @@ jobs:
               --query "sort_by(@, &properties.createdTime)[-1].properties.runningState" \
               --output tsv 2>/dev/null || echo "Unknown")
 
-            # Ignorar revisiones viejas (ej. 0000104 fallida) hasta que aparezca la nueva
-            if [ "$REV" = "$PRE" ]; then
-              echo "Intento $i/36 — aún no hay revisión nueva (sigue $PRE)..."
-              sleep 10
+            IMAGE_OK=false
+            if [ "$CUR_IMAGE" = "$TARGET_IMAGE" ]; then IMAGE_OK=true; fi
+            if echo "$CUR_IMAGE" | grep -qF "$SHA"; then IMAGE_OK=true; fi
+
+            echo "Intento $i/60 — rev $REV ($STATE) imagen: $CUR_IMAGE (ok=$IMAGE_OK)"
+
+            if [ "$IMAGE_OK" = false ]; then
+              sleep 15
               continue
             fi
 
-            echo "Intento $i/36 — revisión $REV: ${STATE:-desconocido}"
-
-            if [ "$STATE" = "Running" ]; then
-              UPTIME=$(curl -sf "$API_URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uptime',-1))" 2>/dev/null || echo "-1")
-              echo "Health uptime: $UPTIME s"
-              if [ "$UPTIME" != "-1" ] && [ "${UPTIME%%.*}" -lt 600 ]; then
-                echo "Revisión nueva activa (uptime < 10 min)"
-                exit 0
-              fi
-              echo "Revisión Running pero uptime alto — esperando tráfico en revisión nueva..."
-            fi
-
             if [ "$STATE" = "Failed" ] || [ "$STATE" = "Degraded" ]; then
-              # Solo fallar si es la revisión que acabamos de desplegar
-              if [ "$REV" = "$EXPECT" ] || [ "$REV" != "$PRE" ]; then
-                echo "Revisión falló. Logs:"
-                az containerapp logs show \
-                  --name ${{ env.CONTAINER_APP_NAME }} \
-                  --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-                  --revision "$REV" \
-                  --tail 80 || true
-                exit 1
-              fi
+              echo "Revisión falló tras deploy. Logs:"
+              az containerapp logs show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+                --revision "$REV" \
+                --tail 80 || true
+              exit 1
             fi
-            sleep 10
+
+            if [ "$STATE" != "Running" ]; then
+              sleep 15
+              continue
+            fi
+
+            UPTIME=$(curl -sf "$API_URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin).get('uptime',-1))" 2>/dev/null || echo "-1")
+            echo "Health uptime: $UPTIME s"
+
+            if curl -sf "$API_URL/api/public/modules" | grep -q '"name"'; then
+              echo "Deploy OK — /api/public/modules responde."
+              exit 0
+            fi
+
+            if [ "$UPTIME" != "-1" ] && [ "${UPTIME%%.*}" -lt 600 ]; then
+              echo "Deploy OK — uptime bajo ($UPTIME s)."
+              exit 0
+            fi
+
+            echo "Imagen desplegada, esperando health/modules..."
+            sleep 15
           done
-          echo "Timeout. Logs recientes:"
+          echo "Timeout. Imagen actual: $CUR_IMAGE"
           az containerapp logs show \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
