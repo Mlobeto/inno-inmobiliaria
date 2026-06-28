@@ -1,5 +1,6 @@
 const prisma = require("../utils/prismaClient");
 const { renderTemplate, prepareTemplateVariables } = require("../services/pdfService");
+const { createDefaultTemplatesForTenant } = require("../scripts/seedPdfTemplates");
 
 /**
  * Tipos de propiedad comerciales
@@ -50,6 +51,14 @@ const getAllTemplates = async (req, res) => {
   try {
     const { tenantId } = req.user;
     const { templateType, isActive } = req.query;
+
+    // Si el tenant no tiene plantillas, crear las 5 por defecto desde disco
+    const totalCount = await prisma.pdf_templates.count({
+      where: { tenantId, deletedAt: null },
+    });
+    if (totalCount === 0) {
+      await createDefaultTemplatesForTenant(tenantId, req.user?.adminId ?? null);
+    }
 
     const where = { tenantId };
     

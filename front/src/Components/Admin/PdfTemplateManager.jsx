@@ -1096,9 +1096,9 @@ p { margin: 10px 0; text-align: justify; }`,
         ) : filteredTemplates.length === 0 ? (
           <div className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 p-12 text-center">
             <IoDocumentTextOutline className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <p className="text-slate-400 text-lg mb-2">No hay plantillas creadas</p>
+            <p className="text-slate-400 text-lg mb-2">No hay plantillas para este tipo</p>
             <p className="text-slate-500 text-sm">
-              Crea tu primera plantilla para comenzar
+              Las plantillas por defecto (contrato, recibo, ficha, etc.) se cargan automáticamente al abrir esta sección
             </p>
           </div>
         ) : (
